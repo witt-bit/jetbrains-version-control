@@ -2,13 +2,19 @@
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/assets/logo-128.png" width="80" />
+<img src="images/icon.png" width="128" />
 
-<h1>IntelliJ Git Graph - IDEA 风格分支与合并</h1>
+<h1>JetBrains Git Control</h1>
 
-IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-Pick、Rebase 和三路合并编辑器。
+<strong>最完整的 IntelliJ IDEA / JetBrains Git 体验，适用于 VS Code 和 Cursor</strong>
 
-> 基于 [zhyc9de/jet-git](https://github.com/zhyc9de/jet-git) 的 Fork，新增完整的 IntelliJ IDEA 风格右键菜单和 UI 增强。
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.85.0%2B-blue)](https://code.visualstudio.com/)
+[![Version](https://img.shields.io/badge/Version-1.0.0-green)](./package.json)
+
+> **注意**：本项目 fork 自 [JetBrains Git - IntelliJ IDEA Git Graph, Commit & Shelf for VS Code](https://github.com/aotemj/jetbrains-git-graph)，新增了 inline git blame 注解和提交图导航功能。
+
+> Fork 自 [zhyc9de/jet-git](https://github.com/zhyc9de/jet-git)，包含完整的 IntelliJ IDEA 风格右键菜单和 UI 增强。
 
 [English](./README.md) · **简体中文**
 
@@ -18,17 +24,27 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 
 ## 功能特性
 
+### 内联 Git Blame 注解
+
+WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图。
+
+- **显示模式**：全文件 / 仅光标行 / 光标前后 N 行
+- **可配置列**：revision、date、author、commitNumber（按需选择）
+- **命名风格**：缩写、姓氏、名字、全名、邮箱
+- **年龄着色**：按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
+- **左对齐**：未注解行也向右对齐，保持代码整洁
+
 ### 分支右键菜单
 
 右键任意分支即可执行 Checkout、创建、合并、Rebase、重命名、删除、Push、Pull 等操作，与 IntelliJ IDEA 体验一致。
 
-![分支 Checkout](https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/checkout.gif)
+![分支 Checkout](images/checkout.gif)
 
 ### 提交右键菜单
 
 右键任意提交即可复制 Hash、Cherry-Pick、Checkout、Reset、Revert、创建分支或标签。
 
-![提交右键菜单](https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/commit-context-menu.gif)
+![提交右键菜单](images/commit-context-menu.gif)
 
 ### 变更文件右键菜单
 
@@ -36,7 +52,7 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 
 ### Git 提交图
 
-![Git Graph](https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/git-graph.png)
+![Git Graph](images/git-graph.png)
 
 - **分支树** — 按 Local / Remote / Tags 分组，支持搜索过滤
 - **提交列表** — 彩色分支线，可调整列宽（Message、Author、Date、Hash）
@@ -45,7 +61,7 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 
 ### 三路合并编辑器
 
-![三路合并编辑器](https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/three-way-merge.png)
+![三路合并编辑器](images/three-way-merge.png)
 
 - 三栏布局：Theirs | Result | Yours
 - 冲突高亮 + 逐块操作按钮
@@ -53,7 +69,7 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 
 ### 冲突管理
 
-![冲突列表](https://raw.githubusercontent.com/aotemj/jetbrains-git-graph/main/images/conflicts-list.png)
+![冲突列表](images/conflicts-list.png)
 
 - 快捷操作：接受 Yours / 接受 Theirs / 合并
 - 与 VS Code 源代码管理面板无缝集成
@@ -105,15 +121,31 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 
 ---
 
+## 配置
+
+在 VS Code 设置中搜索 `JGC`：
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `jgc.blame.enabled` | 启用内联 blame 注解 | `true` |
+| `jgc.blame.columns` | 显示的列 | `["revision", "author", "date"]` |
+| `jgc.blame.colorMode` | 着色模式 | `order` |
+| `jgc.blame.nameStyle` | 名称显示风格 | `lastName` |
+| `jgc.blame.displayMode` | 显示范围 | `full` |
+| `jgc.blame.aroundLines` | 上下文行数（around 模式） | `5` |
+| `jgc.blame.dateFormat` | 日期格式 | `yyyy-MM-dd HH:mm` |
+
+---
+
 ## 安装
 
 **从 Marketplace 安装：**
 
-在 VS Code 扩展中搜索 **"IntelliJ Git Graph"** 即可安装。
+在 VS Code 扩展中搜索 **"JetBrains Git Control"** 或 **"JGC"** 即可安装。
 
 **从 .vsix 安装：**
 
-1. 从 [Releases](https://github.com/aotemj/jetbrains-git-graph/releases) 下载最新 `.vsix`
+1. 从 [Releases](https://github.com/witt-bit/jetbrains-version-control/releases) 下载最新 `.vsix`
 2. `Cmd+Shift+P` → "Extensions: Install from VSIX..."
 
 ## 环境要求
@@ -124,8 +156,8 @@ IntelliJ IDEA 风格的 Git 可视化工具：提交图、分支管理、Cherry-
 ## 本地开发
 
 ```bash
-git clone https://github.com/aotemj/jetbrains-git-graph.git
-cd jetbrains-git-graph
+git clone https://github.com/witt-bit/jetbrains-version-control.git
+cd jetbrains-version-control
 pnpm install
 cd webview && pnpm install && cd ..
 ```
@@ -140,7 +172,8 @@ pnpm run vsce:package   # 打包为 .vsix
 
 ## 致谢
 
-- 原项目：[zhyc9de/jet-git](https://github.com/zhyc9de/jet-git)
+- 原项目：[aotemj/jetbrains-git-graph](https://github.com/aotemj/jetbrains-git-graph)
+- Fork 来源：[zhyc9de/jet-git](https://github.com/zhyc9de/jet-git)
 - 图标：[IntelliJ IDEA Icons](https://intellij-icons.jetbrains.design/)（Apache 2.0 许可）
 
 ## 许可证
