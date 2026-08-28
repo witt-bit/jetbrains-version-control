@@ -46,6 +46,8 @@ interface PanelStore {
   filter: PanelFilter;
   /** Hashes to restore after clearing a filter */
   pendingSelectionFromFilter: string[];
+  /** Commit hash waiting to be scrolled into view by CommitList's virtualizer */
+  pendingScrollToHash: string | null;
   /** Collapsed sequence IDs */
   collapsedSequenceIds: Set<string>;
   /** sequenceId → intermediate hashes that are hidden */
@@ -62,6 +64,9 @@ interface PanelStore {
     mode?: SelectionMode,
     allVisibleCommits?: string[],
   ) => Promise<void>;
+  /** Load/locate a commit from an external source (e.g. blame annotation click) and scroll it into view */
+  focusCommit: (hash: string) => Promise<void>;
+  consumePendingScrollToHash: () => void;
   selectFile: (filePath: string) => void;
   openDiffEditor: (commitHash: string, file: DiffFile) => Promise<void>;
   setFilter: (filter: Partial<PanelFilter>) => void;
@@ -215,6 +220,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
 
   filter: { searchQuery: "", branch: "", author: "", dateRange: "", file: "" },
   pendingSelectionFromFilter: [],
+  pendingScrollToHash: null,
   collapsedSequenceIds: new Set(),
   collapsedIntermediates: new Map(),
 
@@ -436,6 +442,72 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     }
   },
 
+  async focusCommit(hash: string) {
+    const { filter, collapsedSequenceIds } = get();
+
+    // Drop client-side filters / collapsed sequences that would hide the target.
+    // Note: branch="" → backend --all (already maximal); a file filter still
+    // contains the commit because blame commits touched this very file.
+    if (
+      filter.searchQuery ||
+      filter.author ||
+      filter.dateRange ||
+      collapsedSequenceIds.size > 0
+    ) {
+      const nextFilter = {
+        ...filter,
+        searchQuery: "",
+        author: "",
+        dateRange: "",
+      };
+      const nextVisible = filterCommits(get().commits, nextFilter, new Map());
+      set({
+        filter: nextFilter,
+        collapsedSequenceIds: new Set(),
+        collapsedIntermediates: new Map(),
+        visibleCommits: nextVisible,
+      });
+    }
+
+    // Initial data may still be loading (cold start): let it finish first so
+    // our paging starts from a consistent state.
+    let waits = 0;
+    while (get().loading && waits < 50) {
+      await new Promise((r) => setTimeout(r, 100));
+      waits++;
+    }
+
+    // Page in more commits until the target is loaded (blame commits may sit
+    // deep in history; lane continuity is preserved by loadMore's snapshot).
+    let pages = 0;
+    while (
+      !get().commits.some((c) => c.hash === hash) &&
+      get().hasMore &&
+      pages < 25
+    ) {
+      await get().loadMore();
+      pages++;
+    }
+
+    const visible = get().visibleCommits;
+    const idx = visible.findIndex((c) => c.hash === hash);
+    if (idx === -1) {
+      console.warn("focusCommit: commit not reachable in current view:", hash);
+      return;
+    }
+
+    await get().selectCommit(
+      hash,
+      "single",
+      visible.map((c) => c.hash),
+    );
+    set({ pendingScrollToHash: hash });
+  },
+
+  consumePendingScrollToHash() {
+    set({ pendingScrollToHash: null });
+  },
+
   selectFile(filePath: string) {
     set({ selectedFilePath: filePath });
   },
@@ -643,6 +715,10 @@ bridge.onEvent((event, data) => {
   if (event === "showFileHistory") {
     const { file } = data as { file: string };
     usePanelStore.getState().setFilter({ file });
+  }
+  if (event === "focusCommitInGraph") {
+    const { hash } = data as { hash: string };
+    void usePanelStore.getState().focusCommit(hash);
   }
   if (event === "operationStart") {
     usePanelStore.setState({ operationInProgress: true });

@@ -1,5 +1,6 @@
 import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
+import { BlameManager } from "./blame/blameManager";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
@@ -115,6 +116,29 @@ export function activate(context: vscode.ExtensionContext) {
   // 4b. RollbackPanel
   const rollbackPanel = new RollbackPanel(context.extensionUri, messageRouter);
 
+  // 4c. Inline blame annotations ("Annotate with Git Blame")
+  const blameManager = new BlameManager(
+    allGitServices.map((service, i) => ({
+      root: allWorkspaceRoots[i],
+      service,
+    })),
+    messageRouter,
+  );
+  blameManager.register();
+  context.subscriptions.push(blameManager);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("git-brains.annotateWithGitBlame", () => {
+      void blameManager.annotate();
+    }),
+    vscode.commands.registerCommand(
+      "git-brains.clearGitBlameAnnotation",
+      () => {
+        blameManager.clear();
+      },
+    ),
+  );
+
   // 5. Register VSCode commands (always registered)
   context.subscriptions.push(
     vscode.commands.registerCommand("git-brains.openPushPanel", async () => {
@@ -147,11 +171,11 @@ export function activate(context: vscode.ExtensionContext) {
         const result = await diffManager.nextDiff();
         if (!result) {
           void vscode.window.showInformationMessage(
-            "JetGit: No diff file list. Double-click a file in Changed Files first.",
+            "JGC: No diff file list. Double-click a file in Changed Files first.",
           );
         }
       } else {
-        void vscode.window.showInformationMessage("JetGit: No workspace open.");
+        void vscode.window.showInformationMessage("JGC: No workspace open.");
       }
     }),
     vscode.commands.registerCommand("git-brains.prevDiff", async () => {
@@ -159,11 +183,11 @@ export function activate(context: vscode.ExtensionContext) {
         const result = await diffManager.prevDiff();
         if (!result) {
           void vscode.window.showInformationMessage(
-            "JetGit: No diff file list. Double-click a file in Changed Files first.",
+            "JGC: No diff file list. Double-click a file in Changed Files first.",
           );
         }
       } else {
-        void vscode.window.showInformationMessage("JetGit: No workspace open.");
+        void vscode.window.showInformationMessage("JGC: No workspace open.");
       }
     }),
     vscode.commands.registerCommand("git-brains.openConflicts", () => {

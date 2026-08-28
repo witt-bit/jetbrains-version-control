@@ -9,3 +9,7 @@ node_modules
 .omc/
 *.vsix
 webview/node_modules
+CLAUDE.md
+.claude/
+.history/
+*.vsix

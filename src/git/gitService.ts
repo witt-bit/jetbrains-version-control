@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 import { GitCache } from "./cache";
 import { computeGraphLayout } from "./graphLayout";
 import type {
+  BlameLine,
   BranchInfo,
   CherryPickState,
   CommitNode,
@@ -391,6 +392,23 @@ export class GitService {
     }
     if (touching.length === 0) return null;
     return { newest: touching[0], oldest: touching[touching.length - 1] };
+  }
+
+  /**
+   * Blame the working tree copy of a file (line numbers match editor lines).
+   * Not cached: output changes on every save/edit.
+   */
+  async blame(filePath: string): Promise<BlameLine[]> {
+    const output = await this.execGit([
+      "blame",
+      "--porcelain",
+      "-l", // full hash; we derive shortHash locally
+      "-w", // ignore whitespace (IDEA-like default)
+      "-M",
+      "--",
+      filePath,
+    ]);
+    return parseBlamePorcelain(output);
   }
 
   async getStatus(): Promise<FileStatus[]> {
@@ -1633,6 +1651,120 @@ export class GitService {
   invalidateCache(pattern?: string): void {
     this.cache.invalidate(pattern);
   }
+}
+
+/**
+ * Parse `git blame --porcelain -l` output.
+ * Records: "<sha> <origLine> <finalLine>[ <groupSize>]" header followed by
+ * metadata lines (author, author-mail, author-time, summary, ...) until a
+ * "\t" content line. Keyed by finalLine = working tree line number.
+ */
+function parseBlamePorcelain(output: string): BlameLine[] {
+  const lines: BlameLine[] = [];
+  const linesByHashCache = new Map<
+    string,
+    Pick<
+      BlameLine,
+      | "shortHash"
+      | "authorName"
+      | "authorEmail"
+      | "authorTime"
+      | "authorDate"
+      | "summary"
+    >
+  >();
+  let current: BlameLine | null = null;
+
+  for (const line of output.split("\n")) {
+    if (!line) {
+      continue;
+    }
+    if (line.startsWith("\t")) {
+      // Content line: end of this record's metadata
+      current = null;
+      continue;
+    }
+
+    const headerMatch = /^([0-9a-f]{40}) (\d+) (\d+)(?: \d+)?$/.exec(line);
+    if (headerMatch) {
+      const hash = headerMatch[1];
+      const finalLine = Number(headerMatch[3]);
+      const uncommitted = /^0{40}$/.test(hash);
+
+      // Metadata blocks repeat per blamed line; cache per commit hash.
+      let meta = linesByHashCache.get(hash);
+      if (!meta) {
+        meta = {
+          shortHash: "",
+          authorName: "",
+          authorEmail: "",
+          authorTime: 0,
+          authorDate: "",
+          summary: "",
+        };
+        linesByHashCache.set(hash, meta);
+      }
+
+      current = {
+        hash,
+        shortHash: meta.shortHash || hash.slice(0, 8),
+        authorName: meta.authorName,
+        authorEmail: meta.authorEmail,
+        authorTime: meta.authorTime,
+        authorDate: meta.authorDate,
+        lineNumber: finalLine,
+        summary: meta.summary || undefined,
+        uncommitted,
+      };
+      lines.push(current);
+      continue;
+    }
+
+    // Metadata key-value line belonging to the current record
+    if (current && !current.uncommitted) {
+      const spaceIdx = line.indexOf(" ");
+      const key = spaceIdx === -1 ? line : line.slice(0, spaceIdx);
+      const value = spaceIdx === -1 ? "" : line.slice(spaceIdx + 1);
+      const cached = linesByHashCache.get(current.hash);
+      if (!cached) {
+        continue;
+      }
+      switch (key) {
+        case "author":
+          current.authorName = value;
+          cached.authorName = value;
+          break;
+        case "author-mail":
+          current.authorEmail = value.replace(/^<|>$/g, "");
+          cached.authorEmail = current.authorEmail;
+          break;
+        case "author-time": {
+          const unixSeconds = Number(value);
+          current.authorTime = unixSeconds;
+          cached.authorTime = unixSeconds;
+          const date = new Date(unixSeconds * 1000);
+          current.authorDate = formatDate(date);
+          cached.authorDate = current.authorDate;
+          break;
+        }
+        case "summary":
+          current.summary = value;
+          cached.summary = value;
+          break;
+      }
+      // Uncommitted (all-zero pseudo commit) metadata is intentionally skipped:
+      // placeholder fields stay empty and the UI renders an "Uncommitted" label.
+    }
+  }
+
+  return lines;
+}
+
+function formatDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}/${m}/${d}`;
 }
 
 function parseDiffNameStatus(output: string): DiffFile[] {

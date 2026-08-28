@@ -121,7 +121,9 @@ export type EventType =
   | "operationStart"
   | "operationEnd"
   | "commitStateChanged"
-  | "rollbackPanelInit";
+  | "rollbackPanelInit"
+  /** data: { hash: string } — jump the Git Log graph to a specific commit */
+  | "focusCommitInGraph";
 
 export interface RemoteBranchGroup {
   remote: string;

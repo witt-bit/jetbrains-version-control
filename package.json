@@ -1,14 +1,14 @@
 {
-  "name": "idea-like-git-graph",
-  "displayName": "JetBrains Git - IntelliJ IDEA Git Graph, Commit & Shelf for VS Code",
-  "publisher": "autemj",
-  "description": "Bring IntelliJ IDEA / JetBrains Git experience to VS Code & Cursor: Git graph visualization, IDEA-style commit panel with shelf/stash, branch management, cherry-pick, rebase, merge, 3-way merge editor, and context menus. The best JetBrains Git alternative for Visual Studio Code.",
-  "version": "0.4.17",
+  "name": "jetbrains-git-control",
+  "displayName": "JetBrains Git Control",
+  "publisher": "witt-bit",
+  "description": "Bring IntelliJ IDEA / JetBrains Git experience to VS Code & Cursor: Git graph visualization, IDEA-style commit panel with shelf/stash, branch management, cherry-pick, rebase, merge, 3-way merge editor, inline git blame annotations, and context menus. The best JetBrains Git alternative for Visual Studio Code.",
+  "version": "1.0.0",
   "license": "MIT",
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aotemj/jetbrains-git-graph"
+    "url": "https://github.com/witt-bit/jetbrains-version-control"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -37,7 +37,8 @@
     "webstorm",
     "pycharm",
     "goland",
-    "rider"
+    "rider",
+    "version control"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -45,7 +46,7 @@
       "panel": [
         {
           "id": "git-brains-panel",
-          "title": "JetGit",
+"title": "JetBrains Git Control",
           "icon": "$(git-branch)"
         }
       ],
@@ -78,86 +79,97 @@
         "command": "git-brains.refreshLog",
         "title": "Refresh Git Log",
         "icon": "$(refresh)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.openMergeEditor",
         "title": "Open Merge Editor",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.openConflicts",
         "title": "Conflicts",
         "icon": "$(git-merge)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.openMergeEditorFromSCM",
-        "title": "Open in JetGit Merge Editor",
+        "title": "Open in JGC Merge Editor",
         "icon": "$(git-merge)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.showFileHistory",
-        "title": "(JetGit) Show File History",
+        "title": "(JetBrains Git Control) Show File History",
         "icon": "$(history)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.nextDiff",
         "title": "Next File Diff",
         "icon": "$(arrow-down)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.prevDiff",
         "title": "Previous File Diff",
         "icon": "$(arrow-up)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.commitPanel.refresh",
         "title": "Refresh Changes",
         "icon": "$(refresh)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.commitPanel.commit",
         "title": "Commit",
         "icon": "$(check)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.commitPanel.commitAndPush",
         "title": "Commit and Push",
         "icon": "$(cloud-upload)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.commitPanel.shelve",
         "title": "Shelve Changes",
         "icon": "$(archive)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.commitPanel.unshelve",
         "title": "Unshelve Changes",
         "icon": "$(package)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.openPushPanel",
         "title": "Push...",
         "icon": "$(cloud-upload)",
-        "category": "JetGit"
+        "category": "JGC"
       },
       {
         "command": "git-brains.editSource",
-        "title": "(JetGit) Edit Source",
+        "title": "(JGC) Edit Source",
         "icon": "$(go-to-file)",
-        "category": "JetGit"
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.annotateWithGitBlame",
+        "title": "Annotate with Git Blame",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.clearGitBlameAnnotation",
+        "title": "Close Annotations",
+        "category": "JGC"
       }
     ],
+
     "menus": {
       "view/title": [],
       "scm/title": [
@@ -186,6 +198,19 @@
           "group": "git@2"
         }
       ],
+      "editor/lineNumber/context": [
+        {
+          "command": "git-brains.annotateWithGitBlame",
+          "when": "!jgc.blameActive",
+          "group": "git@1"
+        },
+        {
+          "command": "git-brains.clearGitBlameAnnotation",
+          "when": "jgc.blameActive",
+          "group": "git@1"
+        }
+      ],
+      "commandPalette": [],
       "explorer/context": [
         {
           "command": "git-brains.showFileHistory",
@@ -212,7 +237,106 @@
         "mac": "cmd+shift+f7",
         "when": "editorFocus"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "JetBrains Version Control",
+      "properties": {
+        "jgc.blame.displayMode": {
+          "type": "string",
+          "enum": [
+            "all",
+            "cursor",
+            "around"
+          ],
+          "enumDescriptions": [
+            "Annotate every line of the file",
+            "Only the line under the cursor",
+            "The cursor line plus N lines of context (see #jgc.blame.aroundLines#)"
+          ],
+          "default": "all",
+          "description": "Controls which lines show inline Git blame annotations."
+        },
+        "jgc.blame.aroundLines": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "description": "Lines of context above/below the cursor when jgc.blame.displayMode is 'around'."
+        },
+        "jgc.blame.columns": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "revision",
+              "date",
+              "author",
+              "commitNumber"
+            ],
+            "enumDescriptions": [
+              "Short commit hash",
+              "Author date",
+              "Author name",
+              "Commit number (1 = newest)"
+            ]
+          },
+          "uniqueItems": true,
+          "default": [
+            "date",
+            "author"
+          ],
+          "description": "Which columns to show in inline Git blame annotations. Display order is always: Revision → Date → Author → Commit Number."
+        },
+        "jgc.blame.colorMode": {
+          "type": "string",
+          "enum": [
+            "author",
+            "order",
+            "hide"
+          ],
+          "enumDescriptions": [
+            "A distinct color per author",
+            "JetBrains-style coloring by commit age: recent commits stand out, old ones fade",
+            "Hide coloring: fixed foreground colors (#jgc.blame.foregroundColorLight# / #jgc.blame.foregroundColorDark#)"
+          ],
+          "default": "order",
+          "description": "How inline Git blame annotations are colored."
+        },
+        "jgc.blame.nameStyle": {
+          "type": "string",
+          "enum": [
+            "initials",
+            "lastName",
+            "firstName",
+            "fullName",
+            "email"
+          ],
+          "enumDescriptions": [
+            "Author initials (e.g. ZS)",
+            "Last name only",
+            "First name only",
+            "Full name",
+            "Author email"
+          ],
+          "default": "fullName",
+          "description": "How the author name is displayed in inline Git blame annotations."
+        },
+        "jgc.blame.dateFormat": {
+          "type": "string",
+          "default": "yyyy-MM-dd HH:mm",
+          "description": "Date format for inline blame annotations. Tokens: yyyy MM dd HH mm ss."
+        },
+        "jgc.blame.foregroundColorLight": {
+          "type": "string",
+          "default": "#57606a",
+          "description": "Inline blame annotation color for light themes."
+        },
+        "jgc.blame.foregroundColorDark": {
+          "type": "string",
+          "default": "#8b949e",
+          "description": "Inline blame annotation color for dark themes."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",

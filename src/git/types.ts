@@ -91,6 +91,19 @@ export interface LogOptions {
   until?: string;
 }
 
+/** Single line of `git blame` output for the working tree copy of a file */
+export interface BlameLine {
+  hash: string; // 40-hex; all-zero when uncommitted
+  shortHash: string; // hash.slice(0, 8)
+  authorName: string;
+  authorEmail: string; // without <>
+  authorTime: number; // unix seconds
+  authorDate: string; // YYYY/MM/DD (local time)
+  lineNumber: number; // 1-based line in the working tree file
+  summary?: string;
+  uncommitted: boolean;
+}
+
 export interface MergeState {
   isMerging: boolean;
   mergeHead?: string;

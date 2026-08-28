@@ -234,6 +234,16 @@ export function CommitList({
     virtualizer,
   ]);
 
+  // Scroll an externally-requested commit (e.g. blame annotation click) into view
+  const pendingScrollToHash = usePanelStore((s) => s.pendingScrollToHash);
+  useEffect(() => {
+    if (!pendingScrollToHash) return;
+    const idx = visibleCommits.findIndex((c) => c.hash === pendingScrollToHash);
+    if (idx === -1) return; // batch not loaded yet — re-fires on next loadMore
+    virtualizer.scrollToIndex(idx, { align: "center" });
+    usePanelStore.getState().consumePendingScrollToHash();
+  }, [pendingScrollToHash, visibleCommits, virtualizer]);
+
   const handleScroll = useCallback(() => {
     const el = parentRef.current;
     if (!el) return;
