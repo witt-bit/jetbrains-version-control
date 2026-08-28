@@ -6,9 +6,9 @@
 - **Annotate with Git Blame** — WebStorm-style inline blame annotations for every line, with click-to-jump to the Git Log commit graph / WebStorm 风格的行内 blame 注释，点击注释跳转到 Git Log 提交图并定位提交
   - Gutter (line number) right-click menu: `Annotate with Git Blame` / `Close Annotations` / 行号右键菜单触发，菜单项互斥切换
   - **Annotation View** submenu (nested under gutter menu): multi-select columns Revision / Date (default on) / Author (default on) / Commit Number, plus nested **Colors** (Author / Order (default) / Hide) and **Names** (Initials / Last Name / First Name / Full Name / Email) radio submenus; at least one column must stay enabled / 注释视图子菜单：Revision、Date（默认选）、Author（默认选）、Commit Number 多选；内嵌 Colors（Author / Order（默认）/ Hide 单选）与 Names（作者名显示方式单选）子菜单；至少保留一列
-  - JetBrains-style age-based coloring, configurable via `jvc.blame.colorMode` / 按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
-  - Display scope config: whole file / cursor line only / N lines around cursor (`jvc.blame.displayMode`) / 展示范围可配置：全文件 / 仅光标行 / 光标前后 N 行
-  - Date format config (`jvc.blame.dateFormat`, default `yyyy-MM-dd HH:mm`), hash off by default / 日期格式可配置，默认不显示 hash
+  - JetBrains-style age-based coloring, configurable via `jgc.blame.colorMode` / 按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
+  - Display scope config: whole file / cursor line only / N lines around cursor (`jgc.blame.displayMode`) / 展示范围可配置：全文件 / 仅光标行 / 光标前后 N 行
+  - Date format config (`jgc.blame.dateFormat`, default `yyyy-MM-dd HH:mm`), hash off by default / 日期格式可配置，默认不显示 hash
 
 ### Changed / 变更
 - Renamed extension to **JetBrains Git Control** (short brand: JGC); extension ID changed from `idea-like-git-graph` to `jetbrains-git-control` / 插件更名为 JetBrains Git Control（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`
