@@ -16,6 +16,7 @@
   "activationEvents": [
     "onStartupFinished"
   ],
+  "l10n": "./l10n",
   "categories": [
     "SCM Providers",
     "Other"

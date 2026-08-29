@@ -19,7 +19,6 @@
   "contrib.cmd.push": "推送...",
   "contrib.cmd.editSource": "编辑源文件",
   "contrib.cmd.annotate": "切换 Git Blame 标注",
-  "contrib.cmd.clearAnnotation": "关闭标注",
   "contrib.config.title": "JetBrains 版本控制",
   "contrib.view.worktrees": "工作树",
   "contrib.view.commitBadge": "提交",

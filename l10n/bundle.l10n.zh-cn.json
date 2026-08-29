@@ -1,0 +1,10 @@
+[
+  ["Patch copied to clipboard", "补丁已复制到剪贴板"],
+  ["JGC: No diff file list. Double-click a file in Changed Files first.", "JGC: 没有差异文件列表。请先在“更改的文件”中双击一个文件。"],
+  ["JGC: No workspace open.", "JGC: 未打开工作区。"],
+  ["Unable to locate conflict file from SCM item.", "无法从 SCM 项中找到冲突文件。"],
+  ["Source file does not exist in the working directory.", "源文件在工作目录中不存在。"],
+  ["Clipboard is empty or does not contain patch content.", "剪贴板为空或不包含补丁内容。"],
+  ["Clipboard content does not appear to be a valid patch.", "剪贴板内容看起来不是有效的补丁。"],
+  ["Imported patch from clipboard as shelf entry.", "已从剪贴板导入补丁作为搁置条目。"]
+]

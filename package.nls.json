@@ -19,7 +19,6 @@
   "contrib.cmd.push": "Push...",
   "contrib.cmd.editSource": "Edit Source",
   "contrib.cmd.annotate": "Toggle Git Blame Annotations",
-  "contrib.cmd.clearAnnotation": "Close Annotations",
   "contrib.config.title": "JetBrains Version Control",
   "contrib.view.worktrees": "Worktrees",
   "contrib.view.commitBadge": "Commit",
