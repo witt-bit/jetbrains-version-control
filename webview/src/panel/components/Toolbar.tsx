@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 
 export function Toolbar() {
@@ -79,10 +80,10 @@ export function Toolbar() {
   };
 
   const dateLabels: Record<string, string> = {
-    today: "Today",
-    "7days": "Last 7 days",
-    "30days": "Last 30 days",
-    "90days": "Last 90 days",
+    today: t("panel.dateToday"),
+    "7days": t("panel.dateLast7days"),
+    "30days": t("panel.dateLast30days"),
+    "90days": t("panel.dateLast90days"),
   };
 
   return (
@@ -97,7 +98,7 @@ export function Toolbar() {
       }}
     >
       <SearchInput
-        placeholder="Search commits..."
+        placeholder={t("panel.searchPlaceholder")}
         defaultValue={filter.searchQuery}
         onChange={handleSearch}
       />
@@ -105,7 +106,7 @@ export function Toolbar() {
       {/* Branch filter */}
       <div style={{ position: "relative" }}>
         <FilterButton
-          label="Branch"
+          label={t("panel.branch")}
           active={!!filter.branch}
           activeValue={historyBranch}
           onClick={() => {
@@ -119,10 +120,10 @@ export function Toolbar() {
           <SearchableDropdown
             items={branchNames}
             activeItem={filter.branch}
-            placeholder="Select branch..."
+            placeholder={t("panel.selectBranch")}
             onSelect={handleSelectBranch}
             onClear={filter.branch ? handleClearBranch : undefined}
-            clearLabel="All branches"
+            clearLabel={t("panel.allBranches")}
             onClose={() => setShowBranchDropdown(false)}
           />
         )}
@@ -131,7 +132,7 @@ export function Toolbar() {
       {/* User filter */}
       <div style={{ position: "relative" }}>
         <FilterButton
-          label="User"
+          label={t("panel.user")}
           active={!!filter.author}
           activeValue={filter.author}
           onClick={() => {
@@ -145,10 +146,10 @@ export function Toolbar() {
           <SearchableDropdown
             items={authors}
             activeItem={filter.author}
-            placeholder="Select user..."
+            placeholder={t("panel.selectUser")}
             onSelect={handleSelectAuthor}
             onClear={filter.author ? handleClearAuthor : undefined}
-            clearLabel="All users"
+            clearLabel={t("panel.allUsers")}
             onClose={() => setShowUserDropdown(false)}
           />
         )}
@@ -157,7 +158,7 @@ export function Toolbar() {
       {/* Date filter */}
       <div style={{ position: "relative" }}>
         <FilterButton
-          label="Date"
+          label={t("panel.date")}
           active={!!filter.dateRange}
           activeValue={
             filter.dateRange ? dateLabels[filter.dateRange] : undefined
@@ -173,10 +174,10 @@ export function Toolbar() {
           <SearchableDropdown
             items={["today", "7days", "30days", "90days"]}
             activeItem={filter.dateRange}
-            placeholder="Select date range..."
+            placeholder={t("panel.selectDate")}
             onSelect={handleSelectDate}
             onClear={filter.dateRange ? handleClearDate : undefined}
-            clearLabel="All time"
+            clearLabel={t("panel.allTime")}
             onClose={() => setShowDateDropdown(false)}
             labelMap={dateLabels}
           />
@@ -186,7 +187,7 @@ export function Toolbar() {
       {/* View Options (eye icon) — pushed to far right */}
       <div style={{ flex: 1 }} />
       <div style={{ position: "relative" }}>
-        <Tooltip text="View Options">
+        <Tooltip text={t("panel.viewOptions")}>
           <button
             type="button"
             onClick={() => {
@@ -255,7 +256,7 @@ export function Toolbar() {
             userSelect: "none",
           }}
         >
-          <span style={{ opacity: 0.6 }}>History:</span>
+          <span style={{ opacity: 0.6 }}>{t("panel.history")}</span>
           <span style={{ fontWeight: 500 }}>
             {filter.file.split("/").pop()}
           </span>
@@ -671,7 +672,7 @@ function SearchableDropdown({
               opacity: 0.5,
             }}
           >
-            No matches
+            {t("panel.noMatches")}
           </div>
         )}
       </div>
@@ -730,9 +731,9 @@ function ViewOptionsDropdown({
   }, [onClose]);
 
   const columns: { key: "author" | "date" | "hash"; label: string }[] = [
-    { key: "author", label: "Author" },
-    { key: "date", label: "Date" },
-    { key: "hash", label: "Hash" },
+    { key: "author", label: t("panel.colAuthor") },
+    { key: "date", label: t("panel.colDate") },
+    { key: "hash", label: t("panel.colHash") },
   ];
 
   return (
@@ -760,7 +761,7 @@ function ViewOptionsDropdown({
           opacity: 0.6,
         }}
       >
-        Columns
+        {t("panel.columns")}
       </div>
       {columns.map((col) => (
         <div

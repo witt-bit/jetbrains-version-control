@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
 
@@ -229,8 +230,11 @@ export function CommitContextMenu({
   const handleResetHard = async () => {
     onClose();
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Reset '${currentBranch}' to ${shortHash} (hard)? This will discard all uncommitted changes.`,
-      confirmLabel: "Reset",
+      message: t("panel.menu.resetConfirm", {
+        branch: currentBranch,
+        hash: shortHash,
+      }),
+      confirmLabel: t("panel.menu.reset"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -280,8 +284,11 @@ export function CommitContextMenu({
     onClose();
     try {
       const result = (await bridge.request("showConfirmMessage", {
-        message: `Drop commit ${shortHash} "${commit.subject}"?\n\nThis will remove the commit from history but keep its changes as unstaged modifications.\n\nThis operation cannot be undone.`,
-        confirmLabel: "Drop Commit",
+        message: t("panel.menu.dropConfirm", {
+          hash: shortHash,
+          subject: commit.subject,
+        }),
+        confirmLabel: t("panel.menu.dropCommit"),
       })) as { confirmed: boolean };
       if (!result.confirmed) return;
       await bridgeWithProgress("dropCommit", { hash: commit.hash });
@@ -298,8 +305,8 @@ export function CommitContextMenu({
     }
     // Fallback to showInputBox if no dialog handler provided
     const result = (await bridge.request("showInputBox", {
-      prompt: `Create new branch from ${shortHash}:`,
-      placeHolder: "branch-name",
+      prompt: t("panel.menu.createBranchPrompt", { hash: shortHash }),
+      placeHolder: t("panel.placeholderBranchName"),
     })) as { value: string | null };
     if (!result.value || !result.value.trim()) return;
     try {
@@ -315,8 +322,8 @@ export function CommitContextMenu({
   const handleNewTag = async () => {
     onClose();
     const result = (await bridge.request("showInputBox", {
-      prompt: `Create tag at ${shortHash}:`,
-      placeHolder: "tag-name",
+      prompt: t("panel.menu.createTagPrompt", { hash: shortHash }),
+      placeHolder: t("panel.placeholderTagName"),
     })) as { value: string | null };
     if (!result.value || !result.value.trim()) return;
     try {
@@ -354,50 +361,61 @@ export function CommitContextMenu({
     disabled?: boolean;
   }[] = [
     {
-      label: `Copy Revision Number`,
+      label: t("panel.menu.copyRevision"),
       action: handleCopyHash,
       icon: <IconCopy />,
     },
     {
-      label: "Cherry-Pick",
+      label: t("panel.menu.cherryPick"),
       action: handleCherryPick,
       icon: <IconCherryPick />,
     },
     { label: "", action: () => {}, separator: true },
-    { label: "Checkout Revision", action: handleCheckoutRevision },
+    {
+      label: t("panel.menu.checkoutRevision"),
+      action: handleCheckoutRevision,
+    },
     { label: "", action: () => {}, separator: true },
     {
-      label: "Reset Current Branch to Here (Mixed)...",
+      label: t("panel.menu.resetMixed"),
       action: handleResetMixed,
       icon: <IconRevert />,
     },
     {
-      label: "Reset Current Branch to Here (Soft)...",
+      label: t("panel.menu.resetSoft"),
       action: handleResetSoft,
       icon: <IconRevert />,
     },
     {
-      label: "Reset Current Branch to Here (Hard)...",
+      label: t("panel.menu.resetHard"),
       action: handleResetHard,
       icon: <IconRevert />,
     },
-    { label: "Revert Commit", action: handleRevert, icon: <IconRevert /> },
     {
-      label: "Drop Commit",
+      label: t("panel.menu.revertCommit"),
+      action: handleRevert,
+      icon: <IconRevert />,
+    },
+    {
+      label: t("panel.menu.dropCommit"),
       action: handleDropCommit,
       icon: <IconRevert />,
       disabled: isDropCommitDisabled,
     },
     { label: "", action: () => {}, separator: true },
-    { label: "New Branch...", action: handleNewBranch, icon: <IconBranch /> },
-    { label: "New Tag...", action: handleNewTag, icon: <IconTag /> },
+    {
+      label: t("panel.menu.newBranch"),
+      action: handleNewBranch,
+      icon: <IconBranch />,
+    },
+    { label: t("panel.menu.newTag"), action: handleNewTag, icon: <IconTag /> },
   ];
 
   // Add "Show in Git Log" when file filter is active
   if (filter.file) {
     items.push({ label: "", action: () => {}, separator: true });
     items.push({
-      label: "Show in Git Log",
+      label: t("panel.menu.showInGitLog"),
       action: handleShowInGitLog,
       icon: <IconBranch />,
     });

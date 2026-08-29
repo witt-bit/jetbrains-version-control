@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t, tpl } from "../../shared/i18n";
 import {
   type ShelveEntry,
   useCommitStore,
@@ -70,11 +71,8 @@ export function ShelfTab() {
     return (
       <div className="shelf-list">
         <div className="shelf-empty">
-          <p>No shelved changes</p>
-          <p style={{ fontSize: 11, marginTop: 8 }}>
-            Use the shelf icon in the Commit tab toolbar to shelve changes for
-            later.
-          </p>
+          <p>{t("shelf.noShelvedChanges")}</p>
+          <p style={{ fontSize: 11, marginTop: 8 }}>{t("shelf.emptyHint")}</p>
         </div>
       </div>
     );
@@ -140,10 +138,11 @@ function ShelfItem({
         <span className={`shelf-item-chevron ${expanded ? "" : "collapsed"}`}>
           <ChevronIcon />
         </span>
-        <span className="shelf-item-title">{entry.message || "Changes"}</span>
+        <span className="shelf-item-title">
+          {entry.message || t("shelf.defaultTitle")}
+        </span>
         <span className="shelf-item-info">
-          {entry.files.length} {entry.files.length === 1 ? "file" : "files"},{" "}
-          {dateStr}
+          {tpl("shelf.files", entry.files.length)}, {dateStr}
         </span>
       </div>
 

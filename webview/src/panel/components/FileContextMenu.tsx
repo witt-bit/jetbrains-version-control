@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { DiffFile } from "../../shared/types/git";
 
@@ -262,8 +263,10 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
     onClose();
     if (!selectedCommitHash) return;
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Revert changes to '${filePath.split("/").pop()}' from this commit?`,
-      confirmLabel: "Revert",
+      message: t("panel.filesMenu.revertConfirm", {
+        file: filePath.split("/").pop() ?? filePath,
+      }),
+      confirmLabel: t("panel.filesMenu.revert"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -281,8 +284,10 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
     onClose();
     if (!selectedCommitHash) return;
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Apply changes to '${filePath.split("/").pop()}' from this commit to working tree?`,
-      confirmLabel: "Apply",
+      message: t("panel.filesMenu.applyConfirm", {
+        file: filePath.split("/").pop() ?? filePath,
+      }),
+      confirmLabel: t("panel.filesMenu.apply"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -306,26 +311,48 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
     separator?: boolean;
     icon?: React.ReactNode;
   }[] = [
-    { label: "Show Diff", action: handleShowDiff, icon: <IconDiff /> },
-    { label: "", action: () => {}, separator: true },
-    { label: "Edit Source", action: handleEditSource, icon: <IconEdit /> },
-    { label: "Open Repository Version", action: handleOpenRepoVersion },
+    {
+      label: t("panel.filesMenu.showDiff"),
+      action: handleShowDiff,
+      icon: <IconDiff />,
+    },
     { label: "", action: () => {}, separator: true },
     {
-      label: "Revert Selected Changes",
+      label: t("panel.filesMenu.editSource"),
+      action: handleEditSource,
+      icon: <IconEdit />,
+    },
+    {
+      label: t("panel.filesMenu.openRepoVersion"),
+      action: handleOpenRepoVersion,
+    },
+    { label: "", action: () => {}, separator: true },
+    {
+      label: t("panel.filesMenu.revertSelected"),
       action: handleRevertFileChanges,
       icon: <IconRevert />,
     },
     {
-      label: "Cherry-Pick Selected Changes",
+      label: t("panel.filesMenu.cherryPickSelected"),
       action: handleCherryPickFileChanges,
       icon: <IconCherryPick />,
     },
     { label: "", action: () => {}, separator: true },
-    { label: "Copy Path", action: handleCopyPath, icon: <IconCopy /> },
-    { label: "Copy File Name", action: handleCopyFileName, icon: <IconCopy /> },
+    {
+      label: t("panel.filesMenu.copyPath"),
+      action: handleCopyPath,
+      icon: <IconCopy />,
+    },
+    {
+      label: t("panel.filesMenu.copyFileName"),
+      action: handleCopyFileName,
+      icon: <IconCopy />,
+    },
     { label: "", action: () => {}, separator: true },
-    { label: "History Up to Here", action: handleHistoryUpToHere },
+    {
+      label: t("panel.filesMenu.historyUpToHere"),
+      action: handleHistoryUpToHere,
+    },
   ];
 
   const menu = (

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge } from "../../shared/bridge";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
 import { CommitContextMenu } from "./CommitContextMenu";
@@ -342,7 +343,9 @@ export function CommitList({
           background: "var(--app-bg, #1e1e1e)",
         }}
       >
-        <span style={{ flex: 1, paddingRight: 4 }}>Message</span>
+        <span style={{ flex: 1, paddingRight: 4 }}>
+          {t("panel.colMessage")}
+        </span>
         {visibleColumns.author && (
           <>
             <ColumnResizeHandle
@@ -356,7 +359,7 @@ export function CommitList({
                 paddingLeft: 8,
               }}
             >
-              Author
+              {t("panel.colAuthor")}
             </span>
           </>
         )}
@@ -374,7 +377,7 @@ export function CommitList({
                 paddingLeft: 8,
               }}
             >
-              Date
+              {t("panel.colDate")}
             </span>
           </>
         )}
@@ -391,7 +394,7 @@ export function CommitList({
                 paddingLeft: 8,
               }}
             >
-              Hash
+              {t("panel.colHash")}
             </span>
           </>
         )}
@@ -471,9 +474,11 @@ export function CommitList({
         {createBranchDialog &&
           createPortal(
             <CreateBranchDialog
-              title={`Create Branch from ${createBranchDialog.shortHash}`}
+              title={t("panel.list.createBranchFrom", {
+                hash: createBranchDialog.shortHash,
+              })}
               defaultName=""
-              placeholder="branch-name"
+              placeholder={t("panel.placeholderBranchName")}
               onClose={() => setCreateBranchDialog(null)}
               onConfirm={async ({ branchName, checkout, force }) => {
                 const hash = createBranchDialog.hash;
@@ -491,7 +496,7 @@ export function CommitList({
                   const match = msg.match(/fatal:\s*(.+)/);
                   return match
                     ? match[1]
-                    : `Branch '${branchName}' already exists.\nChange the name or overwrite existing branch.`;
+                    : t("panel.tree.branchExists", { branchName });
                 }
               }}
             />,
@@ -584,9 +589,9 @@ function HeaderColumnMenu({
   }, [onClose]);
 
   const columns: { key: keyof VisibleColumns; label: string }[] = [
-    { key: "author", label: "Author" },
-    { key: "date", label: "Date" },
-    { key: "hash", label: "Hash" },
+    { key: "author", label: t("panel.colAuthor") },
+    { key: "date", label: t("panel.colDate") },
+    { key: "hash", label: t("panel.colHash") },
   ];
 
   return (
@@ -600,7 +605,7 @@ function HeaderColumnMenu({
         zIndex: 10000,
       }}
     >
-      <div className="commit-context-menu-header">Columns</div>
+      <div className="commit-context-menu-header">{t("panel.columns")}</div>
       {columns.map((col) => (
         <button
           key={col.key}

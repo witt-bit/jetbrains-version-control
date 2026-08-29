@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { bridge } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
+import { t } from "../../shared/i18n";
 import { useCommitStore } from "../../shared/store/commit-store";
 
 interface ToolbarProps {
@@ -44,7 +45,7 @@ export function Toolbar({
 
   return (
     <div className="commit-toolbar">
-      <Tooltip text="Refresh">
+      <Tooltip text={t("commit.toolbar.refresh")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -53,7 +54,7 @@ export function Toolbar({
           <RefreshIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Rollback">
+      <Tooltip text={t("commit.toolbar.rollback")}>
         <button
           type="button"
           className="commit-toolbar-btn"

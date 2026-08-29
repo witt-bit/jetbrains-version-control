@@ -4,6 +4,7 @@ import { bridge, bridgeWithProgress } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
 import { usePreventSelect } from "../../shared/hooks/usePreventSelect";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { BranchInfo, TagInfo } from "../../shared/types/git";
 import { BranchSidebar as BranchSidebarComponent } from "./BranchSidebar";
@@ -494,7 +495,7 @@ export function BranchTree({
             </svg>
             <input
               type="text"
-              placeholder="Branch or tag"
+              placeholder={t("panel.tree.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -581,13 +582,15 @@ export function BranchTree({
                 : "var(--description-fg)",
             }}
           >
-            Current Branch: {headBranch?.name ?? "detached"}
+            {t("panel.tree.currentBranch", {
+              branch: headBranch?.name ?? t("panel.tree.detached"),
+            })}
           </div>
         )}
 
         {/* Local */}
         <GroupSection
-          title="Local"
+          title={t("panel.tree.local")}
           collapsed={collapsed.local}
           onToggle={() => toggle("local")}
         >
@@ -611,7 +614,7 @@ export function BranchTree({
 
         {/* Remote */}
         <GroupSection
-          title="Remote"
+          title={t("panel.tree.remote")}
           collapsed={collapsed.remote}
           onToggle={() => toggle("remote")}
         >
@@ -635,7 +638,7 @@ export function BranchTree({
 
         {/* Tags */}
         <GroupSection
-          title="Tags"
+          title={t("panel.tree.tags")}
           collapsed={collapsed.tags}
           onToggle={() => toggle("tags")}
         >
@@ -676,9 +679,11 @@ export function BranchTree({
         {createBranchDialog &&
           createPortal(
             <CreateBranchDialog
-              title={`Create Branch from '${createBranchDialog.startPoint}'`}
+              title={t("panel.tree.createBranchFrom", {
+                point: createBranchDialog.startPoint,
+              })}
               defaultName={createBranchDialog.defaultName}
-              placeholder="branch-name"
+              placeholder={t("panel.placeholderBranchName")}
               onClose={() => setCreateBranchDialog(null)}
               onConfirm={async ({ branchName, checkout, force }) => {
                 try {
@@ -696,7 +701,7 @@ export function BranchTree({
                   const match = msg.match(/fatal:\s*(.+)/);
                   return match
                     ? match[1]
-                    : `Branch '${branchName}' already exists.\nChange the name or overwrite existing branch.`;
+                    : t("panel.tree.branchExists", { branchName });
                 }
               }}
             />,
@@ -1163,8 +1168,8 @@ function BranchContextMenu({
   const handleDelete = async () => {
     onClose();
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Delete branch '${branch.name}'?`,
-      confirmLabel: "Delete",
+      message: t("panel.menu.deleteBranchConfirm", { name: branch.name }),
+      confirmLabel: t("panel.menu.delete"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -1176,8 +1181,8 @@ function BranchContextMenu({
     } catch (_err) {
       // If normal delete fails (unmerged), ask for force delete
       const forceResult = (await bridge.request("showConfirmMessage", {
-        message: `Branch '${branch.name}' is not fully merged. Force delete?`,
-        confirmLabel: "Force Delete",
+        message: t("panel.menu.forceDeleteConfirm", { name: branch.name }),
+        confirmLabel: t("panel.menu.forceDelete"),
       })) as { confirmed: boolean };
       if (forceResult.confirmed) {
         try {
@@ -1196,7 +1201,7 @@ function BranchContextMenu({
   const handleRename = async () => {
     onClose();
     const result = (await bridge.request("showInputBox", {
-      prompt: `Rename branch '${branch.name}' to:`,
+      prompt: t("panel.menu.renameBranchPrompt", { name: branch.name }),
       value: branch.name,
     })) as { value: string | null };
     if (
@@ -1231,8 +1236,11 @@ function BranchContextMenu({
   const handleMerge = async () => {
     onClose();
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Merge '${branch.name}' into '${currentBranch}'?`,
-      confirmLabel: "Merge",
+      message: t("panel.menu.mergeConfirm", {
+        name: branch.name,
+        current: currentBranch,
+      }),
+      confirmLabel: t("panel.menu.merge"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -1245,8 +1253,11 @@ function BranchContextMenu({
   const handleRebase = async () => {
     onClose();
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Rebase '${currentBranch}' onto '${branch.name}'?`,
-      confirmLabel: "Rebase",
+      message: t("panel.menu.rebaseConfirm", {
+        current: currentBranch,
+        name: branch.name,
+      }),
+      confirmLabel: t("panel.menu.rebase"),
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
     try {
@@ -1276,15 +1287,15 @@ function BranchContextMenu({
   }[] = [];
 
   if (!isCurrent) {
-    items.push({ label: "Checkout", action: handleCheckout });
+    items.push({ label: t("panel.menu.checkout"), action: handleCheckout });
   }
   items.push({
-    label: `New Branch from '${branch.name}'...`,
+    label: t("panel.menu.newBranchFrom", { name: branch.name }),
     action: handleNewBranch,
   });
   if (!isCurrent) {
     items.push({
-      label: `Checkout and Rebase onto '${currentBranch}'`,
+      label: t("panel.menu.checkoutAndRebase", { current: currentBranch }),
       action: handleCheckoutAndRebase,
     });
   }
@@ -1292,11 +1303,17 @@ function BranchContextMenu({
   if (!isCurrent) {
     items.push({ label: "", action: () => {}, separator: true });
     items.push({
-      label: `Rebase '${currentBranch}' onto '${branch.name}'`,
+      label: t("panel.menu.rebaseOnto", {
+        current: currentBranch,
+        name: branch.name,
+      }),
       action: handleRebase,
     });
     items.push({
-      label: `Merge '${branch.name}' into '${currentBranch}'`,
+      label: t("panel.menu.mergeInto", {
+        name: branch.name,
+        current: currentBranch,
+      }),
       action: handleMerge,
     });
   }
@@ -1304,15 +1321,15 @@ function BranchContextMenu({
   if (!isCurrent) {
     items.push({ label: "", action: () => {}, separator: true });
     if (!branch.isRemote) {
-      items.push({ label: "Rename...", action: handleRename });
+      items.push({ label: t("panel.menu.rename"), action: handleRename });
     }
-    items.push({ label: "Delete", action: handleDelete });
+    items.push({ label: t("panel.menu.delete"), action: handleDelete });
   }
 
   if (!branch.isRemote) {
     items.push({ label: "", action: () => {}, separator: true });
-    items.push({ label: "Update", action: handleUpdate });
-    items.push({ label: "Push...", action: handlePush });
+    items.push({ label: t("panel.menu.update"), action: handleUpdate });
+    items.push({ label: t("panel.menu.push"), action: handlePush });
   }
 
   if (items.length === 0) return null;

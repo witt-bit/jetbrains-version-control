@@ -4,6 +4,7 @@ import CodiconListTree from "~icons/codicon/list-tree";
 import { FileTree } from "../../shared/components/FileTree";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
+import { t } from "../../shared/i18n";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { DiffFile } from "../../shared/types/git";
 import { FileContextMenu } from "./FileContextMenu";
@@ -71,7 +72,7 @@ export function FileChangeTree() {
   if (displayFiles.length === 0 && commitFiles.length === 0) {
     return (
       <div style={{ padding: 12, opacity: 0.5 }}>
-        Select a commit to see changed files
+        {t("panel.files.selectCommit")}
       </div>
     );
   }
@@ -79,7 +80,9 @@ export function FileChangeTree() {
   if (displayFiles.length === 0 && filter.file) {
     return (
       <div style={{ padding: 12, opacity: 0.5 }}>
-        No changes to {filter.file.split("/").pop()} in this commit
+        {t("panel.files.noChangesInCommit", {
+          file: filter.file.split("/").pop() ?? filter.file,
+        })}
       </div>
     );
   }
@@ -106,10 +109,10 @@ export function FileChangeTree() {
             textTransform: "uppercase",
           }}
         >
-          Changed Files
+          {t("panel.files.changed")}
         </span>
         <span style={{ display: "flex", gap: 2 }}>
-          <Tooltip text="Tree View">
+          <Tooltip text={t("push.treeView")}>
             <button
               type="button"
               onClick={() => setViewMode("tree")}
@@ -128,7 +131,7 @@ export function FileChangeTree() {
               <CodiconListTree />
             </button>
           </Tooltip>
-          <Tooltip text="Flat List">
+          <Tooltip text={t("push.flatList")}>
             <button
               type="button"
               onClick={() => setViewMode("flat")}
