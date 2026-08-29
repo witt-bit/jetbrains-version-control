@@ -2,8 +2,12 @@
 out
 dist
 node_modules
+
 .vscode-test/
 .vscode/
+!.vscode/launch.json
+!.vscode/task.json
+
 .idea/
 .kiro/
 .omc/
