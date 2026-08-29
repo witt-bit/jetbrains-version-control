@@ -19,6 +19,7 @@ import type {
   MergeState,
   RefInfo,
   TagInfo,
+  WorktreeInfo,
 } from "./types";
 
 const execFileAsync = promisify(execFile);
@@ -1648,6 +1649,45 @@ export class GitService {
       .replace(/'/g, "&apos;");
   }
 
+  // ────────────────────────────────────────────
+  // Worktree operations
+  // ────────────────────────────────────────────
+
+  async listWorktrees(): Promise<WorktreeInfo[]> {
+    const output = await this.execGit(["worktree", "list", "--porcelain"]);
+    return parseWorktreeList(output, this.cwd);
+  }
+
+  async addWorktree(
+    worktreePath: string,
+    branch: string,
+    newBranch?: string,
+  ): Promise<void> {
+    if (newBranch) {
+      await this.execGit([
+        "worktree",
+        "add",
+        "-b",
+        newBranch,
+        worktreePath,
+        branch,
+      ]);
+    } else {
+      await this.execGit(["worktree", "add", worktreePath, branch]);
+    }
+    this.invalidateCache();
+  }
+
+  async removeWorktree(worktreePath: string): Promise<void> {
+    await this.execGit(["worktree", "remove", worktreePath]);
+    this.invalidateCache();
+  }
+
+  async pruneWorktrees(): Promise<void> {
+    await this.execGit(["worktree", "prune"]);
+    this.invalidateCache();
+  }
+
   invalidateCache(pattern?: string): void {
     this.cache.invalidate(pattern);
   }
@@ -1905,4 +1945,46 @@ function parseTrack(track: string): { ahead: number; behind: number } {
     behind = parseInt(behindMatch[1], 10);
   }
   return { ahead, behind };
+}
+
+/**
+ * Parse `git worktree list --porcelain` output.
+ * Each worktree block is separated by an empty line.
+ * Fields: worktree <path>, HEAD <sha>, branch <ref> (or detached)
+ */
+function parseWorktreeList(output: string, mainCwd: string): WorktreeInfo[] {
+  const worktrees: WorktreeInfo[] = [];
+  const blocks = output.split("\n\n");
+
+  for (const block of blocks) {
+    const lines = block.trim().split("\n");
+    if (lines.length === 0) continue;
+
+    let wtPath = "";
+    let head = "";
+    let branch = "";
+
+    for (const line of lines) {
+      if (line.startsWith("worktree ")) {
+        wtPath = line.substring("worktree ".length).trim();
+      } else if (line.startsWith("HEAD ")) {
+        head = line.substring("HEAD ".length).trim();
+      } else if (line.startsWith("branch ")) {
+        // branch refs/heads/feature-x → feature-x
+        const ref = line.substring("branch ".length).trim();
+        branch = ref.replace(/^refs\/heads\//, "");
+      }
+    }
+
+    if (wtPath) {
+      worktrees.push({
+        path: wtPath,
+        branch,
+        head,
+        isMain: wtPath === mainCwd,
+      });
+    }
+  }
+
+  return worktrees;
 }

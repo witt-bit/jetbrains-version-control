@@ -3,7 +3,7 @@
   --app-fg: var(--vscode-editor-foreground, #cccccc);
   --border: var(--vscode-panel-border, #444);
   --hover-bg: var(--vscode-list-hoverBackground, #2a2d2e);
-  --selected-bg: var(--vscode-list-activeSelectionBackground, #04395e);
+  --selected-bg: var(--vscode-list-activeSelectionBackground, #094771);
   --selected-fg: var(--vscode-list-activeSelectionForeground, #fff);
   --button-bg: var(--vscode-button-background, #0e639c);
   --button-fg: var(--vscode-button-foreground, #fff);
@@ -93,11 +93,14 @@ button:disabled {
 .selectable-row:hover {
   background: var(--hover-bg);
 }
-.selectable-row.selected {
-  background: var(--selected-bg);
+.selectable-row.row-current {
+  background: var(--list-hoverBackground, rgba(0, 0, 0, 0.04));
 }
-.selectable-row.selected:hover {
+.selectable-row.row-selected,
+.selectable-row.row-selected:hover {
   background: var(--selected-bg);
+  color: var(--selected-fg);
+  border-left: 2px solid var(--vscode-focusBorder, #007fd4);
 }
 
 .graph-line-path {

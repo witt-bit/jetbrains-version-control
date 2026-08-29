@@ -41,6 +41,8 @@ interface PanelStore {
   rangeNewest: string | null;
   selectedBranches: string[];
   lastSelectedBranch: string | null;
+  selectedTags: string[];
+  lastSelectedTag: string | null;
   branchGroupByDirectory: boolean;
 
   filter: PanelFilter;
@@ -74,6 +76,11 @@ interface PanelStore {
     name: string,
     mode: "single" | "toggle" | "range",
     allVisibleBranches: string[],
+  ) => void;
+  selectTag: (
+    name: string,
+    mode: "single" | "toggle" | "range",
+    allVisibleTags: string[],
   ) => void;
   setHoveredColumn: (column: number | null) => void;
   toggleColumnVisibility: (column: "author" | "date" | "hash") => void;
@@ -210,6 +217,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   rangeNewest: null,
   selectedBranches: [],
   lastSelectedBranch: null,
+  selectedTags: [],
+  lastSelectedTag: null,
   branchGroupByDirectory: (() => {
     try {
       return localStorage.getItem("branchGroupByDirectory") === "true";
@@ -291,7 +300,6 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         }
       }
 
-      const firstVisible = visible[0];
       set({
         commits,
         visibleCommits: visible,
@@ -302,24 +310,15 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         currentBranch: current,
 
         hasMore: commits.length >= 200,
-        selectedCommitHash: firstVisible?.hash ?? null,
-        selectedCommitHashes: firstVisible ? [firstVisible.hash] : [],
-        lastSelectedCommitHash: firstVisible?.hash ?? null,
+        selectedCommitHash: null,
+        selectedCommitHashes: [],
+        lastSelectedCommitHash: null,
         commitFiles: [],
         selectedFilePath: null,
         rangeOldest: null,
         rangeNewest: null,
         pendingSelectionFromFilter: [],
       });
-
-      // Auto-select first visible commit
-      if (firstVisible) {
-        const hash = firstVisible.hash;
-        const files = (await bridge.request("getCommitRangeFiles", {
-          hashes: [hash],
-        })) as DiffFile[] | null;
-        set({ commitFiles: files ?? [], rangeOldest: hash, rangeNewest: hash });
-      }
     } catch (err) {
       console.error("fetchInitialData failed:", err);
     } finally {
@@ -616,6 +615,41 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
       set({ selectedBranches: allVisibleBranches.slice(start, end + 1) });
+    }
+  },
+
+  selectTag(
+    name: string,
+    mode: "single" | "toggle" | "range",
+    allVisibleTags: string[],
+  ) {
+    if (mode === "single") {
+      set({ selectedTags: [name], lastSelectedTag: name });
+    } else if (mode === "toggle") {
+      const current = get().selectedTags;
+      if (current.includes(name)) {
+        set({
+          selectedTags: current.filter((t) => t !== name),
+          lastSelectedTag: name,
+        });
+      } else {
+        set({ selectedTags: [...current, name], lastSelectedTag: name });
+      }
+    } else {
+      const anchor = get().lastSelectedTag;
+      if (!anchor) {
+        set({ selectedTags: [name], lastSelectedTag: name });
+        return;
+      }
+      const anchorIdx = allVisibleTags.indexOf(anchor);
+      const targetIdx = allVisibleTags.indexOf(name);
+      if (anchorIdx === -1 || targetIdx === -1) {
+        set({ selectedTags: [name], lastSelectedTag: name });
+        return;
+      }
+      const start = Math.min(anchorIdx, targetIdx);
+      const end = Math.max(anchorIdx, targetIdx);
+      set({ selectedTags: allVisibleTags.slice(start, end + 1) });
     }
   },
 

@@ -174,3 +174,11 @@ export interface IdeaShelfEntry {
   patchPath: string;
   files: string[];
 }
+
+/** Git worktree information */
+export interface WorktreeInfo {
+  path: string; // worktree 绝对路径
+  branch: string; // 关联分支名（detached 时为空）
+  head: string; // HEAD commit SHA
+  isMain: boolean; // 是否为主 worktree（.git 所在位置）
+}

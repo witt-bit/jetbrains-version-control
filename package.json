@@ -64,6 +64,11 @@
           "type": "webview",
           "id": "git-brains.gitLog",
           "name": "Git Log"
+        },
+        {
+          "type": "webview",
+          "id": "git-brains.worktrees",
+          "name": "Worktrees"
         }
       ],
       "git-brains-commit": [
@@ -167,6 +172,18 @@
         "command": "git-brains.clearGitBlameAnnotation",
         "title": "Close Annotations",
         "category": "JGC"
+      },
+      {
+        "command": "git-brains.worktrees.new",
+        "title": "New Worktree...",
+        "icon": "$(add)",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.worktrees.refresh",
+        "title": "Refresh Worktrees",
+        "icon": "$(refresh)",
+        "category": "JGC"
       }
     ],
 
@@ -239,7 +256,7 @@
       }
     ],
     "configuration": {
-      "title": "JetBrains Version Control",
+      "title": "JetBrains Git Control",
       "properties": {
         "jgc.blame.displayMode": {
           "type": "string",
@@ -334,6 +351,21 @@
           "type": "string",
           "default": "#8b949e",
           "description": "Inline blame annotation color for dark themes."
+        },
+        "jgc.worktree.openBehavior": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "thisWindow",
+            "newWindow"
+          ],
+          "enumDescriptions": [
+            "Always ask which window to open in",
+            "Always open in the current window",
+            "Always open in a new window"
+          ],
+          "default": "ask",
+          "description": "Controls how projects are opened from Git worktrees."
         }
       }
     }
