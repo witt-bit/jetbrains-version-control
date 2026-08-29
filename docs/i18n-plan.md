@@ -4,9 +4,19 @@
 > 撰写时间:2026-08-28
 > 状态:进行中(Phase A 核心 + Phase B 试点已跑通)
 
-## 执行进度(2026-08-28) — Phase A~C 完成 ✅
+## 执行进度(2026-08-28) — Phase A~C + D.2 完成 ✅
 
-> 前端(webview)国际化已经完整落地:29 个组件接入 `t()/tpl()`,en/zh-cn 各 235 个 key,`pnpm run build` + biome 全绿。下一步按计划是 **Phase D — 扩展端语言化**。
+> **前端(webview)国际化完整落地**:29 个组件接入 `t()/tpl()`,en/zh-cn 各 235 个 key,build + biome 全绿。
+> **D.2 contributes 本地化完成并提交**:`package.json` 22 处 title/name/category 模板化为 `%contrib.*%`,`scripts/sync-nls.mjs` 从 `webview/src/l10n/*.json` 派生 `package.nls.json` / `package.nls.zh-cn.json`(单一语言源)。VS Code 的图表活动栏、命令面板标题、视图名、配置标题全部随语言切换。
+
+**已提交:**
+- `302e4c4` feat(i18n): localize webview frontend (en/zh-cn)…(Phase A~C)
+- 后续一提交:D.2 contributes 本地化 + sync-nls.mjs
+
+**待办(建议新开窗口做,风险更低):**
+- **D.1(原 A5 未做)**:打开 `"l10n": "./l10n"` + 建 `l10n/bundle.l10n.json` 模板。
+- **D.3**:扩展进程 ~30 处 `show{Info,Error,Warning}Message`(含 `${}` 模板与按钮文案)+ `gitService` 错误 → `vscode.l10n.t()`。**建议在独立会话完成**,因其格式特定、调用点含插值与按钮参数,半途切换易留下坏通知。
+- **E**:README/CHANGELOG、`package.nls.*` 提交校验、冒烟(F5 中英文)。
 
 | Phase | 内容 | 状态 |
 |---|---|---|
