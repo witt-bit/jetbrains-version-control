@@ -17,6 +17,7 @@ import { MergeEditorManager } from "./views/mergeEditorManager";
 import { PushPanel } from "./views/pushPanel";
 import type { RollbackFileInfo } from "./views/rollbackPanel";
 import { RollbackPanel } from "./views/rollbackPanel";
+import { WorktreeViewProvider } from "./views/worktreeViewProvider";
 import { GitWatcher } from "./watchers/gitWatcher";
 
 const NOT_GIT_REPO = { status: "not_git_repo" as const, data: null };
@@ -96,6 +97,19 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(
       CommitViewProvider.viewType,
       commitProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+
+  // 2d. WorktreeViewProvider (always registered)
+  const worktreeProvider = new WorktreeViewProvider(
+    context.extensionUri,
+    messageRouter,
+  );
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      WorktreeViewProvider.viewType,
+      worktreeProvider,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
   );
@@ -276,6 +290,18 @@ export function activate(context: vscode.ExtensionContext) {
         selection: new vscode.Range(line, character, line, character),
         preview: false,
       });
+    }),
+  );
+
+  // 5b. Worktree commands
+  context.subscriptions.push(
+    vscode.commands.registerCommand("git-brains.worktrees.new", () => {
+      vscode.commands.executeCommand("git-brains.worktrees.focus");
+    }),
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand("git-brains.worktrees.refresh", () => {
+      vscode.commands.executeCommand("git-brains.worktrees.refresh");
     }),
   );
 
@@ -1574,6 +1600,138 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("toggleShowTags", async () => {
     // UI preference, handled in webview state
     return { success: true };
+  });
+
+  // ── Worktree handlers ──────────────────────────────
+
+  messageRouter.handle("getWorktrees", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    const worktrees = await gitService.listWorktrees();
+    return { success: true, data: worktrees };
+  });
+
+  messageRouter.handle("addWorktree", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const worktreePath = params.path as string;
+    const branch = params.branch as string;
+    const newBranch = params.newBranch as string | undefined;
+    try {
+      await gitService.addWorktree(worktreePath, branch, newBranch);
+      messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
+    }
+  });
+
+  messageRouter.handle("removeWorktree", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const worktreePath = params.path as string;
+    const worktrees = await gitService.listWorktrees();
+    const wt = worktrees.find((w) => w.path === worktreePath);
+    if (wt?.isMain) {
+      return { success: false, error: "Cannot delete the main worktree" };
+    }
+    try {
+      await gitService.removeWorktree(worktreePath);
+      messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
+    }
+  });
+
+  messageRouter.handle("pruneWorktrees", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    try {
+      await gitService.pruneWorktrees();
+      messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
+    }
+  });
+
+  messageRouter.handle("openWorktree", async (params) => {
+    const worktreePath = params.path as string;
+
+    // Read config
+    const config = vscode.workspace.getConfiguration("jgc.worktree");
+    const behavior = config.get<string>("openBehavior", "ask");
+
+    const openFolder = async (forceNewWindow: boolean) => {
+      await vscode.commands.executeCommand(
+        "vscode.openFolder",
+        vscode.Uri.file(worktreePath),
+        { forceNewWindow },
+      );
+    };
+
+    // Direct open based on config
+    if (behavior === "thisWindow") {
+      try {
+        await openFolder(false);
+        return { success: true, forceNewWindow: false };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { success: false, error: message };
+      }
+    }
+
+    if (behavior === "newWindow") {
+      try {
+        await openFolder(true);
+        return { success: true, forceNewWindow: true };
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        return { success: false, error: message };
+      }
+    }
+
+    // behavior === "ask"
+    const worktreeName = worktreePath.split("/").pop() || worktreePath;
+    const result = await vscode.window.showInformationMessage(
+      `Where would you like to open the project '${worktreeName}'?`,
+      { modal: true },
+      "New Window",
+      "This Window",
+    );
+
+    if (!result) {
+      return { success: false, cancelled: true };
+    }
+
+    const openInNewWindow = result === "New Window";
+
+    try {
+      await openFolder(openInNewWindow);
+      return { success: true, forceNewWindow: openInNewWindow };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
+    }
+  });
+
+  messageRouter.handle("getWorkspaceRoot", async () => {
+    return { root: workspaceRoot || null };
+  });
+
+  messageRouter.handle("pickFolder", async (params) => {
+    const defaultUri = params.defaultUri as string | undefined;
+    const uri = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectFolders: true,
+      canSelectMany: false,
+      openLabel: "Select",
+      defaultUri: defaultUri ? vscode.Uri.file(defaultUri) : undefined,
+    });
+    if (uri?.[0]) {
+      return { success: true, path: uri[0].fsPath };
+    }
+    return { success: false };
   });
 
   // 7. GitWatcher (only if GitService is available)

@@ -306,6 +306,8 @@ export function BranchTree({
   const setFilter = usePanelStore((s) => s.setFilter);
   const selectedBranches = usePanelStore((s) => s.selectedBranches);
   const selectBranch = usePanelStore((s) => s.selectBranch);
+  const selectedTags = usePanelStore((s) => s.selectedTags);
+  const selectTag = usePanelStore((s) => s.selectTag);
   const branchGroupByDirectory = usePanelStore((s) => s.branchGroupByDirectory);
 
   const containerRef = usePreventSelect();
@@ -422,6 +424,10 @@ export function BranchTree({
       : []),
   ];
 
+  const allVisibleTags: string[] = !collapsed.tags
+    ? collectVisibleLeaves(tagTree, collapsed, "tags")
+    : [];
+
   const handleClick = useModifierClickSelection<string>(
     (branchName, mode) => {
       selectBranch(branchName, mode, allVisibleBranches);
@@ -437,6 +443,13 @@ export function BranchTree({
       setFilter({ branch: name });
     }
   };
+
+  const handleTagClick = useModifierClickSelection<string>(
+    (tagName, mode) => {
+      selectTag(tagName, mode, allVisibleTags);
+    },
+    () => setCurrentBranchRowSelected(false),
+  );
 
   return (
     <div
@@ -561,6 +574,7 @@ export function BranchTree({
         {/* HEAD – unified "Current Branch" entry */}
         {(headBranch || headCommit) && (
           <div
+            className={`selectable-row${currentBranchRowSelected ? " row-selected" : ""}`}
             onClick={() => {
               setCurrentBranchRowSelected(true);
             }}
@@ -573,9 +587,6 @@ export function BranchTree({
               padding: "4px 8px 4px 20px",
               cursor: "pointer",
               fontWeight: 600,
-              background: currentBranchRowSelected
-                ? "var(--selected-bg)"
-                : "transparent",
               color: currentBranchRowSelected
                 ? "var(--selected-fg)"
                 : "var(--description-fg)",
@@ -647,6 +658,8 @@ export function BranchTree({
               groupPrefix="tags"
               collapsed={collapsed}
               onToggle={toggle}
+              selectedTags={selectedTags}
+              onTagClick={handleTagClick}
             />
           ))}
         </GroupSection>
@@ -841,28 +854,39 @@ function TagTreeNodeView({
   groupPrefix,
   collapsed,
   onToggle,
+  selectedTags,
+  onTagClick,
 }: {
   node: TreeNode;
   depth: number;
   groupPrefix: string;
   collapsed: Record<string, boolean>;
   onToggle: (key: string) => void;
+  selectedTags: string[];
+  onTagClick: (e: React.MouseEvent, name: string) => void;
 }) {
   const collapseKey = `${groupPrefix}:${node.fullPath}`;
 
   if (node.isLeaf) {
+    const isSelected = selectedTags.includes(node.name);
     return (
       <div
+        className={`selectable-row${isSelected ? " row-selected" : ""}`}
+        onClick={(e) => onTagClick(e, node.name)}
         style={{
           padding: `4px 8px 4px ${20 + depth * 12}px`,
-          cursor: "default",
-          color: "var(--description-fg)",
+          cursor: "pointer",
+          color: isSelected ? "var(--selected-fg)" : "var(--description-fg)",
           display: "flex",
           alignItems: "center",
           gap: 4,
         }}
       >
-        <IconTagOutline style={{ color: "var(--description-fg)" }} />
+        <IconTagOutline
+          style={{
+            color: isSelected ? "var(--selected-fg)" : "var(--description-fg)",
+          }}
+        />
         {node.name}
       </div>
     );
@@ -897,6 +921,8 @@ function TagTreeNodeView({
             groupPrefix={groupPrefix}
             collapsed={collapsed}
             onToggle={onToggle}
+            selectedTags={selectedTags}
+            onTagClick={onTagClick}
           />
         ))}
     </div>
@@ -967,17 +993,13 @@ function BranchItem({
 }) {
   return (
     <div
-      className={`selectable-row${isSelected ? " selected" : ""}`}
+      className={`selectable-row${isSelected ? " row-selected" : ""}${isCurrent && !isSelected ? " row-current" : ""}`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
       style={{
         padding: `4px 8px 4px ${20 + depth * 12 + 16}px`,
         fontWeight: isCurrent || isFiltered ? 600 : 400,
-        background:
-          isCurrent && !isSelected
-            ? "var(--list-hoverBackground, rgba(0,0,0,0.04))"
-            : undefined,
         color: isSelected ? "var(--selected-fg)" : "inherit",
         outline: isFiltered ? "1px solid var(--focus-border, #3574f0)" : "none",
         display: "flex",

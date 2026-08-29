@@ -111,7 +111,14 @@ export type CommandType =
   | "closePushPanel"
   | "openRollbackPanel"
   | "executeRollback"
-  | "closeRollbackPanel";
+  | "closeRollbackPanel"
+  | "getWorktrees"
+  | "addWorktree"
+  | "removeWorktree"
+  | "pruneWorktrees"
+  | "openWorktree"
+  | "getWorkspaceRoot"
+  | "pickFolder";
 
 export type EventType =
   | "gitStateChanged"

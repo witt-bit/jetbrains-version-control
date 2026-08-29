@@ -185,7 +185,7 @@ export function CommitRow({
   return (
     <div
       ref={rowRef}
-      className={`selectable-row${isSelected ? " selected" : ""}`}
+      className={`selectable-row${isSelected ? " row-selected" : ""}`}
       onClick={(event) => onCommitClick(event, commit.hash)}
       onContextMenu={(e) => {
         if (onContextMenu) {
