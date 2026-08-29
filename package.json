@@ -46,14 +46,14 @@
       "panel": [
         {
           "id": "git-brains-panel",
-"title": "JetBrains Git Control",
+"title": "%contrib.app.panel%",
           "icon": "$(git-branch)"
         }
       ],
       "activitybar": [
         {
           "id": "git-brains-commit",
-          "title": "Commit",
+          "title": "%contrib.app.activity%",
           "icon": "images/commit-icon.svg"
         }
       ]
@@ -63,110 +63,110 @@
         {
           "type": "webview",
           "id": "git-brains.gitLog",
-          "name": "Git Log"
+          "name": "%contrib.view.gitLog%"
         }
       ],
       "git-brains-commit": [
         {
           "type": "webview",
           "id": "git-brains.commitPanel",
-          "name": "Commit"
+          "name": "%contrib.view.commitPanel%"
         }
       ]
     },
     "commands": [
       {
         "command": "git-brains.refreshLog",
-        "title": "Refresh Git Log",
+        "title": "%contrib.cmd.refreshLog%",
         "icon": "$(refresh)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.openMergeEditor",
-        "title": "Open Merge Editor",
-        "category": "JGC"
+        "title": "%contrib.cmd.openMergeEditor%",
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.openConflicts",
-        "title": "Conflicts",
+        "title": "%contrib.cmd.openConflicts%",
         "icon": "$(git-merge)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.openMergeEditorFromSCM",
-        "title": "Open in JGC Merge Editor",
+        "title": "%contrib.cmd.openMergeEditorFromSCM%",
         "icon": "$(git-merge)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.showFileHistory",
-        "title": "(JetBrains Git Control) Show File History",
+        "title": "%contrib.cmd.showFileHistory%",
         "icon": "$(history)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.nextDiff",
-        "title": "Next File Diff",
+        "title": "%contrib.cmd.nextDiff%",
         "icon": "$(arrow-down)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.prevDiff",
-        "title": "Previous File Diff",
+        "title": "%contrib.cmd.prevDiff%",
         "icon": "$(arrow-up)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.commitPanel.refresh",
-        "title": "Refresh Changes",
+        "title": "%contrib.cmd.refreshChanges%",
         "icon": "$(refresh)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.commitPanel.commit",
-        "title": "Commit",
+        "title": "%contrib.cmd.commit%",
         "icon": "$(check)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.commitPanel.commitAndPush",
-        "title": "Commit and Push",
+        "title": "%contrib.cmd.commitAndPush%",
         "icon": "$(cloud-upload)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.commitPanel.shelve",
-        "title": "Shelve Changes",
+        "title": "%contrib.cmd.shelve%",
         "icon": "$(archive)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.commitPanel.unshelve",
-        "title": "Unshelve Changes",
+        "title": "%contrib.cmd.unshelve%",
         "icon": "$(package)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.openPushPanel",
-        "title": "Push...",
+        "title": "%contrib.cmd.push%",
         "icon": "$(cloud-upload)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.editSource",
-        "title": "(JGC) Edit Source",
+        "title": "%contrib.cmd.editSource%",
         "icon": "$(go-to-file)",
-        "category": "JGC"
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.annotateWithGitBlame",
-        "title": "Annotate with Git Blame",
-        "category": "JGC"
+        "title": "%contrib.cmd.annotate%",
+        "category": "%contrib.cmd.category%"
       },
       {
         "command": "git-brains.clearGitBlameAnnotation",
-        "title": "Close Annotations",
-        "category": "JGC"
+        "title": "%contrib.cmd.clearAnnotation%",
+        "category": "%contrib.cmd.category%"
       }
     ],
 
@@ -239,7 +239,7 @@
       }
     ],
     "configuration": {
-      "title": "JetBrains Version Control",
+      "title": "%contrib.config.title%",
       "properties": {
         "jgc.locale": {
           "type": "string",
@@ -361,7 +361,8 @@
     "test": "vscode-test",
     "build:web": "cd webview && pnpm run build",
     "build": "pnpm run compile && pnpm run build:web",
-    "dev:web": "cd webview && pnpm run dev"
+    "dev:web": "cd webview && pnpm run dev",
+    "generate:nls": "node scripts/sync-nls.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.15",
