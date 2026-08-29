@@ -556,12 +556,13 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("confirmCancelMerge", async (params) => {
     const hasChanges = params.hasChanges as boolean;
     if (!hasChanges) return { confirmed: true };
+    const discard = vscode.l10n.t("Discard");
     const choice = await vscode.window.showWarningMessage(
-      "You have unsaved merge changes. Discard them?",
+      vscode.l10n.t("You have unsaved merge changes. Discard them?"),
       { modal: true },
-      "Discard",
+      discard,
     );
-    return { confirmed: choice === "Discard" };
+    return { confirmed: choice === discard };
   });
 
   messageRouter.handle("closeMergeEditor", async (params) => {
@@ -1090,12 +1091,16 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("rollbackFile", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const filePath = params.filePath as string;
+    const rollback = vscode.l10n.t("Rollback");
     const choice = await vscode.window.showWarningMessage(
-      `Rollback changes to "${filePath}"? This cannot be undone.`,
+      vscode.l10n.t(
+        'Rollback changes to "{0}"? This cannot be undone.',
+        filePath,
+      ),
       { modal: true },
-      "Rollback",
+      rollback,
     );
-    if (choice !== "Rollback") return { success: false };
+    if (choice !== rollback) return { success: false };
     await gitService.rollbackFile(filePath);
     messageRouter.broadcastEvent("commitStateChanged", {});
     return { success: true };
@@ -1105,12 +1110,16 @@ export function activate(context: vscode.ExtensionContext) {
     if (!gitService) return NOT_GIT_REPO;
     const filePaths = params.filePaths as string[];
     if (!filePaths || filePaths.length === 0) return { success: false };
+    const rollback = vscode.l10n.t("Rollback");
     const choice = await vscode.window.showWarningMessage(
-      `Rollback changes to ${filePaths.length} file(s)? This cannot be undone.`,
+      vscode.l10n.t(
+        "Rollback changes to {0} file(s)? This cannot be undone.",
+        filePaths.length,
+      ),
       { modal: true },
-      "Rollback",
+      rollback,
     );
-    if (choice !== "Rollback") return { success: false };
+    if (choice !== rollback) return { success: false };
     for (const filePath of filePaths) {
       await gitService.rollbackFile(filePath);
     }
@@ -1137,15 +1146,16 @@ export function activate(context: vscode.ExtensionContext) {
     const fileCount = filePaths.length;
     const message =
       fileCount === 1
-        ? `Delete "${filePaths[0]}"? This cannot be undone.`
-        : `Delete ${fileCount} files? This cannot be undone.`;
+        ? vscode.l10n.t('Delete "{0}"? This cannot be undone.', filePaths[0])
+        : vscode.l10n.t("Delete {0} files? This cannot be undone.", fileCount);
+    const del = vscode.l10n.t("Delete");
 
     const choice = await vscode.window.showWarningMessage(
       message,
       { modal: true },
-      "Delete",
+      del,
     );
-    if (choice !== "Delete") return { success: false };
+    if (choice !== del) return { success: false };
 
     for (const filePath of filePaths) {
       const fullPath = vscode.Uri.joinPath(
@@ -1227,12 +1237,16 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("deleteShelve", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const stashId = params.stashId as string;
+    const del = vscode.l10n.t("Delete");
     const choice = await vscode.window.showWarningMessage(
-      `Delete shelved changes "${stashId}"? This cannot be undone.`,
+      vscode.l10n.t(
+        'Delete shelved changes "{0}"? This cannot be undone.',
+        stashId,
+      ),
       { modal: true },
-      "Delete",
+      del,
     );
-    if (choice !== "Delete") return { success: false };
+    if (choice !== del) return { success: false };
     await gitService.deleteShelve(stashId);
     messageRouter.broadcastEvent("commitStateChanged", {});
     return { success: true };
@@ -1272,7 +1286,7 @@ export function activate(context: vscode.ExtensionContext) {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       void vscode.window.showErrorMessage(
-        `Failed to unshelve file: ${message}`,
+        vscode.l10n.t("Failed to unshelve file: {0}", message),
       );
       return { success: false };
     }
@@ -1306,12 +1320,13 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("deleteIdeaShelf", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const shelfName = params.shelfName as string;
+    const del = vscode.l10n.t("Delete");
     const choice = await vscode.window.showWarningMessage(
-      `Delete shelf "${shelfName}"? This cannot be undone.`,
+      vscode.l10n.t('Delete shelf "{0}"? This cannot be undone.', shelfName),
       { modal: true },
-      "Delete",
+      del,
     );
-    if (choice !== "Delete") return { success: false };
+    if (choice !== del) return { success: false };
     await gitService.deleteIdeaShelf(shelfName);
     messageRouter.broadcastEvent("commitStateChanged", {});
     return { success: true };
@@ -1354,7 +1369,7 @@ export function activate(context: vscode.ExtensionContext) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       void vscode.window.showErrorMessage(
-        `Could not show diff for "${filePath}": ${msg}`,
+        vscode.l10n.t('Could not show diff for "{0}": {1}', filePath, msg),
       );
       return { success: false };
     }
@@ -1368,8 +1383,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Ask user where to save the patch
     const saveUri = await vscode.window.showSaveDialog({
       defaultUri: vscode.Uri.file(`${workspaceRoot}/${shelfName}.patch`),
-      filters: { "Patch files": ["patch", "diff"], "All files": ["*"] },
-      title: "Save Patch File",
+      filters: {
+        [vscode.l10n.t("Patch files")]: ["patch", "diff"],
+        [vscode.l10n.t("All files")]: ["*"],
+      },
+      title: vscode.l10n.t("Save Patch File"),
     });
 
     if (!saveUri) return { success: false };
@@ -1378,12 +1396,14 @@ export function activate(context: vscode.ExtensionContext) {
       const patchContent = await nodefs.readFile(patchFile, "utf-8");
       await nodefs.writeFile(saveUri.fsPath, patchContent, "utf-8");
       void vscode.window.showInformationMessage(
-        `Patch saved to ${saveUri.fsPath}`,
+        vscode.l10n.t("Patch saved to {0}", saveUri.fsPath),
       );
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      void vscode.window.showErrorMessage(`Failed to create patch: ${msg}`);
+      void vscode.window.showErrorMessage(
+        vscode.l10n.t("Failed to create patch: {0}", msg),
+      );
       return { success: false };
     }
   });
@@ -1402,7 +1422,9 @@ export function activate(context: vscode.ExtensionContext) {
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      void vscode.window.showErrorMessage(`Failed to copy patch: ${msg}`);
+      void vscode.window.showErrorMessage(
+        vscode.l10n.t("Failed to copy patch: {0}", msg),
+      );
       return { success: false };
     }
   });
@@ -1413,8 +1435,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Ask user to select patch files
     const fileUris = await vscode.window.showOpenDialog({
       canSelectMany: true,
-      filters: { "Patch files": ["patch", "diff"], "All files": ["*"] },
-      title: "Import Patch Files",
+      filters: {
+        [vscode.l10n.t("Patch files")]: ["patch", "diff"],
+        [vscode.l10n.t("All files")]: ["*"],
+      },
+      title: vscode.l10n.t("Import Patch Files"),
     });
 
     if (!fileUris || fileUris.length === 0) return { success: false };
@@ -1431,12 +1456,16 @@ export function activate(context: vscode.ExtensionContext) {
 
       messageRouter.broadcastEvent("commitStateChanged", {});
       void vscode.window.showInformationMessage(
-        `Imported ${fileUris.length} patch${fileUris.length > 1 ? "es" : ""}`,
+        fileUris.length === 1
+          ? vscode.l10n.t("Imported 1 patch")
+          : vscode.l10n.t("Imported {0} patches", fileUris.length),
       );
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      void vscode.window.showErrorMessage(`Failed to import patches: ${msg}`);
+      void vscode.window.showErrorMessage(
+        vscode.l10n.t("Failed to import patches: {0}", msg),
+      );
       return { success: false };
     }
   });
@@ -1480,7 +1509,7 @@ export function activate(context: vscode.ExtensionContext) {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       void vscode.window.showErrorMessage(
-        `Failed to import patch from clipboard: ${msg}`,
+        vscode.l10n.t("Failed to import patch from clipboard: {0}", msg),
       );
       return { success: false };
     }
@@ -1508,12 +1537,13 @@ export function activate(context: vscode.ExtensionContext) {
     if (!gitService) return NOT_GIT_REPO;
     const branchName = params.branchName as string;
     if (!branchName) return { success: false };
+    const del = vscode.l10n.t("Delete");
     const confirm = await vscode.window.showWarningMessage(
-      `Delete branch "${branchName}"?`,
+      vscode.l10n.t('Delete branch "{0}"?', branchName),
       { modal: true },
-      "Delete",
+      del,
     );
-    if (confirm !== "Delete") return { success: false };
+    if (confirm !== del) return { success: false };
     return withProgress(messageRouter, async () => {
       await gitService.deleteBranch(branchName);
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
@@ -1540,7 +1570,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Filter branches by current git user
     if (!gitService) return NOT_GIT_REPO;
     void vscode.window.showInformationMessage(
-      "Show My Branches: filter applied in branch tree",
+      vscode.l10n.t("Show My Branches: filter applied in branch tree"),
     );
     return { success: true };
   });
@@ -1559,7 +1589,7 @@ export function activate(context: vscode.ExtensionContext) {
     const branchName = params.branchName as string;
     // Favorites are a UI-only concept, handled in webview state
     void vscode.window.showInformationMessage(
-      `Toggled favorite: ${branchName}`,
+      vscode.l10n.t("Toggled favorite: {0}", branchName),
     );
     return { success: true };
   });
