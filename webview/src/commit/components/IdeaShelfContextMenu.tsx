@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { t } from "../../shared/i18n";
 import type { IdeaShelfEntry } from "../../shared/store/commit-store";
 import { useCommitStore } from "../../shared/store/commit-store";
 
@@ -93,7 +94,7 @@ export function IdeaShelfContextMenu({
         onClick={handleUnshelve}
       >
         <UnshelveIcon />
-        <span>Unshelve...</span>
+        <span>{t("shelf.unshelve")}</span>
         <span className="commit-context-menu-shortcut">⇧⌘U</span>
       </button>
 
@@ -103,7 +104,7 @@ export function IdeaShelfContextMenu({
         onClick={handleApply}
       >
         <ApplyIcon />
-        <span>Restore</span>
+        <span>{t("shelf.restore")}</span>
       </button>
 
       <div className="commit-context-menu-separator" />
@@ -114,7 +115,7 @@ export function IdeaShelfContextMenu({
         onClick={handleCreatePatch}
       >
         <PatchIcon />
-        <span>Create Patch...</span>
+        <span>{t("shelf.createPatch")}</span>
       </button>
 
       <button
@@ -123,7 +124,7 @@ export function IdeaShelfContextMenu({
         onClick={handleCopyPatch}
       >
         <CopyIcon />
-        <span>Copy as Patch to Clipboard</span>
+        <span>{t("shelf.copyPatchToClipboard")}</span>
       </button>
 
       <button
@@ -132,7 +133,7 @@ export function IdeaShelfContextMenu({
         onClick={handleImportPatches}
       >
         <ImportIcon />
-        <span>Import Patches...</span>
+        <span>{t("shelf.importPatches")}</span>
       </button>
 
       <button
@@ -141,7 +142,7 @@ export function IdeaShelfContextMenu({
         onClick={handleImportFromClipboard}
       >
         <ClipboardImportIcon />
-        <span>Import Patches from Clipboard</span>
+        <span>{t("shelf.importPatchesFromClipboard")}</span>
       </button>
 
       <div className="commit-context-menu-separator" />
@@ -152,7 +153,7 @@ export function IdeaShelfContextMenu({
         onClick={handleDelete}
       >
         <DeleteIcon />
-        <span>Delete...</span>
+        <span>{t("shelf.delete")}</span>
         <span className="commit-context-menu-shortcut">⌫</span>
       </button>
     </div>

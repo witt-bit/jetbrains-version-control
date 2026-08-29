@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { t, tpl } from "../../shared/i18n";
 import {
   type IdeaShelfEntry,
   useCommitStore,
@@ -88,10 +89,9 @@ export function IdeaShelfTab() {
     return (
       <div className="shelf-list" onContextMenu={handleBgContextMenu}>
         <div className="shelf-empty">
-          <p>No shelved changes</p>
+          <p>{t("shelf.noShelvedChanges")}</p>
           <p style={{ fontSize: 11, marginTop: 8 }}>
-            Use the shelf icon in the Commit tab toolbar to shelve changes to
-            .idea/shelf/ (IDEA-compatible format).
+            {t("shelf.emptyHintIdea")}
           </p>
         </div>
         {bgContextMenu && (
@@ -176,8 +176,7 @@ function IdeaShelfItem({
           {entry.description || entry.name}
         </span>
         <span className="shelf-item-info">
-          {entry.files.length} {entry.files.length === 1 ? "file" : "files"},{" "}
-          {dateStr}
+          {tpl("shelf.files", entry.files.length)}, {dateStr}
         </span>
       </div>
 
@@ -307,7 +306,7 @@ function ShelfBgContextMenu({
         onClick={handleImport}
       >
         <ImportIcon />
-        <span>Import Patches...</span>
+        <span>{t("shelf.importPatches")}</span>
       </button>
       <button
         type="button"

@@ -4,6 +4,7 @@ import CodiconDebugStop from "~icons/codicon/debug-stop";
 import { bridge } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
+import { t } from "../../shared/i18n";
 import { useCommitStore } from "../../shared/store/commit-store";
 
 /**
@@ -153,9 +154,9 @@ export function CommitMessageArea() {
             checked={amend}
             onChange={(e) => setAmend(e.target.checked)}
           />
-          Amend
+          {t("commit.amend")}
         </label>
-        <Tooltip text="Recent commit messages">
+        <Tooltip text={t("commit.recentMessages")}>
           <span
             ref={historyBtnRef}
             onClick={handleHistoryClick}
@@ -192,7 +193,7 @@ export function CommitMessageArea() {
             <HistoryIcon />
           </span>
         </Tooltip>
-        <Tooltip text="Generate commit message with AI" delay={400}>
+        <Tooltip text={t("commit.aiGenerate")} delay={400}>
           <button
             type="button"
             className="commit-btn commit-ai-btn"
@@ -202,7 +203,7 @@ export function CommitMessageArea() {
             {aiGenerating ? <CodiconDebugStop /> : <SparkleIcon />}
           </button>
         </Tooltip>
-        <Tooltip text="Choose AI model" delay={400}>
+        <Tooltip text={t("commit.aiChooseModel")} delay={400}>
           <button
             type="button"
             className="commit-btn commit-ai-btn commit-ai-model-btn"
@@ -235,7 +236,7 @@ export function CommitMessageArea() {
 
       <textarea
         className="commit-message-textarea"
-        placeholder="Commit message (Ctrl+Enter to commit)"
+        placeholder={t("commit.messagePlaceholder")}
         value={commitMessage}
         onChange={(e) => setCommitMessage(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -249,7 +250,7 @@ export function CommitMessageArea() {
           disabled={!canCommit}
           onClick={handleCommit}
         >
-          Commit
+          {t("commit.commitButton")}
         </button>
 
         <div className="commit-dropdown" ref={dropdownRef}>
@@ -259,7 +260,7 @@ export function CommitMessageArea() {
             disabled={!canCommit}
             onClick={handleCommitAndPush}
           >
-            Commit and Push...
+            {t("commit.commitAndPushEllipsis")}
           </button>
           <button
             type="button"
@@ -285,7 +286,7 @@ export function CommitMessageArea() {
                 className="commit-dropdown-item"
                 onClick={handleCommitAndPush}
               >
-                Commit and Push
+                {t("commit.commitAndPush")}
               </button>
               <div className="commit-dropdown-separator" />
               <button
@@ -295,7 +296,7 @@ export function CommitMessageArea() {
                   setShowDropdown(false);
                 }}
               >
-                Cancel
+                {t("push.cancel")}
               </button>
             </div>
           )}
@@ -377,7 +378,7 @@ const HistoryDropdown = React.forwardRef<HTMLDivElement, HistoryDropdownProps>(
               fontSize: 12,
             }}
           >
-            No recent commit messages
+            {t("commit.noRecentMessages")}
           </div>
         ) : (
           messages.map((msg, i) => (

@@ -8,6 +8,7 @@ import { PushApp } from "./push/App";
 import { RollbackApp } from "./rollback/App";
 import "./shared/theme/variables.css";
 import { WorktreeApp } from "./worktree/WorktreeApp";
+import { setLocale } from "./shared/i18n";
 
 // Fix Cmd+A/Ctrl+A not working in webview inputs (VS Code intercepts it)
 document.addEventListener("keydown", (e) => {
@@ -22,6 +23,10 @@ document.addEventListener("keydown", (e) => {
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");
+
+// i18n:把扩展注入的 data-locale 设为当前语言(未知语言回落 en)
+setLocale(root.dataset.locale ?? "en");
+
 const mode = root.dataset.mode as
   | "panel"
   | "merge"

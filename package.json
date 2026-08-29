@@ -481,6 +481,11 @@
           "default": true,
           "markdownDescription": "Draw a colored marker in the line-number gutter for every added, modified or deleted line."
         },
+        "jgc.locale": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "User-interface language for the JGC panels. Leave empty to follow the VS Code display language automatically (recommended). Set a value such as `en` or `zh-cn` to force a language. Requires a window reload to take effect."
+        },
         "jgc.blame.displayMode": {
           "type": "string",
           "enum": [

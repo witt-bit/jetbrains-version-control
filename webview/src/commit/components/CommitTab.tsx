@@ -6,6 +6,7 @@ import {
   useModifierClickSelection,
 } from "../../shared/hooks/useModifierClickSelection";
 import { isPlainArrowKey } from "../../shared/keyboard";
+import { t, tpl } from "../../shared/i18n";
 import {
   useCommitStore,
   type WorkingTreeFile,
@@ -146,7 +147,9 @@ export function CommitTab() {
       .filter((f) => selectedFiles.has(`${f.path}:${f.staged}`))
       .map((f) => f.path);
     if (selectedPaths.length === 0) return;
-    await ideaShelveChanges("Shelved changes", [...new Set(selectedPaths)]);
+    await ideaShelveChanges(t("commit.shelvedChanges"), [
+      ...new Set(selectedPaths),
+    ]);
   }, [changes, selectedFiles, ideaShelveChanges]);
 
   const handleContextMenu = useCallback(
@@ -211,7 +214,7 @@ export function CommitTab() {
         {/* Merge Conflicts */}
         {conflictedFiles.length > 0 && (
           <FileGroup
-            label="Merge Conflicts"
+            label={t("commit.group.conflicts")}
             files={conflictedFiles}
             count={conflictedFiles.length}
             expanded={expandedGroups.has("conflicts")}
@@ -238,7 +241,7 @@ export function CommitTab() {
                 role="button"
                 tabIndex={0}
               >
-                Resolve
+                {t("commit.resolve")}
               </span>
             }
           />
@@ -247,7 +250,7 @@ export function CommitTab() {
         {/* Changes (tracked, modified) */}
         {changedFiles.length > 0 && (
           <FileGroup
-            label="Changes"
+            label={t("commit.group.changes")}
             files={changedFiles}
             count={changedFiles.length}
             expanded={expandedGroups.has("changes")}
@@ -269,7 +272,7 @@ export function CommitTab() {
         {/* Staged files */}
         {stagedFiles.length > 0 && (
           <FileGroup
-            label="Staged"
+            label={t("commit.group.staged")}
             files={stagedFiles}
             count={stagedFiles.length}
             expanded={expandedGroups.has("staged")}
@@ -291,7 +294,7 @@ export function CommitTab() {
         {/* Unversioned Files */}
         {showUnversioned && untrackedFiles.length > 0 && (
           <FileGroup
-            label="Unversioned Files"
+            label={t("commit.group.unversioned")}
             files={untrackedFiles}
             count={untrackedFiles.length}
             expanded={expandedGroups.has("unversioned")}
@@ -311,7 +314,7 @@ export function CommitTab() {
         )}
 
         {changes.length === 0 && (
-          <div className="shelf-empty">No changes detected</div>
+          <div className="shelf-empty">{t("commit.noChanges")}</div>
         )}
       </div>
 
@@ -453,9 +456,7 @@ function FileGroup({
           <ChevronIcon />
         </span>
         {label}
-        <span className="commit-group-count">
-          {count} {count === 1 ? "file" : "files"}
-        </span>
+        <span className="commit-group-count">{tpl("commit.files", count)}</span>
         {action}
       </div>
       {expanded && (
@@ -738,8 +739,7 @@ function DirNodeView({
                 <FolderIcon />
                 <span className="commit-dir-name">{child.name}</span>
                 <span className="commit-dir-count">
-                  {countFiles(child)}{" "}
-                  {countFiles(child) === 1 ? "file" : "files"}
+                  {tpl("commit.files", countFiles(child))}
                 </span>
               </div>
               {!isCollapsed && (
@@ -915,7 +915,7 @@ function DirContextMenu({
         onClick={handleRollback}
       >
         <RollbackIcon />
-        <span>Rollback...</span>
+        <span>{t("commit.dirMenu.rollback")}</span>
       </button>
 
       <div className="commit-context-menu-separator" />
@@ -926,7 +926,7 @@ function DirContextMenu({
         onClick={handleOpenInSystemFolder}
       >
         <FolderOpenIcon />
-        <span>Open in System Folder</span>
+        <span>{t("commit.dirMenu.openInSystemFolder")}</span>
       </button>
 
       <div className="commit-context-menu-separator" />
@@ -937,7 +937,7 @@ function DirContextMenu({
         onClick={handleDelete}
       >
         <DeleteDirIcon />
-        <span>Delete "{dirName}"...</span>
+        <span>{t("commit.dirMenu.deleteDir", { dirName })}</span>
         <span className="commit-context-menu-shortcut">⌫</span>
       </button>
     </div>
