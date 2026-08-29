@@ -9,6 +9,15 @@
   - JetBrains-style age-based coloring, configurable via `jgc.blame.colorMode` / 按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
   - Display scope config: whole file / cursor line only / N lines around cursor (`jgc.blame.displayMode`) / 展示范围可配置：全文件 / 仅光标行 / 光标前后 N 行
   - Date format config (`jgc.blame.dateFormat`, default `yyyy-MM-dd HH:mm`), hash off by default / 日期格式可配置，默认不显示 hash
+- **Git Worktree** — sidebar panel for managing Git worktrees (JetBrains-style) / Git Worktree 侧边栏面板（JetBrains 风格）
+  - Worktree list with branch, path columns; main worktree protection / 工作树列表显示分支和路径列，主工作树受保护不可删除
+  - New Worktree dialog: searchable branch/tag dropdown (local + origin/* + tags), input filtering, auto-fill project name / 新建工作树对话框：可搜索分支/标签下拉、输入过滤、自动填充项目名
+  - Branch name validation: real-time duplicate check with red border / 分支名校验：实时检查重名并红框提示
+  - Open Project dialog (native VS Code): Cancel / This Window / New Window / 打开项目对话框（原生 VS Code API）
+  - `jgc.worktree.openBehavior` setting: ask (default) / thisWindow / newWindow / 配置项控制打开行为
+  - Prune button with JetBrains clearCash icon / 清理按钮使用 JetBrains clearCash 图标
+  - Sidebar collapse/expand toggle / 侧边栏折叠/展开切换
+  - Location defaults to repo root, remembers per-repo preference / Location 默认为仓库根目录，按仓库记忆上次选择
 
 ### Changed / 变更
 - Renamed extension to **JetBrains Git Control** (short brand: JGC); extension ID changed from `idea-like-git-graph` to `jetbrains-git-control` / 插件更名为 JetBrains Git Control（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`

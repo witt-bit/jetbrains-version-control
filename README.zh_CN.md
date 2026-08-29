@@ -74,6 +74,17 @@ WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图�
 - 快捷操作：接受 Yours / 接受 Theirs / 合并
 - 与 VS Code 源代码管理面板无缝集成
 
+### Git Worktree
+
+JetBrains 风格的工作树管理面板，位于 Activity Bar 侧边栏。
+
+- **工作树列表** — 查看所有工作树，显示分支和路径列
+- **新建工作树** — 可搜索的分支/标签下拉（本地 + origin/*），支持输入校验和自动填充
+- **打开项目** — 双击打开，弹出原生 VS Code 对话框（当前窗口 / 新窗口）
+- **清理** — 使用 JetBrains clearCash 图标清理过期工作树元数据
+- **侧边栏折叠** — 切换工具栏可见性
+- **配置项** — `jgc.worktree.openBehavior`：ask（默认）/ thisWindow / newWindow
+
 ---
 
 ## 所有右键菜单操作
@@ -134,6 +145,7 @@ WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图�
 | `jgc.blame.displayMode` | 显示范围 | `full` |
 | `jgc.blame.aroundLines` | 上下文行数（around 模式） | `5` |
 | `jgc.blame.dateFormat` | 日期格式 | `yyyy-MM-dd HH:mm` |
+| `jgc.worktree.openBehavior` | 从工作树打开项目的方式 | `ask` |
 
 ---
 

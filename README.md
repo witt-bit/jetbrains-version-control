@@ -70,6 +70,17 @@ Right-click files in the Changed Files panel: show diff, edit source, open repos
 - Quick actions: Accept Yours / Accept Theirs / Merge
 - Integration with VS Code Source Control panel
 
+### Git Worktree
+
+JetBrains-style worktree management panel in the Activity Bar sidebar.
+
+- **Worktree list** — view all worktrees with branch and path columns
+- **New Worktree** — searchable dropdown for branches (local + origin/*) and tags, with input validation and auto-fill
+- **Open Project** — double-click to open with native VS Code dialog (This Window / New Window)
+- **Prune** — clean up stale worktree metadata with JetBrains clearCash icon
+- **Sidebar collapse** — toggle toolbar visibility
+- **Settings** — `jgc.worktree.openBehavior`: ask (default) / thisWindow / newWindow
+
 ---
 
 ## All Context Menu Actions
@@ -130,6 +141,7 @@ Configure in VS Code Settings under `JGC`:
 | `jgc.blame.displayMode` | Display scope | `full` |
 | `jgc.blame.aroundLines` | Context lines (around mode) | `5` |
 | `jgc.blame.dateFormat` | Date format | `yyyy-MM-dd HH:mm` |
+| `jgc.worktree.openBehavior` | How to open projects from worktrees | `ask` |
 
 ---
 
