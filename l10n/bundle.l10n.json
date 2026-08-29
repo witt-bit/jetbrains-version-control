@@ -1,0 +1,10 @@
+[
+  ["Patch copied to clipboard", "Patch copied to clipboard"],
+  ["JGC: No diff file list. Double-click a file in Changed Files first.", "JGC: No diff file list. Double-click a file in Changed Files first."],
+  ["JGC: No workspace open.", "JGC: No workspace open."],
+  ["Unable to locate conflict file from SCM item.", "Unable to locate conflict file from SCM item."],
+  ["Source file does not exist in the working directory.", "Source file does not exist in the working directory."],
+  ["Clipboard is empty or does not contain patch content.", "Clipboard is empty or does not contain patch content."],
+  ["Clipboard content does not appear to be a valid patch.", "Clipboard content does not appear to be a valid patch."],
+  ["Imported patch from clipboard as shelf entry.", "Imported patch from clipboard as shelf entry."]
+]

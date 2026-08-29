@@ -171,11 +171,15 @@ export function activate(context: vscode.ExtensionContext) {
         const result = await diffManager.nextDiff();
         if (!result) {
           void vscode.window.showInformationMessage(
-            "JGC: No diff file list. Double-click a file in Changed Files first.",
+            vscode.l10n.t(
+              "JGC: No diff file list. Double-click a file in Changed Files first.",
+            ),
           );
         }
       } else {
-        void vscode.window.showInformationMessage("JGC: No workspace open.");
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t("JGC: No workspace open."),
+        );
       }
     }),
     vscode.commands.registerCommand("git-brains.prevDiff", async () => {
@@ -183,11 +187,15 @@ export function activate(context: vscode.ExtensionContext) {
         const result = await diffManager.prevDiff();
         if (!result) {
           void vscode.window.showInformationMessage(
-            "JGC: No diff file list. Double-click a file in Changed Files first.",
+            vscode.l10n.t(
+              "JGC: No diff file list. Double-click a file in Changed Files first.",
+            ),
           );
         }
       } else {
-        void vscode.window.showInformationMessage("JGC: No workspace open.");
+        void vscode.window.showInformationMessage(
+          vscode.l10n.t("JGC: No workspace open."),
+        );
       }
     }),
     vscode.commands.registerCommand("git-brains.openConflicts", () => {
@@ -199,7 +207,7 @@ export function activate(context: vscode.ExtensionContext) {
         const filePath = getScmResourcePath(arg);
         if (!filePath) {
           void vscode.window.showWarningMessage(
-            "Unable to locate conflict file from SCM item.",
+            vscode.l10n.t("Unable to locate conflict file from SCM item."),
           );
           return;
         }
@@ -266,7 +274,7 @@ export function activate(context: vscode.ExtensionContext) {
         await vscode.workspace.fs.stat(fileUri);
       } catch {
         void vscode.window.showWarningMessage(
-          "Source file does not exist in the working directory.",
+          vscode.l10n.t("Source file does not exist in the working directory."),
         );
         return;
       }
@@ -1388,7 +1396,9 @@ export function activate(context: vscode.ExtensionContext) {
     try {
       const patchContent = await nodefs.readFile(patchFile, "utf-8");
       await vscode.env.clipboard.writeText(patchContent);
-      void vscode.window.showInformationMessage("Patch copied to clipboard");
+      void vscode.window.showInformationMessage(
+        vscode.l10n.t("Patch copied to clipboard"),
+      );
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1438,7 +1448,9 @@ export function activate(context: vscode.ExtensionContext) {
       const clipboardContent = await vscode.env.clipboard.readText();
       if (!clipboardContent || !clipboardContent.trim()) {
         void vscode.window.showWarningMessage(
-          "Clipboard is empty or does not contain patch content.",
+          vscode.l10n.t(
+            "Clipboard is empty or does not contain patch content.",
+          ),
         );
         return { success: false };
       }
@@ -1450,7 +1462,9 @@ export function activate(context: vscode.ExtensionContext) {
         !clipboardContent.includes("@@")
       ) {
         void vscode.window.showWarningMessage(
-          "Clipboard content does not appear to be a valid patch.",
+          vscode.l10n.t(
+            "Clipboard content does not appear to be a valid patch.",
+          ),
         );
         return { success: false };
       }
@@ -1460,7 +1474,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       messageRouter.broadcastEvent("commitStateChanged", {});
       void vscode.window.showInformationMessage(
-        "Imported patch from clipboard as shelf entry.",
+        vscode.l10n.t("Imported patch from clipboard as shelf entry."),
       );
       return { success: true };
     } catch (err: unknown) {

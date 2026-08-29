@@ -13,6 +13,7 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "l10n": "./l10n",
   "categories": [
     "SCM Providers",
     "Other"
