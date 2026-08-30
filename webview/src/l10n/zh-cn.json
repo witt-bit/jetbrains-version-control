@@ -261,7 +261,7 @@
   "contrib.cmd.clearAnnotation": "关闭标注",
   "contrib.cmd.worktreeNew": "新建工作树...",
   "contrib.cmd.worktreeRefresh": "刷新工作树",
-  "contrib.config.title": "JetBrains Git 控制",
+  "contrib.config.title": "JetBrains Git Control",
 
   "worktree.noMatches": "无匹配",
   "worktree.dialogTitle": "新建工作树",
