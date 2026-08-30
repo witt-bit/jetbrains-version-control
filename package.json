@@ -3,7 +3,7 @@
   "displayName": "JetBrains Git Control",
   "publisher": "witt-bit",
   "description": "Bring IntelliJ IDEA / JetBrains Git experience to VS Code & Cursor: Git graph visualization, IDEA-style commit panel with shelf/stash, branch management, cherry-pick, rebase, merge, 3-way merge editor, inline git blame annotations, and context menus. The best JetBrains Git alternative for Visual Studio Code.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "icon": "images/icon.png",
   "repository": {
@@ -65,6 +65,11 @@
           "type": "webview",
           "id": "git-brains.gitLog",
           "name": "%contrib.view.gitLog%"
+        },
+        {
+          "type": "webview",
+          "id": "git-brains.worktrees",
+          "name": "%contrib.view.worktrees%"
         }
       ],
       "git-brains-commit": [
@@ -168,6 +173,18 @@
         "command": "git-brains.clearGitBlameAnnotation",
         "title": "%contrib.cmd.clearAnnotation%",
         "category": "%contrib.cmd.category%"
+      },
+      {
+        "command": "git-brains.worktrees.new",
+        "title": "%contrib.cmd.worktreeNew%",
+        "icon": "$(add)",
+        "category": "%contrib.cmd.category%"
+      },
+      {
+        "command": "git-brains.worktrees.refresh",
+        "title": "%contrib.cmd.worktreeRefresh%",
+        "icon": "$(refresh)",
+        "category": "%contrib.cmd.category%"
       }
     ],
 
@@ -240,7 +257,7 @@
       }
     ],
     "configuration": {
-      "title": "%contrib.config.title%",
+"title": "%contrib.config.title%",
       "properties": {
         "jgc.locale": {
           "type": "string",
@@ -340,6 +357,21 @@
           "type": "string",
           "default": "#8b949e",
           "description": "Inline blame annotation color for dark themes."
+        },
+        "jgc.worktree.openBehavior": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "thisWindow",
+            "newWindow"
+          ],
+          "enumDescriptions": [
+            "Always ask which window to open in",
+            "Always open in the current window",
+            "Always open in a new window"
+          ],
+          "default": "ask",
+          "description": "Controls how projects are opened from Git worktrees."
         }
       }
     }

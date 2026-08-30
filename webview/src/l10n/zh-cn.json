@@ -241,6 +241,7 @@
   "contrib.app.activity": "提交",
   "contrib.view.gitLog": "Git Log",
   "contrib.view.commitPanel": "提交",
+  "contrib.view.worktrees": "工作树",
   "contrib.cmd.category": "JGC",
   "contrib.cmd.refreshLog": "刷新 Git Log",
   "contrib.cmd.openMergeEditor": "打开合并编辑器",
@@ -258,5 +259,7 @@
   "contrib.cmd.editSource": "(JGC) 编辑源",
   "contrib.cmd.annotate": "使用 Git Blame 标注",
   "contrib.cmd.clearAnnotation": "关闭标注",
-  "contrib.config.title": "JetBrains 版本控制"
+  "contrib.cmd.worktreeNew": "新建工作树...",
+  "contrib.cmd.worktreeRefresh": "刷新工作树",
+  "contrib.config.title": "JetBrains Git 控制"
 }

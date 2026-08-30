@@ -8,6 +8,7 @@ import { PushApp } from "./push/App";
 import { RollbackApp } from "./rollback/App";
 import "./shared/theme/variables.css";
 import { setLocale } from "./shared/i18n";
+import { WorktreeApp } from "./worktree/WorktreeApp";
 
 // Fix Cmd+A/Ctrl+A not working in webview inputs (VS Code intercepts it)
 document.addEventListener("keydown", (e) => {
@@ -33,6 +34,7 @@ const mode = root.dataset.mode as
   | "commit"
   | "push"
   | "rollback"
+  | "worktree"
   | undefined;
 
 createRoot(root).render(
@@ -47,6 +49,8 @@ createRoot(root).render(
       <PushApp />
     ) : mode === "rollback" ? (
       <RollbackApp />
+    ) : mode === "worktree" ? (
+      <WorktreeApp />
     ) : (
       <PanelApp />
     )}

@@ -241,6 +241,7 @@
   "contrib.app.activity": "Commit",
   "contrib.view.gitLog": "Git Log",
   "contrib.view.commitPanel": "Commit",
+  "contrib.view.worktrees": "Worktrees",
   "contrib.cmd.category": "JGC",
   "contrib.cmd.refreshLog": "Refresh Git Log",
   "contrib.cmd.openMergeEditor": "Open Merge Editor",
@@ -258,5 +259,7 @@
   "contrib.cmd.editSource": "(JGC) Edit Source",
   "contrib.cmd.annotate": "Annotate with Git Blame",
   "contrib.cmd.clearAnnotation": "Close Annotations",
-  "contrib.config.title": "JetBrains Version Control"
+  "contrib.cmd.worktreeNew": "New Worktree...",
+  "contrib.cmd.worktreeRefresh": "Refresh Worktrees",
+  "contrib.config.title": "JetBrains Git Control"
 }
