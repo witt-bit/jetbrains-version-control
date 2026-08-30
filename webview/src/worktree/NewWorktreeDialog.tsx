@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import CodiconFolderOpened from "~icons/codicon/folder-opened";
 import { bridge } from "../shared/bridge";
+import { t } from "../shared/i18n";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import {
   SearchableSelect,
@@ -52,7 +53,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
           options.push({
             value: b.name,
             label: b.name,
-            group: b.isCurrent ? "(current)" : undefined,
+            group: b.isCurrent ? t("worktree.groupCurrent") : undefined,
           });
         }
         // origin/* remote branches
@@ -60,14 +61,22 @@ export function NewWorktreeDialog({ onClose }: Props) {
           (b) => b.isRemote && b.name.startsWith("origin/"),
         )) {
           existingNames.add(b.name);
-          options.push({ value: b.name, label: b.name, group: "remote" });
+          options.push({
+            value: b.name,
+            label: b.name,
+            group: t("worktree.groupRemote"),
+          });
         }
       }
 
       if (Array.isArray(tagResult)) {
-        for (const t of tagResult) {
-          existingNames.add(t.name);
-          options.push({ value: t.name, label: t.name, group: "tag" });
+        for (const tag of tagResult) {
+          existingNames.add(tag.name);
+          options.push({
+            value: tag.name,
+            label: tag.name,
+            group: t("worktree.groupTag"),
+          });
         }
       }
 
@@ -124,12 +133,15 @@ export function NewWorktreeDialog({ onClose }: Props) {
     );
     setCreating(false);
     if (result.success) {
-      setStatus({ type: "success", message: `Worktree created at ${path}` });
+      setStatus({
+        type: "success",
+        message: t("worktree.createdAt", { path }),
+      });
       await bridge.request("openWorktree", { path });
     } else {
       setStatus({
         type: "error",
-        message: result.error || "Failed to create worktree",
+        message: result.error || t("worktree.createFailed"),
       });
     }
   };
@@ -141,7 +153,9 @@ export function NewWorktreeDialog({ onClose }: Props) {
     <div className="worktree-dialog-overlay">
       <div className="worktree-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="worktree-dialog-header">
-          <span className="worktree-dialog-title">New Worktree</span>
+          <span className="worktree-dialog-title">
+            {t("worktree.dialogTitle")}
+          </span>
           <button className="worktree-dialog-close" onClick={onClose}>
             x
           </button>
@@ -149,15 +163,17 @@ export function NewWorktreeDialog({ onClose }: Props) {
 
         <div className="worktree-dialog-body">
           {!loaded ? (
-            <div className="worktree-dialog-loading">Loading...</div>
+            <div className="worktree-dialog-loading">
+              {t("worktree.dialogLoading")}
+            </div>
           ) : (
             <>
               <div className="worktree-dialog-field">
-                <label>From branch:</label>
+                <label>{t("worktree.fromBranch")}</label>
                 <SearchableSelect
                   options={branchOptions}
                   value={selectedBranch}
-                  placeholder="Select branch..."
+                  placeholder={t("worktree.selectBranch")}
                   onChange={setSelectedBranch}
                 />
               </div>
@@ -169,7 +185,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
                     checked={useNewBranch}
                     onChange={(e) => setUseNewBranch(e.target.checked)}
                   />
-                  New Branch:
+                  {t("worktree.newBranch")}
                 </label>
                 <input
                   type="text"
@@ -193,13 +209,13 @@ export function NewWorktreeDialog({ onClose }: Props) {
                 />
                 {newBranch && existingBranchNames.has(newBranch) && (
                   <div className="worktree-dialog-field-error">
-                    Branch '{newBranch}' already exists
+                    {t("worktree.branchExists", { branch: newBranch })}
                   </div>
                 )}
               </div>
 
               <div className="worktree-dialog-field">
-                <label>Project name:</label>
+                <label>{t("worktree.projectName")}</label>
                 <input
                   type="text"
                   value={projectName}
@@ -208,7 +224,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
               </div>
 
               <div className="worktree-dialog-field">
-                <label>Location:</label>
+                <label>{t("worktree.location")}</label>
                 <div className="worktree-dialog-location-row">
                   <input
                     type="text"
@@ -217,7 +233,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
                   />
                   <button
                     className="worktree-dialog-btn-browse"
-                    title="Browse..."
+                    title={t("worktree.browse")}
                     onClick={handlePickFolder}
                   >
                     <CodiconFolderOpened />
@@ -227,7 +243,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
 
               {previewPath && (
                 <div className="worktree-dialog-preview">
-                  The worktree will be created in:
+                  {t("worktree.createPreview")}
                   <br />
                   <code>{previewPath}</code>
                 </div>
@@ -244,7 +260,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
 
         <div className="worktree-dialog-footer">
           <button className="worktree-dialog-btn-cancel" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button
             className="worktree-dialog-btn-create"
@@ -263,7 +279,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
               )
             }
           >
-            {creating ? "Creating..." : "Create & Open Worktree"}
+            {creating ? t("worktree.creating") : t("worktree.createAndOpen")}
           </button>
         </div>
       </div>

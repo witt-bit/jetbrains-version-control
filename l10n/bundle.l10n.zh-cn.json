@@ -32,5 +32,8 @@
   ["Failed to import patch from clipboard: {0}", "从剪贴板导入补丁失败:{0}"],
   ["Delete branch \"{0}\"?", "要删除分支 \"{0}\" 吗?"],
   ["Show My Branches: filter applied in branch tree", "显示我的分支:已在分支树中应用筛选"],
-  ["Toggled favorite: {0}", "已切换收藏:{0}"]
+  ["Toggled favorite: {0}", "已切换收藏:{0}"],
+  ["Where would you like to open the project '{0}'?", "您希望在哪个窗口中打开项目 '{0}'?"],
+  ["New Window", "新窗口"],
+  ["This Window", "当前窗口"]
 ]

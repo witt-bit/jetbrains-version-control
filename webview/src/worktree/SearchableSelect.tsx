@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t } from "../shared/i18n";
 
 export interface SearchableSelectOption {
   value: string;
@@ -87,7 +88,7 @@ export function SearchableSelect({
           </div>
           <div ref={listRef} className="ss-select-list">
             {filtered.length === 0 && (
-              <div className="ss-select-empty">No matches</div>
+              <div className="ss-select-empty">{t("worktree.noMatches")}</div>
             )}
             {filtered.map((opt) => (
               <div
