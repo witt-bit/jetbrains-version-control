@@ -47,7 +47,7 @@
       "panel": [
         {
           "id": "git-brains-panel",
-"title": "%contrib.app.panel%",
+          "title": "%contrib.app.panel%",
           "icon": "$(git-branch)"
         }
       ],
@@ -187,7 +187,6 @@
         "category": "%contrib.cmd.category%"
       }
     ],
-
     "menus": {
       "view/title": [],
       "scm/title": [
@@ -257,12 +256,12 @@
       }
     ],
     "configuration": {
-"title": "%contrib.config.title%",
+      "title": "%contrib.config.title%",
       "properties": {
         "jgc.locale": {
           "type": "string",
           "default": "",
-          "markdownDescription": "User-interface language for the JGC panels. Leave empty to follow the VS Code display language automatically (recommended). Set a value such as `en` or `zh-cn` to force a language. Requires a window reload to take effect."
+          "markdownDescription": "%contrib.config.locale%"
         },
         "jgc.blame.displayMode": {
           "type": "string",
@@ -272,18 +271,18 @@
             "around"
           ],
           "enumDescriptions": [
-            "Annotate every line of the file",
-            "Only the line under the cursor",
-            "The cursor line plus N lines of context (see #jgc.blame.aroundLines#)"
+            "%contrib.config.blame.displayMode.all%",
+            "%contrib.config.blame.displayMode.cursor%",
+            "%contrib.config.blame.displayMode.around%"
           ],
           "default": "all",
-          "description": "Controls which lines show inline Git blame annotations."
+          "description": "%contrib.config.blame.displayMode.desc%"
         },
         "jgc.blame.aroundLines": {
           "type": "number",
           "default": 3,
           "minimum": 0,
-          "description": "Lines of context above/below the cursor when jgc.blame.displayMode is 'around'."
+          "description": "%contrib.config.blame.aroundLines.desc%"
         },
         "jgc.blame.columns": {
           "type": "array",
@@ -296,10 +295,10 @@
               "commitNumber"
             ],
             "enumDescriptions": [
-              "Short commit hash",
-              "Author date",
-              "Author name",
-              "Commit number (1 = newest)"
+              "%contrib.config.blame.columns.revision%",
+              "%contrib.config.blame.columns.date%",
+              "%contrib.config.blame.columns.author%",
+              "%contrib.config.blame.columns.commitNumber%"
             ]
           },
           "uniqueItems": true,
@@ -307,7 +306,7 @@
             "date",
             "author"
           ],
-          "description": "Which columns to show in inline Git blame annotations. Display order is always: Revision → Date → Author → Commit Number."
+          "description": "%contrib.config.blame.columns.desc%"
         },
         "jgc.blame.colorMode": {
           "type": "string",
@@ -317,12 +316,12 @@
             "hide"
           ],
           "enumDescriptions": [
-            "A distinct color per author",
-            "JetBrains-style coloring by commit age: recent commits stand out, old ones fade",
-            "Hide coloring: fixed foreground colors (#jgc.blame.foregroundColorLight# / #jgc.blame.foregroundColorDark#)"
+            "%contrib.config.blame.colorMode.author%",
+            "%contrib.config.blame.colorMode.order%",
+            "%contrib.config.blame.colorMode.hide%"
           ],
           "default": "order",
-          "description": "How inline Git blame annotations are colored."
+          "description": "%contrib.config.blame.colorMode.desc%"
         },
         "jgc.blame.nameStyle": {
           "type": "string",
@@ -334,29 +333,29 @@
             "email"
           ],
           "enumDescriptions": [
-            "Author initials (e.g. ZS)",
-            "Last name only",
-            "First name only",
-            "Full name",
-            "Author email"
+            "%contrib.config.blame.nameStyle.initials%",
+            "%contrib.config.blame.nameStyle.lastName%",
+            "%contrib.config.blame.nameStyle.firstName%",
+            "%contrib.config.blame.nameStyle.fullName%",
+            "%contrib.config.blame.nameStyle.email%"
           ],
           "default": "fullName",
-          "description": "How the author name is displayed in inline Git blame annotations."
+          "description": "%contrib.config.blame.nameStyle.desc%"
         },
         "jgc.blame.dateFormat": {
           "type": "string",
           "default": "yyyy-MM-dd HH:mm",
-          "description": "Date format for inline blame annotations. Tokens: yyyy MM dd HH mm ss."
+          "description": "%contrib.config.blame.dateFormat.desc%"
         },
         "jgc.blame.foregroundColorLight": {
           "type": "string",
           "default": "#57606a",
-          "description": "Inline blame annotation color for light themes."
+          "description": "%contrib.config.blame.light.desc%"
         },
         "jgc.blame.foregroundColorDark": {
           "type": "string",
           "default": "#8b949e",
-          "description": "Inline blame annotation color for dark themes."
+          "description": "%contrib.config.blame.dark.desc%"
         },
         "jgc.worktree.openBehavior": {
           "type": "string",
@@ -366,12 +365,12 @@
             "newWindow"
           ],
           "enumDescriptions": [
-            "Always ask which window to open in",
-            "Always open in the current window",
-            "Always open in a new window"
+            "%contrib.config.worktree.ask%",
+            "%contrib.config.worktree.thisWindow%",
+            "%contrib.config.worktree.newWindow%"
           ],
           "default": "ask",
-          "description": "Controls how projects are opened from Git worktrees."
+          "description": "%contrib.config.worktree.openBehavior.desc%"
         }
       }
     }
