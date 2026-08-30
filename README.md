@@ -142,6 +142,30 @@ Configure in VS Code Settings under `JGC`:
 | `jgc.blame.aroundLines` | Context lines (around mode) | `5` |
 | `jgc.blame.dateFormat` | Date format | `yyyy-MM-dd HH:mm` |
 | `jgc.worktree.openBehavior` | How to open projects from worktrees | `ask` |
+| `jgc.locale` | UI language for the JGC panels. Leave empty to follow the VS Code display language (`en`, `zh-cn`, …). Set a value to force a language. Requires a window reload. | *(follow VS Code)* |
+
+---
+
+## Localization / 国际化
+
+JGC follows the **VS Code display language** automatically. Change your language via
+Preferences → Configure Display Language, then **Reload Window** — every surface switches
+together (webview panels, the activity bar, command palette, notifications, merge editor):
+
+- Webview panels (Git Log, Commit, Push, Rollback, Conflicts, Worktree) use a custom `t()/tpl()`
+  helper with the dictionaries bundled into the extension
+- VS Code contribution points (views, commands, configuration title) localize via `package.nls.<locale>.json`
+- Extension notifications localize via the `vscode.l10n` API and `l10n/bundle.l10n.<locale>.json`
+
+**Adding a language** (only one step required):
+
+1. Copy `webview/src/l10n/en.json` → `webview/src/l10n/<locale>.json` (e.g. `fr.json`) and translate
+   every value. This single file drives *all* surfaces (webview strings + `contrib.*` keys).
+2. Optional: register a display name for the language.
+3. Run `pnpm run generate:nls` to regenerate `package.nls.<locale>.json` and commit it,
+   then rebuild.
+
+Missing keys fall back to English, so a partial translation never breaks the UI.
 
 ---
 

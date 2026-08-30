@@ -146,6 +146,25 @@ JetBrains 风格的工作树管理面板，位于 Activity Bar 侧边栏。
 | `jgc.blame.aroundLines` | 上下文行数（around 模式） | `5` |
 | `jgc.blame.dateFormat` | 日期格式 | `yyyy-MM-dd HH:mm` |
 | `jgc.worktree.openBehavior` | 从工作树打开项目的方式 | `ask` |
+| `jgc.locale` | JGC 面板的界面语言。留空则自动跟随 VS Code 显示语言（`en`、`zh-cn` 等），设置后强制指定语言，需要重载窗口生效 | *(跟随 VS Code)* |
+
+---
+
+## 国际化 / Localization
+
+JGC 会自动跟随 **VS Code 的显示语言**。通过“配置显示语言”切换语言后**重载窗口**即可，所有界面（网页视图面板、活动栏、命令面板、通知、合并编辑器）会一起切换：
+
+- Webview 面板（Git Log、提交、推送、回滚、冲突、工作树）使用自定义 `t()/tpl()` 助手，词典已打包进扩展
+- VS Code 贡献点（视图、命令、配置标题）通过 `package.nls.<locale>.json` 本地化
+- 扩展通知通过 `vscode.l10n` API 与 `l10n/bundle.l10n.<locale>.json` 本地化
+
+**新增一门语言**（只需一步关键操作）：
+
+1. 复制 `webview/src/l10n/en.json` → `webview/src/l10n/<locale>.json`（如 `fr.json`）并翻译所有值。这个单一文件驱动所有界面（webview 字符串 + `contrib.*` 键）。
+2. （可选）注册该语言的展示名。
+3. 运行 `pnpm run generate:nls` 重新生成 `package.nls.<locale>.json` 并提交，再重新构建。
+
+缺失的键会自动回退到英文，因此部分翻译永远不会弄坏界面。
 
 ---
 

@@ -18,6 +18,12 @@
   - Prune button with JetBrains clearCash icon / 清理按钮使用 JetBrains clearCash 图标
   - Sidebar collapse/expand toggle / 侧边栏折叠/展开切换
   - Location defaults to repo root, remembers per-repo preference / Location 默认为仓库根目录，按仓库记忆上次选择
+- **Multi-language support (i18n)** — the extension follows the VS Code display language across every surface / 多语言支持（i18n）—— 扩展自动跟随 VS Code 显示语言，所有界面一致切换
+  - Webview panels (Git Log / Commit / Push / Rollback / Conflicts / Worktree) localized via a custom `t()/tpl()` helper; dictionaries bundled into the extension / 网页视图面板（Git Log / 提交 / 推送 / 回滚 / 冲突 / 工作树）改用自定义 `t()/tpl()` 助手本地化，词典随扩展打包
+  - VS Code contribution points (views, commands, config title) localized via `package.nls.<locale>.json` / VS Code 贡献点（视图、命令、配置标题）经 `package.nls.<locale>.json` 本地化
+  - Extension notifications localized via the `vscode.l10n` API and `l10n/bundle.l10n.<locale>.json` / 扩展通知经 `vscode.l10n` 与 `l10n/bundle.l10n.<locale>.json` 本地化
+  - Shipped locales: English + Simplified Chinese; `jgc.locale` can force a language / 内置语言：英文 + 简体中文；可用 `jgc.locale` 强制指定
+  - Adding a language is a single-file change (`webview/src/l10n/<locale>.json`) + `pnpm run generate:nls` / 新增语言只需修改单一文件并运行 `pnpm run generate:nls`
 
 ### Changed / 变更
 - Renamed extension to **JetBrains Git Control** (short brand: JGC); extension ID changed from `idea-like-git-graph` to `jetbrains-git-control` / 插件更名为 JetBrains Git Control（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`
