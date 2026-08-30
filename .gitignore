@@ -6,7 +6,7 @@ node_modules
 .vscode-test/
 .vscode/
 !.vscode/launch.json
-!.vscode/task.json
+!.vscode/tasks.json
 
 .idea/
 .kiro/
