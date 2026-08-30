@@ -1,0 +1,13 @@
+{
+  // For more information, visit: https://aka.ms/vscode-launch-config-docs
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run JetGit Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"]
+    }
+  ]
+}
