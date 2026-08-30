@@ -35,5 +35,10 @@
   ["Toggled favorite: {0}", "已切换收藏:{0}"],
   ["Where would you like to open the project '{0}'?", "您希望在哪个窗口中打开项目 '{0}'?"],
   ["New Window", "新窗口"],
-  ["This Window", "当前窗口"]
+  ["This Window", "当前窗口"],
+  ["Select", "选择"],
+  ["OK", "确定"],
+  ["JGC: File is outside any workspace folder.", "JGC: 文件位于任何工作区文件夹之外。"],
+  ["JGC: File has no Git blame history (untracked or ignored).", "JGC: 文件没有 Git blame 历史(未跟踪或被忽略)。"],
+  ["JGC: No active annotation to clear.", "JGC: 没有可清除的注释。"]
 ]

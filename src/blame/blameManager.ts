@@ -330,7 +330,7 @@ export class BlameManager implements vscode.Disposable {
     const entry = this.resolveService(target.document.uri);
     if (!entry) {
       void vscode.window.showInformationMessage(
-        "JGC: File is outside any workspace folder.",
+        vscode.l10n.t("JGC: File is outside any workspace folder."),
       );
       return;
     }
@@ -356,7 +356,9 @@ export class BlameManager implements vscode.Disposable {
           : await entry.service.blameAt(revision, relativePath);
     } catch {
       void vscode.window.showInformationMessage(
-        "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
+        vscode.l10n.t(
+          "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
+        ),
       );
       return;
     }
@@ -530,7 +532,7 @@ export class BlameManager implements vscode.Disposable {
     if (!target) {
       if (this.states.size === 0) {
         void vscode.window.showInformationMessage(
-          "JGC: No active annotation to clear.",
+          vscode.l10n.t("JGC: No active annotation to clear."),
         );
       }
       return;
