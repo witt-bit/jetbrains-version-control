@@ -297,5 +297,15 @@
   "worktree.deleteDetailMany": "这将删除工作树目录及其关联的分支。",
   "worktree.deleteConfirmSingle": "要删除工作树 \"{path}\" 吗?",
   "worktree.deleteDetailSingle": "这将删除工作树目录及其关联的分支。",
-  "worktree.cannotDeleteMain": "无法删除主工作树"
+  "worktree.cannotDeleteMain": "无法删除主工作树",
+
+  "commit.toolbar.groupBy": "按分组",
+  "commit.toolbar.directory": "目录",
+  "commit.toolbar.show": "显示",
+  "commit.toolbar.unversionedFiles": "未版本化文件",
+  "push.remote": "远程",
+  "push.remoteLoading": "正在加载...",
+  "push.noRemotes": "未找到远程仓库",
+  "push.branch": "分支",
+  "push.branchNamePlaceholder": "分支名"
 }

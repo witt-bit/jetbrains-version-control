@@ -625,7 +625,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   messageRouter.handle("showConfirmMessage", async (params) => {
     const message = params.message as string;
-    const confirmLabel = (params.confirmLabel as string) || "OK";
+    const confirmLabel = (params.confirmLabel as string) || vscode.l10n.t("OK");
     const result = await vscode.window.showWarningMessage(
       message,
       { modal: true },
@@ -1774,7 +1774,7 @@ export function activate(context: vscode.ExtensionContext) {
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
-      openLabel: "Select",
+      openLabel: vscode.l10n.t("Select"),
       defaultUri: defaultUri ? vscode.Uri.file(defaultUri) : undefined,
     });
     if (uri?.[0]) {

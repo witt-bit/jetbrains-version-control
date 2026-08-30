@@ -35,5 +35,10 @@
   ["Toggled favorite: {0}", "Toggled favorite: {0}"],
   ["Where would you like to open the project '{0}'?", "Where would you like to open the project '{0}'?"],
   ["New Window", "New Window"],
-  ["This Window", "This Window"]
+  ["This Window", "This Window"],
+  ["Select", "Select"],
+  ["OK", "OK"],
+  ["JGC: File is outside any workspace folder.", "JGC: File is outside any workspace folder."],
+  ["JGC: File has no Git blame history (untracked or ignored).", "JGC: File has no Git blame history (untracked or ignored)."],
+  ["JGC: No active annotation to clear.", "JGC: No active annotation to clear."]
 ]

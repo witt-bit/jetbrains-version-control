@@ -297,5 +297,15 @@
   "worktree.deleteDetailMany": "This will remove the worktree directories and their associated branches.",
   "worktree.deleteConfirmSingle": "Delete worktree \"{path}\"?",
   "worktree.deleteDetailSingle": "This will remove the worktree directory and its associated branch.",
-  "worktree.cannotDeleteMain": "Cannot delete the main worktree"
+  "worktree.cannotDeleteMain": "Cannot delete the main worktree",
+
+  "commit.toolbar.groupBy": "Group By",
+  "commit.toolbar.directory": "Directory",
+  "commit.toolbar.show": "Show",
+  "commit.toolbar.unversionedFiles": "Unversioned Files",
+  "push.remote": "Remote",
+  "push.remoteLoading": "Loading...",
+  "push.noRemotes": "No remotes found",
+  "push.branch": "Branch",
+  "push.branchNamePlaceholder": "branch name"
 }

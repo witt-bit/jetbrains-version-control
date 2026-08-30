@@ -172,7 +172,9 @@ function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
           zIndex: 1000,
         }}
       >
-        <div className="commit-context-menu-header">Group By</div>
+        <div className="commit-context-menu-header">
+          {t("commit.toolbar.groupBy")}
+        </div>
         <button
           type="button"
           className="commit-context-menu-item"
@@ -184,11 +186,13 @@ function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
           <span className="commit-context-menu-icon">
             {groupByDirectory && <CheckIcon />}
           </span>
-          <span>Directory</span>
+          <span>{t("commit.toolbar.directory")}</span>
           <span className="commit-context-menu-shortcut">^P</span>
         </button>
         <div className="commit-context-menu-separator" />
-        <div className="commit-context-menu-header">Show</div>
+        <div className="commit-context-menu-header">
+          {t("commit.toolbar.show")}
+        </div>
         <button
           type="button"
           className="commit-context-menu-item"
@@ -200,7 +204,7 @@ function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
           <span className="commit-context-menu-icon">
             {showUnversioned && <CheckIcon />}
           </span>
-          <span>Unversioned Files</span>
+          <span>{t("commit.toolbar.unversionedFiles")}</span>
         </button>
       </div>
     </>

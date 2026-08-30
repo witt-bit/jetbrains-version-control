@@ -319,7 +319,7 @@ function ShelfBgContextMenu({
         }}
       >
         <ClipboardImportIcon />
-        <span>Import Patches from Clipboard</span>
+        <span>{t("shelf.importPatchesFromClipboard")}</span>
       </button>
     </div>
   );
