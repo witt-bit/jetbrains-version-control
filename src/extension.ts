@@ -1737,18 +1737,23 @@ export function activate(context: vscode.ExtensionContext) {
 
     // behavior === "ask"
     const worktreeName = worktreePath.split("/").pop() || worktreePath;
+    const newWindow = vscode.l10n.t("New Window");
+    const thisWindow = vscode.l10n.t("This Window");
     const result = await vscode.window.showInformationMessage(
-      `Where would you like to open the project '${worktreeName}'?`,
+      vscode.l10n.t(
+        "Where would you like to open the project '{0}'?",
+        worktreeName,
+      ),
       { modal: true },
-      "New Window",
-      "This Window",
+      newWindow,
+      thisWindow,
     );
 
     if (!result) {
       return { success: false, cancelled: true };
     }
 
-    const openInNewWindow = result === "New Window";
+    const openInNewWindow = result === newWindow;
 
     try {
       await openFolder(openInNewWindow);

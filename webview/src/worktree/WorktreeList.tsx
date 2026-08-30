@@ -6,6 +6,7 @@ import CodiconRefresh from "~icons/codicon/refresh";
 import CodiconTrash from "~icons/codicon/trash";
 import { bridge } from "../shared/bridge";
 import { Tooltip } from "../shared/components/Tooltip";
+import { t, tpl } from "../shared/i18n";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import type { WorktreeInfo } from "../shared/types/git";
 import { NewWorktreeDialog } from "./NewWorktreeDialog";
@@ -85,9 +86,8 @@ export function WorktreeList() {
   const handleDeleteSelected = async () => {
     if (selectedPaths.size === 0 || hasMainSelected()) return;
     const confirmed = await bridge.request("showConfirmMessage", {
-      message: `Delete ${selectedPaths.size} worktree(s)?`,
-      detail:
-        "This will remove the worktree directories and their associated branches.",
+      message: tpl("worktree.deleteConfirmMany", selectedPaths.size),
+      detail: t("worktree.deleteDetailMany"),
     });
     if (confirmed) {
       for (const path of selectedPaths) {
@@ -101,14 +101,13 @@ export function WorktreeList() {
     setContextMenu(null);
     if (wt.isMain) {
       await bridge.request("showWarningMessage", {
-        message: "Cannot delete the main worktree",
+        message: t("worktree.cannotDeleteMain"),
       });
       return;
     }
     const confirmed = await bridge.request("showConfirmMessage", {
-      message: `Delete worktree "${wt.path}"?`,
-      detail:
-        "This will remove the worktree directory and its associated branch.",
+      message: t("worktree.deleteConfirmSingle", { path: wt.path }),
+      detail: t("worktree.deleteDetailSingle"),
     });
     if (confirmed) {
       await removeWorktree(wt.path);
@@ -134,7 +133,7 @@ export function WorktreeList() {
         {/* Left sidebar toolbar */}
         <div className={`worktree-sidebar ${sidebarOpen ? "open" : "closed"}`}>
           <div className="worktree-sidebar-btns">
-            <Tooltip text="New Worktree...">
+            <Tooltip text={t("worktree.newWorktree")}>
               <button
                 className="worktree-sidebar-btn"
                 onClick={() => setShowNewDialog(true)}
@@ -142,7 +141,7 @@ export function WorktreeList() {
                 <CodiconAdd />
               </button>
             </Tooltip>
-            <Tooltip text="Delete...">
+            <Tooltip text={t("worktree.delete")}>
               <button
                 className="worktree-sidebar-btn"
                 disabled={selectedPaths.size === 0 || hasMainSelected()}
@@ -151,12 +150,12 @@ export function WorktreeList() {
                 <CodiconTrash />
               </button>
             </Tooltip>
-            <Tooltip text="Refresh">
+            <Tooltip text={t("worktree.refresh")}>
               <button className="worktree-sidebar-btn" onClick={handleRefresh}>
                 <CodiconRefresh />
               </button>
             </Tooltip>
-            <Tooltip text="Prune">
+            <Tooltip text={t("worktree.prune")}>
               <button className="worktree-sidebar-btn" onClick={handlePrune}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path
@@ -178,7 +177,11 @@ export function WorktreeList() {
           </div>
           <button
             className="worktree-sidebar-toggle"
-            title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+            title={
+              sidebarOpen
+                ? t("worktree.collapseSidebar")
+                : t("worktree.expandSidebar")
+            }
             onClick={() => setSidebarOpen(!sidebarOpen)}
           >
             {sidebarOpen ? <CodiconChevronLeft /> : <CodiconChevronRight />}
@@ -189,9 +192,13 @@ export function WorktreeList() {
         <div className="worktree-main">
           {/* Table header */}
           <div className="worktree-table-header">
-            <span className="worktree-col-name">Worktree</span>
-            <span className="worktree-col-branch">Branch</span>
-            <span className="worktree-col-path">Path</span>
+            <span className="worktree-col-name">
+              {t("worktree.colWorktree")}
+            </span>
+            <span className="worktree-col-branch">
+              {t("worktree.colBranch")}
+            </span>
+            <span className="worktree-col-path">{t("worktree.colPath")}</span>
           </div>
 
           {/* List */}
@@ -217,7 +224,7 @@ export function WorktreeList() {
               </div>
             ))}
             {worktrees.length === 0 && !loading && (
-              <div className="worktree-empty">No worktrees found</div>
+              <div className="worktree-empty">{t("worktree.noWorktrees")}</div>
             )}
           </div>
         </div>
@@ -241,13 +248,13 @@ export function WorktreeList() {
                 handleOpenRequest(contextMenu.worktree);
               }}
             >
-              Open as a Project
+              {t("worktree.openAsProject")}
             </button>
             <button
               className="worktree-context-item danger"
               onClick={() => handleDeleteSingle(contextMenu.worktree)}
             >
-              Delete...
+              {t("worktree.delete")}
             </button>
           </div>
         </>

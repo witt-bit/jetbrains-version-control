@@ -32,5 +32,8 @@
   ["Failed to import patch from clipboard: {0}", "Failed to import patch from clipboard: {0}"],
   ["Delete branch \"{0}\"?", "Delete branch \"{0}\"?"],
   ["Show My Branches: filter applied in branch tree", "Show My Branches: filter applied in branch tree"],
-  ["Toggled favorite: {0}", "Toggled favorite: {0}"]
+  ["Toggled favorite: {0}", "Toggled favorite: {0}"],
+  ["Where would you like to open the project '{0}'?", "Where would you like to open the project '{0}'?"],
+  ["New Window", "New Window"],
+  ["This Window", "This Window"]
 ]
