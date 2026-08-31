@@ -2,7 +2,7 @@
 
 > 分支:`feat/i18n`(基于 main 的全新 worktree)
 > 撰写时间:2026-08-28
-> 状态:进行中(Phase A 核心 + Phase B 试点已跑通)
+> 状态:**✅ 全部完成**(最终更新 2026-08-30)
 
 ## 执行进度(2026-08-28) — Phase A~C + D.2 完成 ✅
 
@@ -13,10 +13,19 @@
 - `302e4c4` feat(i18n): localize webview frontend (en/zh-cn)…(Phase A~C)
 - 后续一提交:D.2 contributes 本地化 + sync-nls.mjs
 
-**待办(建议新开窗口做,风险更低):**
-- **D.1(原 A5 未做)**:打开 `"l10n": "./l10n"` + 建 `l10n/bundle.l10n.json` 模板。
-- **D.3**:扩展进程 ~30 处 `show{Info,Error,Warning}Message`(含 `${}` 模板与按钮文案)+ `gitService` 错误 → `vscode.l10n.t()`。**建议在独立会话完成**,因其格式特定、调用点含插值与按钮参数,半途切换易留下坏通知。
-- **E**:README/CHANGELOG、`package.nls.*` 提交校验、冒烟(F5 中英文)。
+**已完成(最终状态,2026-08-30):**
+- **D.1/D.3 全量**:`"l10n": "./l10n"` + `l10n/bundle.l10n.{json,zh-cn}.json`(42 条),扩展进程 34 处通知 + blame 3 条 + 确认框按钮 → `vscode.l10n.t()`。
+- **E 文档/打包**:README(en/zh)本地化说明 + CHANGELOG;`vsce package` 验证 vsix 内含 `package.nls*`、`bundle.l10n*`、webview bundle。
+- **配置描述本地化**:27 条 `contributes.configuration` 描述/enumDescriptions → `package.nls`(53 个占位符全解析,en=zh=332 key)。
+- **工程修复**:① `bundle.ts` glob 路径 + `import:"default"` 解包(否则 webview 全部回退显 naked key)——已加 vitest 回归测试(28 passed);② Worktree 与 main 冲突合并;③ `.vscode/launch.json`+`tasks.json` 入库(F5);④ 设置标题品牌名不翻译。
+- **结论**:i18n 全部用户可见面已落地。webview en/zh-cn 各 332 key,l10n bundle 42 条,build + test 全绿。
+
+**接受的限制(不作处理,已评审):**
+- **`gitService` 3 条罕见自撰英文错误**(如 "No changes to shelve")未本地化:穿透 gitService→handler→webview 层层塞翻译 key 不成比例;且 `git` 自身 stderr 本就是英文、不可翻。
+- **冒烟(E3)**:在 VS Code 手动 F5 完成(已由提交者验证)。
+
+**已暂缓(非当前范围):**
+- **Phase G**:推送 `feat/i18n` 并开 PR 合回 main —— 由贡献者决定启动时机。
 
 | Phase | 内容 | 状态 |
 |---|---|---|

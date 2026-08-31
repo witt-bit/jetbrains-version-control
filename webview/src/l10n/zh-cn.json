@@ -310,6 +310,7 @@
   "push.branchNamePlaceholder": "分支名",
 
   "contrib.config.locale": "JGC 面板的界面语言。留空则自动跟随 VS Code 的显示语言(推荐)。设置一个值(如 `en` 或 `zh-cn`)可强制指定语言。需要重载窗口后生效。",
+  "contrib.config.locale.auto": "跟随 VS Code 显示语言(自动)",
   "contrib.config.blame.displayMode.desc": "控制哪些行显示内联 Git blame 注解。",
   "contrib.config.blame.displayMode.all": "文件的每一行",
   "contrib.config.blame.displayMode.cursor": "仅光标所在行",

@@ -261,6 +261,16 @@
         "jgc.locale": {
           "type": "string",
           "default": "",
+          "enum": [
+            "",
+            "en",
+            "zh-cn"
+          ],
+          "enumDescriptions": [
+            "%contrib.config.locale.auto%",
+            "English",
+            "简体中文"
+          ],
           "markdownDescription": "%contrib.config.locale%"
         },
         "jgc.blame.displayMode": {

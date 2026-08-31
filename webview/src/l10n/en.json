@@ -310,6 +310,7 @@
   "push.branchNamePlaceholder": "branch name",
 
   "contrib.config.locale": "User-interface language for the JGC panels. Leave empty to follow the VS Code display language automatically (recommended). Set a value such as `en` or `zh-cn` to force a language. Requires a window reload to take effect.",
+  "contrib.config.locale.auto": "Follow the VS Code display language (auto)",
   "contrib.config.blame.displayMode.desc": "Controls which lines show inline Git blame annotations.",
   "contrib.config.blame.displayMode.all": "Annotate every line of the file",
   "contrib.config.blame.displayMode.cursor": "Only the line under the cursor",
