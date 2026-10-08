@@ -5,6 +5,11 @@ import * as path from "node:path";
 import { promisify } from "node:util";
 import { GitCache } from "./cache";
 import { computeGraphLayout } from "./graphLayout";
+import {
+  parseDiffNameStatus,
+  splitStatusPaths,
+  unquoteGitPath,
+} from "./pathUtils";
 import type {
   BlameLine,
   BranchInfo,
@@ -55,15 +60,21 @@ export class GitService {
     args: string[],
     maxBuffer = MAX_BUFFER,
   ): Promise<string> {
-    const { stdout } = await execFileAsync("git", args, {
-      cwd: this.cwd,
-      maxBuffer,
-      env: {
-        ...process.env,
-        LC_ALL: "C",
-        GIT_TERMINAL_PROMPT: "0",
+    // core.quotepath=false keeps non-ASCII paths raw instead of \NNN escaped.
+    // Callers still unquote, because git quotes for other reasons too.
+    const { stdout } = await execFileAsync(
+      "git",
+      ["-c", "core.quotepath=false", ...args],
+      {
+        cwd: this.cwd,
+        maxBuffer,
+        env: {
+          ...process.env,
+          LC_ALL: "C",
+          GIT_TERMINAL_PROMPT: "0",
+        },
       },
-    });
+    );
     return stdout;
   }
 
@@ -424,22 +435,13 @@ export class GitService {
       const workTreeStatus = line[1];
       const rest = line.substring(3);
 
-      // Handle renames: "R  old -> new"
-      const arrowIdx = rest.indexOf(" -> ");
-      if (arrowIdx !== -1) {
-        files.push({
-          path: rest.substring(arrowIdx + 4),
-          oldPath: rest.substring(0, arrowIdx),
-          indexStatus,
-          workTreeStatus,
-        });
-      } else {
-        files.push({
-          path: rest,
-          indexStatus,
-          workTreeStatus,
-        });
-      }
+      const { path: filePath, oldPath } = splitStatusPaths(rest);
+      files.push({
+        path: filePath,
+        oldPath,
+        indexStatus,
+        workTreeStatus,
+      });
     }
     return files;
   }
@@ -584,7 +586,8 @@ export class GitService {
     return output
       .trim()
       .split("\n")
-      .filter((s) => s.length > 0);
+      .filter((s) => s.length > 0)
+      .map(unquoteGitPath);
   }
 
   async getFileVersions(
@@ -954,10 +957,7 @@ export class GitService {
 
       const rest = line.substring(3);
 
-      // Handle renames
-      const arrowIdx = rest.indexOf(" -> ");
-      const filePath = arrowIdx !== -1 ? rest.substring(arrowIdx + 4) : rest;
-      const oldPath = arrowIdx !== -1 ? rest.substring(0, arrowIdx) : undefined;
+      const { path: filePath, oldPath } = splitStatusPaths(rest);
 
       // Determine if file is staged
       const staged =
@@ -1174,7 +1174,11 @@ export class GitService {
             entry.id,
             "--name-only",
           ]);
-          entry.files = filesOutput.trim().split("\n").filter(Boolean);
+          entry.files = filesOutput
+            .trim()
+            .split("\n")
+            .filter(Boolean)
+            .map(unquoteGitPath);
         } catch {
           // ignore
         }
@@ -1341,13 +1345,13 @@ export class GitService {
       // Match: diff --git a/path b/path
       const diffMatch = line.match(/^diff --git a\/(.+?) b\/(.+)$/);
       if (diffMatch) {
-        files.push(diffMatch[2]);
+        files.push(unquoteGitPath(diffMatch[2]));
         continue;
       }
       // Match: Index: path
       const indexMatch = line.match(/^Index:\s+(.+)$/);
       if (indexMatch) {
-        files.push(indexMatch[1]);
+        files.push(unquoteGitPath(indexMatch[1]));
       }
     }
     return [...new Set(files)];
@@ -1805,43 +1809,6 @@ function formatDate(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, "0");
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}/${m}/${d}`;
-}
-
-function parseDiffNameStatus(output: string): DiffFile[] {
-  const files: DiffFile[] = [];
-  for (const line of output.trim().split("\n")) {
-    if (!line.trim()) {
-      continue;
-    }
-    const parts = line.split("\t");
-    const statusCode = parts[0]?.trim() ?? "";
-
-    if (statusCode.startsWith("R") || statusCode.startsWith("C")) {
-      const oldPath = parts[1] ?? "";
-      const newPath = parts[2] ?? "";
-      files.push({
-        oldPath,
-        newPath,
-        status: statusCode.startsWith("R") ? "renamed" : "copied",
-        isBinary: false,
-      });
-    } else {
-      const filePath = parts[1] ?? "";
-      let status: DiffFile["status"] = "modified";
-      if (statusCode === "A") {
-        status = "added";
-      } else if (statusCode === "D") {
-        status = "deleted";
-      }
-      files.push({
-        oldPath: filePath,
-        newPath: filePath,
-        status,
-        isBinary: false,
-      });
-    }
-  }
-  return files;
 }
 
 function parseLogOutput(output: string): CommitNode[] {

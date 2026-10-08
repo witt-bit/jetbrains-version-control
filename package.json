@@ -421,6 +421,7 @@
     "check-types": "tsc --noEmit",
     "lint": "biome check src webview/src",
     "test": "vscode-test",
+    "test:unit": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/*.test.ts\"",
     "build:web": "cd webview && pnpm run build",
     "build": "pnpm run compile && pnpm run build:web",
     "dev:web": "cd webview && pnpm run dev"

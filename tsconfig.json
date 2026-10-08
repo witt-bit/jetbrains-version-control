@@ -8,6 +8,9 @@
 		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true,   /* enable all strict type-checking options */
+		/* node --test runs the *.test.ts files directly, so they import with a .ts extension */
+		"allowImportingTsExtensions": true,
+		"rewriteRelativeImportExtensions": true,
 		/* Additional Checks */
 		// "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
 		// "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
