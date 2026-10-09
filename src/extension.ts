@@ -2,6 +2,7 @@ import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
 import { BlameManager } from "./blame/blameManager";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
+import { registerAiProbe } from "./dev/aiProbe";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
@@ -38,6 +39,9 @@ function withProgress(
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  // 0. Dev-only AI probe (no-op outside Extension Development Host)
+  registerAiProbe(context);
+
   // 1. MessageRouter (always created)
   const messageRouter = new MessageRouter();
 

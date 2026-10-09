@@ -158,6 +158,41 @@
         "category": "JGC"
       },
       {
+        "command": "jgc.dev.aiProbe.hijack.tongyi.command.generateCommitMessage",
+        "title": "Test Hijack: Qoder",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.hijack.github.copilot.git.generateCommitMessage",
+        "title": "Test Hijack: Copilot",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.hijack.codegeex.commit.message",
+        "title": "Test Hijack: CodeGeeX",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.generate",
+        "title": "Test AI Commit Message Generation",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.vendor.tongyi.command.generateCommitMessage",
+        "title": "Test Vendor: Qoder",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.vendor.github.copilot.git.generateCommitMessage",
+        "title": "Test Vendor: Copilot",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.dev.aiProbe.vendor.codegeex.commit.message",
+        "title": "Test Vendor: CodeGeeX",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.openPushPanel",
         "title": "Push...",
         "icon": "$(cloud-upload)",
