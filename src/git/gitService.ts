@@ -1585,7 +1585,11 @@ export class GitService {
         "--others",
         "--exclude-standard",
       ]);
-      const untrackedFiles = untrackedOutput.trim().split("\n").filter(Boolean);
+      const untrackedFiles = untrackedOutput
+        .trim()
+        .split("\n")
+        .filter(Boolean)
+        .map(unquoteGitPath);
 
       for (const filePath of untrackedFiles) {
         const fullPath = path.join(this.cwd, filePath);
