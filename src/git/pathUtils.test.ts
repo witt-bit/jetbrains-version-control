@@ -116,14 +116,17 @@ describe("splitStatusPaths", () => {
 
 describe("parseDiffNameStatus", () => {
   it("parses an added file with an octal-escaped path", () => {
-    assert.deepEqual(parseDiffNameStatus('A\t"\\346\\226\\207\\344\\273\\266.java"'), [
-      {
-        oldPath: "文件.java",
-        newPath: "文件.java",
-        status: "added",
-        isBinary: false,
-      },
-    ]);
+    assert.deepEqual(
+      parseDiffNameStatus('A\t"\\346\\226\\207\\344\\273\\266.java"'),
+      [
+        {
+          oldPath: "文件.java",
+          newPath: "文件.java",
+          status: "added",
+          isBinary: false,
+        },
+      ],
+    );
   });
 
   it("parses a deleted file", () => {
