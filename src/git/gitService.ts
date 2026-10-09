@@ -1206,9 +1206,7 @@ export class GitService {
         const indexStatus = line[0];
         if (indexStatus !== " " && indexStatus !== "?" && indexStatus !== "!") {
           const rest = line.substring(3);
-          const arrowIdx = rest.indexOf(" -> ");
-          const filePath =
-            arrowIdx !== -1 ? rest.substring(arrowIdx + 4) : rest;
+          const { path: filePath } = splitStatusPaths(rest);
           previouslyStaged.push(filePath);
         }
       }
