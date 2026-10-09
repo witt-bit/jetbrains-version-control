@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { BlameManager } from "./blame/blameManager";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
 import { registerMarkerActions } from "./commands/markerActions";
+import { registerAiProbe } from "./dev/aiProbe";
 import { FileDecorationController } from "./decorations/fileDecorations";
 import { GutterMarkers, type RepoEntry } from "./decorations/gutterMarkers";
 import { loadMarkerIcons } from "./decorations/markerHover";
@@ -69,6 +70,9 @@ export function activate(context: vscode.ExtensionContext) {
       log.debug(message);
     }
   };
+
+  // 0. Dev-only AI probe (no-op outside Extension Development Host)
+  registerAiProbe(context);
 
   // 1. MessageRouter (always created)
   const messageRouter = new MessageRouter();
