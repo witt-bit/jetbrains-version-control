@@ -19,11 +19,15 @@ function toRealFileUri(uri: vscode.Uri): vscode.Uri | undefined {
 }
 
 /**
- * Open the file under the cursor in a normal editor, revealing the cursor line.
+ * Open the file under the cursor in a normal editor, keeping the view intact.
  *
- * Unlike VS Code's own `workbench.action.compareEditor.openSide` (Ctrl+K
- * Shift+O), which calls `openEditor(editor)` with no selection and therefore
- * loses the cursor position.
+ * Mirrors the built-in git extension's `git.openFile` (the diff editor's
+ * "Open File" button we replace): it carries the full selection over and pins
+ * the viewport to the ranges that were visible in the diff, so a multi-line
+ * selection stays selected and the scroll position does not jump to the top.
+ *
+ * VS Code's own `workbench.action.compareEditor.openSide` calls
+ * `openEditor(editor)` with no selection, which loses both.
  *
  * @returns false when no usable diff/editor was found, so the caller can fall
  *   back to another behaviour.
@@ -45,10 +49,37 @@ export async function jumpToSourceFromDiffEditor(): Promise<boolean> {
   const target = toRealFileUri(side);
   if (!target) return false;
 
-  const line = editor.selection.active.line;
+  // Snapshot before opening: after `vscode.open` the diff editor is gone.
+  const { selection, visibleRanges } = editor;
+
   await vscode.commands.executeCommand("vscode.open", target, {
-    selection: new vscode.Range(line, 0, line, 0),
     preview: false,
+    viewColumn: vscode.ViewColumn.Active,
   });
+
+  const opened = vscode.window.activeTextEditor?.document;
+  // Opening can move focus elsewhere (e.g. a preview pane), in which case we
+  // must not pretend the selection was applied.
+  if (!opened || opened.uri.toString() !== target.toString()) {
+    return true;
+  }
+
+  const shown = await vscode.window.showTextDocument(opened, {
+    selection,
+    preview: false,
+    viewColumn: vscode.ViewColumn.Active,
+  });
+
+  if (visibleRanges.length > 0) {
+    // Pin the viewport back to where the user was: prefer the range that
+    // overlaps the selection (that is what they were looking at), else the
+    // first visible one.
+    const anchor =
+      visibleRanges.length > 1
+        ? (visibleRanges.find((r) => r.intersection(selection)) ??
+          visibleRanges[0])
+        : visibleRanges[0];
+    shown.revealRange(anchor);
+  }
   return true;
 }
