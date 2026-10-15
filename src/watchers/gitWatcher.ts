@@ -8,6 +8,13 @@ type Scope = "all" | "branches" | "status" | "mergeState" | "log";
 export class GitWatcher implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private debounceTimers = new Map<Scope, ReturnType<typeof setTimeout>>();
+  private readonly stateEmitter = new vscode.EventEmitter<Scope>();
+
+  /**
+   * Fires for extension-host consumers (status bar, decorations) that cannot
+   * subscribe to the webview-only `gitStateChanged` router event.
+   */
+  readonly onDidChangeState = this.stateEmitter.event;
 
   constructor(
     private readonly workspaceRoot: string,
@@ -145,6 +152,7 @@ export class GitWatcher implements vscode.Disposable {
         this.debounceTimers.delete(scope);
         this.cache.invalidate();
         this.messageRouter.broadcastEvent("gitStateChanged", { scope });
+        this.stateEmitter.fire(scope);
       }, 300),
     );
   }
@@ -154,6 +162,7 @@ export class GitWatcher implements vscode.Disposable {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+    this.stateEmitter.dispose();
     for (const d of this.disposables) {
       d.dispose();
     }

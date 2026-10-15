@@ -424,8 +424,14 @@ export class GitService {
     return parseBlamePorcelain(output);
   }
 
-  async getStatus(): Promise<FileStatus[]> {
-    const output = await this.execGit(["status", "--porcelain=v1"]);
+  async getStatus(options: { ignored?: boolean } = {}): Promise<FileStatus[]> {
+    const args = ["status", "--porcelain=v1"];
+    // `matching` keeps ignored-file listing cheap on repos with big ignored
+    // directories (node_modules) compared to the traditional mode.
+    if (options.ignored) {
+      args.push("--ignored=matching");
+    }
+    const output = await this.execGit(args);
     const files: FileStatus[] = [];
 
     for (const line of output.split("\n")) {
@@ -1049,6 +1055,21 @@ export class GitService {
       return branch === "HEAD" ? null : branch;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Contents of a file as recorded in `HEAD`, used as the base side when
+   * computing line-level change markers.
+   *
+   * @returns the file text, or `undefined` when it is untracked or the
+   *   repository has no commits.
+   */
+  async showFileAtHead(filePath: string): Promise<string | undefined> {
+    try {
+      return await this.execGit(["show", `HEAD:${filePath}`]);
+    } catch {
+      return undefined;
     }
   }
 

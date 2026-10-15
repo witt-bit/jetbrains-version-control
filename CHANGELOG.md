@@ -4,6 +4,15 @@
 
 ### Changed / 变更
 - **Jump to Source keeps your selection** — in a diff editor, **Jump to Source** now carries over the whole selection and pins the scroll position, so text you selected stays selected after the jump instead of collapsing to a bare cursor line / diff 编辑器中的 **Jump to Source** 现在会保留完整选区并固定滚动位置，之前选中的文字跳转后仍然处于选中状态，而不是收缩成一个光标点
+- **Status bar shows the current branch** — the status bar item now displays the branch of the repository you are working in, with incoming/outgoing commit counts, replacing VS Code's built-in Git status bar item / 状态栏现在显示当前仓库的分支名与待推送/待拉取提交数，替代 VS Code 内置 git 的状态栏项
+  - Click it for a menu of common actions: Update Project, Commit, Push, New Branch, Switch Branch and the Git Log view / 点击可打开常用操作菜单：更新项目、提交、推送、新建分支、切换分支、Git Log
+  - Follows the folder of the active editor in multi-root workspaces / 多根工作区下自动跟随当前编辑器所在文件夹
+
+### Added / 新增
+- **Explorer file colors by Git status** — file names in the Explorer are tinted by their Git status (added, modified, deleted, untracked, ignored, conflict), so built-in Git can be disabled without losing them / 资源管理器中的文件名按 Git 状态着色（新增、修改、删除、未跟踪、已忽略、冲突），禁用内置 git 后依然保留
+- **Gutter change markers** — the line-number gutter shows a colored bar next to every added or modified line, and a short marker at the position where lines were deleted / 行号槽中为每个新增或修改的行显示彩色小竖条，删除位置显示较短的标记
+  - With inline blame annotations on, every marker keeps the same column to the right of the blame text — lines without a label reserve that column too, so markers never slide left / 开启行内 blame 注释时，所有标记保持在注释文字右侧的同一列；无标签的行同样保留该列宽度，标记不会向左滑动
+- **File and line colors follow your palette** — the six Git status colors (added, modified, deleted, untracked, ignored, conflict) are declared as `jgc.decoration.*` color IDs and can be changed in **Settings** or under `workbench.colorCustomizations`. Both the Explorer file colors and the gutter markers follow the change; the defaults are taken from IDEA's File Status Colors / 六种 Git 状态颜色（新增、修改、删除、未跟踪、已忽略、冲突）以 `jgc.decoration.*` 颜色 ID 声明，可在**设置**中或通过 `workbench.colorCustomizations` 修改，资源管理器文件色与行号槽标记会同步变化；默认取色参照 IDEA 的 File Status Colors
 
 ### Fixed / 修复
 - **All-caps headings** — headings across the Commit, Push and Git Log panels were forced to all caps: the Commit panel's file group headers and their file counts, the section headers in the Commit toolbar, Git Log list and branch sidebar context menus, and the Push panel's remote branch sections. `UNVERSIONED FILES` and `12 FILES` now read `Unversioned Files` and `12 files`, `ON SINGLE CLICK` reads `On Single Click`, `REMOTE` and `BRANCH` read `Remote` and `Branch` / Commit、Push、Git Log 面板的标题此前被强制转为全大写：Commit 面板的文件分组标题及文件计数、Commit 工具栏与 Git Log 列表与分支侧边栏右键菜单的分节标题、Push 面板的远程分支分节标题。`UNVERSIONED FILES` 与 `12 FILES` 现显示为 `Unversioned Files` 与 `12 files`，`ON SINGLE CLICK` 显示为 `On Single Click`，`REMOTE`、`BRANCH` 显示为 `Remote`、`Branch`

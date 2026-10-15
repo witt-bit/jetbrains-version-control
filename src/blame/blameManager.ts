@@ -11,6 +11,12 @@ interface BlameState {
   /** Pre-rendered options for every blamed line, filtered per display mode */
   allOptions: vscode.DecorationOptions[];
   maxWidth: number;
+  /**
+   * Document lines as of the moment the annotation was built. Diffed against
+   * the live document to tell which lines still carry a label: the annotation
+   * only decorates non-empty lines, and lines added since carry nothing.
+   */
+  annotatedLines: string[];
   /** Last line around which decorations were rendered (skip redundant renders) */
   lastRenderedLine: number;
 }
@@ -118,6 +124,25 @@ function rgbToHex(rgb: Rgb): string {
   return `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** Convert `#rrggbb` to `rgba(...)` so commit backgrounds can stay subtle. */
+function withAlpha(hex: string, alpha: number): string {
+  const value = hex.replace("#", "");
+  const full =
+    value.length === 3
+      ? value
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : value;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  if ([r, g, b].some(Number.isNaN)) {
+    return hex;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function hslToHex(h: number, s: number, l: number): string {
   const a = s * Math.min(l, 1 - l);
   const f = (n: number) => {
@@ -199,6 +224,29 @@ function readConfig(): BlameConfig {
 }
 
 /**
+ * Box that reserves the blame column on a line that gets no label.
+ *
+ * The label is what pushes the line change markers past the blame column, so
+ * a line rendered without one would let its marker slide left out of alignment
+ * with the surrounding rows. Any line the annotation leaves bare qualifies:
+ * empty when it ran, or added since.
+ *
+ * Temporary diagnostic form: the fill is visible "0"s rather than blanks, so
+ * the width the column actually reserves can be eyeballed on screen. The
+ * metrics mirror the label boxes in `annotate()` — `maxWidth` characters plus
+ * the same padding and trailing margin — so a marker placed after either box
+ * lands on the same column.
+ */
+function blankPadBox(
+  maxWidth: number,
+): vscode.ThemableDecorationAttachmentRenderOptions {
+  return {
+    contentText: "0".repeat(Math.max(maxWidth, 1)),
+    textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; padding:0 0.4ch; margin-right:1ch; cursor:pointer;`,
+  };
+}
+
+/**
  * WebStorm-style inline blame annotations ("Annotate with Git Blame").
  *
  * Renders `hash date author` before column 0 of every line. Clicking the
@@ -214,6 +262,13 @@ export class BlameManager implements vscode.Disposable {
   constructor(
     private readonly services: GitServiceEntry[],
     private readonly messageRouter: MessageRouter,
+    /**
+     * Fired after blame decorations are (re)written or removed. Marker
+     * attachments render in creation order, so the marker layer must
+     * re-create its own attachments afterwards to stay to the right of the
+     * blame column.
+     */
+    private readonly onDecorationsChanged?: () => void,
   ) {}
 
   register(): void {
@@ -297,8 +352,11 @@ export class BlameManager implements vscode.Disposable {
       return;
     }
 
-    // Replace previous decoration (dispose clears everything)
-    this.removeState(target.document.uri);
+    // Reuse the existing decoration type when re-annotating (save, theme
+    // change, config change). Attachment order follows type creation order, so
+    // recreating it here would move the blame label to the right of the line
+    // change markers on every save. Only the per-line options are rebuilt.
+    const existing = this.states.get(target.document.uri.toString());
 
     const config = readConfig();
     const labels = blameLines.map((line) => this.renderLabel(line, config));
@@ -327,17 +385,19 @@ export class BlameManager implements vscode.Disposable {
           ? createAuthorColorizer(blameLines, darkTheme)
           : null;
 
-    // Per-line colors (order/author) are set per-decoration instance; "none"
-    // uses the type-level light/dark pair so VS Code handles theme switching.
-    const decorationType = vscode.window.createTextEditorDecorationType({
-      before: {},
-      ...(colorizer
-        ? {}
-        : {
-            light: { before: { color: config.colorLight } },
-            dark: { before: { color: config.colorDark } },
-          }),
-    });
+    // Reusing the type is what keeps the marker/blame order stable across
+    // saves; a fresh type would sort after the marker types and flip them.
+    const decorationType =
+      existing?.decorationType ??
+      vscode.window.createTextEditorDecorationType({
+        before: {},
+        ...(colorizer
+          ? {}
+          : {
+              light: { before: { color: config.colorLight } },
+              dark: { before: { color: config.colorDark } },
+            }),
+      });
 
     // Build decoration options for ALL lines to ensure consistent left alignment
     const allOptions: vscode.DecorationOptions[] = [];
@@ -356,10 +416,20 @@ export class BlameManager implements vscode.Disposable {
     }
 
     // Generate decorations for ALL lines in the document
+    const annotatedLines: string[] = [];
     const totalLines = target.document.lineCount;
     for (let lineNum = 1; lineNum <= totalLines; lineNum++) {
-      const lineStart = target.document.lineAt(lineNum - 1).range.start;
+      const line = target.document.lineAt(lineNum - 1);
+      annotatedLines.push(line.text);
       const blameLine = blameMap.get(lineNum);
+
+      // An empty line gets no attachment at all: a `before` attachment on a
+      // line without text is a position the caret can land on. The marker
+      // layer pads such lines instead (see `padBoxFor`) so their change
+      // markers still line up with the labelled rows.
+      if (line.text.length === 0) {
+        continue;
+      }
 
       if (blameLine && blameMap.has(lineNum)) {
         // Line has blame info - show blame text
@@ -367,22 +437,49 @@ export class BlameManager implements vscode.Disposable {
           (l) => l.lineNumber === lineNum,
         );
         if (labelIndex >= 0) {
+          const hover = blameLine.uncommitted
+            ? undefined
+            : new vscode.MarkdownString(
+                [
+                  `**${blameLine.shortHash}** ${blameLine.authorName}`,
+                  blameLine.summary ?? "",
+                ]
+                  .filter(Boolean)
+                  .join("\n\n"),
+              );
+          const textColor = blameLine.uncommitted
+            ? darkTheme
+              ? "#8b949e"
+              : "#6e7781"
+            : colorizer
+              ? colorizer(blameLine)
+              : darkTheme
+                ? config.colorDark
+                : config.colorLight;
+          const backgroundColor = blameLine.uncommitted
+            ? darkTheme
+              ? "#8b949e22"
+              : "#6e778122"
+            : colorizer
+              ? withAlpha(textColor, darkTheme ? 0.16 : 0.18)
+              : darkTheme
+                ? "#1b2027"
+                : "#eef1f5";
           allOptions.push({
-            range: new vscode.Range(lineStart, lineStart),
-            hoverMessage: new vscode.MarkdownString(
-              [
-                `**${blameLine.shortHash}** ${blameLine.authorName}`,
-                blameLine.summary ?? "",
-              ]
-                .filter(Boolean)
-                .join("\n\n"),
-            ),
+            range: new vscode.Range(line.range.start, line.range.start),
+            ...(hover ? { hoverMessage: hover } : {}),
             renderOptions: {
               before: {
-                contentText: labels[labelIndex].padEnd(maxWidth),
-                ...(colorizer ? { color: colorizer(blameLine) } : {}),
+                // Temporary diagnostic fill: lines without history (added /
+                // uncommitted) reserve the column with visible "0"s instead of
+                // blank spaces, so the reserved width can be eyeballed.
+                contentText: blameLine.uncommitted
+                  ? "0".repeat(Math.max(maxWidth, 1))
+                  : labels[labelIndex].padEnd(maxWidth),
+                color: textColor,
+                backgroundColor,
                 fontStyle: "italic",
-                textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; margin-right:1ch;`,
+                textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; padding:0 0.4ch; margin-right:1ch; cursor:pointer;`,
               },
             },
           });
@@ -390,11 +487,12 @@ export class BlameManager implements vscode.Disposable {
       } else {
         // Line has no blame info - show empty space to align content
         allOptions.push({
-          range: new vscode.Range(lineStart, lineStart),
+          range: new vscode.Range(line.range.start, line.range.start),
           renderOptions: {
             before: {
-              contentText: " ".repeat(maxWidth + 1),
-              textDecoration: `none; display:inline-block; min-width:${maxWidth}ch;`,
+              // Diagnostic fill: visible "0"s instead of blanks (see above).
+              contentText: "0".repeat(Math.max(maxWidth + 1, 1)),
+              textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; margin-right:1ch; cursor:pointer;`,
             },
           },
         });
@@ -406,6 +504,7 @@ export class BlameManager implements vscode.Disposable {
       lineToHash,
       allOptions,
       maxWidth,
+      annotatedLines,
       lastRenderedLine: -1,
     };
     this.states.set(target.document.uri.toString(), state);
@@ -415,6 +514,7 @@ export class BlameManager implements vscode.Disposable {
       CONTEXT_BLAME_ACTIVE,
       true,
     );
+    this.onDecorationsChanged?.();
   }
 
   clear(editor?: vscode.TextEditor): void {
@@ -433,11 +533,77 @@ export class BlameManager implements vscode.Disposable {
         CONTEXT_BLAME_ACTIVE,
         false,
       );
+      this.onDecorationsChanged?.();
     } else {
       void vscode.window.showInformationMessage(
         "JGC: No active annotation to clear.",
       );
     }
+  }
+
+  /**
+   * Everything the marker layer needs to reserve the blame column on the lines
+   * the annotation leaves bare, or undefined when the document is not
+   * annotated. `unlabeled[i]` marks a line without a label: it was empty when
+   * the annotation was built, or it was added since. The marker layer draws
+   * `box` in front of its own marker for those lines, so every marker stays in
+   * the column the labels reserve.
+   */
+  async padFor(
+    uri: vscode.Uri,
+    doc: vscode.TextDocument,
+  ): Promise<
+    | {
+        box: vscode.ThemableDecorationAttachmentRenderOptions;
+        unlabeled: boolean[];
+      }
+    | undefined
+  > {
+    const state = this.states.get(uri.toString());
+    if (!state) {
+      return undefined;
+    }
+
+    const current: string[] = [];
+    for (let i = 0; i < doc.lineCount; i++) {
+      current.push(doc.lineAt(i).text);
+    }
+
+    // The annotation labeled every non-empty line of its snapshot; lines it
+    // skipped and lines created since carry no attachment. Matching the live
+    // document against the snapshot line by line keeps shifted and edited
+    // lines labelled, so only genuinely bare lines need a pad.
+    const unlabeled = new Array<boolean>(current.length).fill(true);
+    const { diffIndices } = await import("node-diff3");
+    let oldPos = 0;
+    let newPos = 0;
+    for (const chunk of diffIndices(state.annotatedLines, current)) {
+      const [oldStart, oldCount] = chunk.buffer1;
+      const [newStart, newCount] = chunk.buffer2;
+      // Unchanged lines ahead of the chunk keep their label if the snapshot
+      // line had text.
+      while (oldPos < oldStart && newPos < newStart) {
+        unlabeled[newPos] = state.annotatedLines[oldPos].length === 0;
+        oldPos++;
+        newPos++;
+      }
+      // Within a chunk the lines pair up by position; text on the snapshot
+      // side means the line kept its label. Extra live lines stay unlabeled.
+      const paired = Math.min(oldCount, newCount);
+      for (let i = 0; i < paired; i++) {
+        unlabeled[newStart + i] =
+          state.annotatedLines[oldStart + i].length === 0;
+      }
+      oldPos = oldStart + oldCount;
+      newPos = newStart + newCount;
+    }
+    while (oldPos < state.annotatedLines.length && newPos < current.length) {
+      unlabeled[newPos] = state.annotatedLines[oldPos].length === 0;
+      oldPos++;
+      newPos++;
+    }
+
+    return { box: blankPadBox(state.maxWidth), unlabeled };
   }
 
   handleSelectionChange(e: vscode.TextEditorSelectionChangeEvent): void {
@@ -543,7 +709,9 @@ export class BlameManager implements vscode.Disposable {
 
   private renderLabel(line: BlameLine, config: BlameConfig): string {
     if (line.uncommitted) {
-      return "Uncommitted";
+      // New (uncommitted) lines have no revision to show; leave the label empty
+      // instead of printing a placeholder.
+      return "";
     }
     const parts: string[] = [];
     const commitNumber = this.commitNumberByHash.get(line.hash);
