@@ -2,10 +2,13 @@ import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
 import { BlameManager } from "./blame/blameManager";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
+import { FileDecorationController } from "./decorations/fileDecorations";
+import { GutterMarkers, type RepoEntry } from "./decorations/gutterMarkers";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
 import { ErrorCode } from "./messages/protocol";
+import { StatusBarController } from "./statusBar";
 import { CommitViewProvider } from "./views/commitViewProvider";
 import { ConflictsManager } from "./views/conflictsManager";
 import { DiffEditorManager } from "./views/diffEditorManager";
@@ -38,6 +41,10 @@ function withProgress(
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  const log = vscode.window.createOutputChannel("JGC", { log: true });
+  context.subscriptions.push(log);
+  log.info("activating");
+
   // 1. MessageRouter (always created)
   const messageRouter = new MessageRouter();
 
@@ -61,6 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
   let gitService: GitService | null = null;
   let diffManager: DiffEditorManager | null = null;
+  let gutterMarkers: GutterMarkers | undefined;
 
   const allGitServices: GitService[] = [];
   for (const root of allWorkspaceRoots) {
@@ -140,6 +148,9 @@ export function activate(context: vscode.ExtensionContext) {
       service,
     })),
     messageRouter,
+    // Blame writes its attachments first; re-creating the pads and markers
+    // afterwards keeps them on the right of the blame column.
+    () => gutterMarkers?.rebuild(),
   );
   blameManager.register();
   context.subscriptions.push(blameManager);
@@ -1780,25 +1791,81 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // 7. GitWatcher (only if GitService is available)
+  let watcher: GitWatcher | null = null;
   if (gitService && workspaceRoot) {
-    const watcher = new GitWatcher(
-      workspaceRoot,
-      messageRouter,
-      gitService.cache,
-    );
+    watcher = new GitWatcher(workspaceRoot, messageRouter, gitService.cache);
     context.subscriptions.push(watcher);
   }
 
-  // 8. Status bar item to quickly open the panel
-  const statusBarItem = vscode.window.createStatusBarItem(
-    vscode.StatusBarAlignment.Left,
-    100,
+  // 8. Git decorations: Explorer colors + gutter change markers + status bar.
+  // Together they replace what VS Code's built-in Git provides, so the built-in
+  // extension can be disabled (`git.enabled`) without losing either.
+  const repos: RepoEntry[] = allWorkspaceRoots.map((root, index) => ({
+    root,
+    service: allGitServices[index] ?? new GitService(root),
+  }));
+
+  gutterMarkers = new GutterMarkers(
+    repos,
+    (message) => log.appendLine(message),
+    // Blame knows which lines carry a label and how wide the column is;
+    // markers draw the spacer that keeps their own column stable on the rest.
+    (uri, doc) => blameManager.padFor(uri, doc),
   );
-  statusBarItem.text = "$(git-branch) IDEA Git";
-  statusBarItem.tooltip = "Open IDEA Git Graph Panel";
-  statusBarItem.command = "git-brains.gitLog.focus";
-  statusBarItem.show();
-  context.subscriptions.push(statusBarItem);
+  const statusBar = new StatusBarController();
+  const fileDecorations = repos.map(
+    (repo) =>
+      new FileDecorationController(repo.root, repo.service, (message) =>
+        log.appendLine(message),
+      ),
+  );
+
+  context.subscriptions.push(gutterMarkers, statusBar, ...fileDecorations);
+
+  statusBar.setRepos(repos);
+
+  const refreshAll = () => {
+    void statusBar.refresh();
+    // Re-applies ranges on the existing decoration types. Rebuilding the types
+    // here would reorder the marker attachments against Blame's (attachment
+    // order follows type creation order), so style rebuilds stay limited to
+    // color/theme changes.
+    gutterMarkers.schedule();
+    for (const decoration of fileDecorations) {
+      void decoration.refresh();
+    }
+  };
+
+  /** Marker styles embed the configured colors, so they need rebuilding. */
+  const redrawGutter = () => {
+    gutterMarkers.rebuild();
+  };
+
+  watcher?.onDidChangeState(() => refreshAll());
+  vscode.window.onDidChangeActiveTextEditor(() => {
+    void statusBar.refresh();
+    gutterMarkers.schedule();
+  });
+  vscode.window.onDidChangeActiveColorTheme(() => refreshAll());
+  vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration("jgc.blame")) {
+      // The blame labels (and with them the column the markers reserve) may
+      // have changed width; re-apply so the pads follow.
+      gutterMarkers.schedule();
+    }
+    if (!event.affectsConfiguration("workbench.colorCustomizations")) return;
+    redrawGutter();
+    refreshAll();
+  });
+
+  void statusBar.refresh();
+  gutterMarkers.rebuild();
+  for (const decoration of fileDecorations) {
+    void decoration
+      .refresh()
+      .then(() => log.appendLine("decorations refreshed"));
+  }
+  log.appendLine(`decorations wired: ${repos.length} repo(s)`);
 }
 
 function extToLanguage(ext: string): string {

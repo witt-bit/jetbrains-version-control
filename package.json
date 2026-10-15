@@ -81,6 +81,12 @@
     },
     "commands": [
       {
+        "command": "git-brains.status.menu",
+        "title": "Git Actions",
+        "icon": "$(git-branch)",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.refreshLog",
         "title": "Refresh Git Log",
         "icon": "$(refresh)",
@@ -283,6 +289,68 @@
         "key": "ctrl+down",
         "mac": "cmd+down",
         "when": "jgc.commitPanelFocused || jgc.gitLogPanelFocused"
+      }
+    ],
+    "colors": [
+      {
+        "id": "jgc.decoration.added",
+        "description": "Color of added files and lines (File Status: Added)",
+        "defaults": {
+          "dark": "#6bae71",
+          "light": "#6bae71",
+          "highContrast": "#6bae71",
+          "highContrastLight": "#6bae71"
+        }
+      },
+      {
+        "id": "jgc.decoration.modified",
+        "description": "Color of modified files and lines (File Status: Modified)",
+        "defaults": {
+          "dark": "#6da9f8",
+          "light": "#6da9f8",
+          "highContrast": "#6da9f8",
+          "highContrastLight": "#6da9f8"
+        }
+      },
+      {
+        "id": "jgc.decoration.deleted",
+        "description": "Color of deleted files and lines (File Status: Deleted)",
+        "defaults": {
+          "dark": "#6f737a",
+          "light": "#6f737a",
+          "highContrast": "#6f737a",
+          "highContrastLight": "#6f737a"
+        }
+      },
+      {
+        "id": "jgc.decoration.untracked",
+        "description": "Color of files not yet tracked by Git (File Status: unversioned)",
+        "defaults": {
+          "dark": "#6bae71",
+          "light": "#6bae71",
+          "highContrast": "#6bae71",
+          "highContrastLight": "#6bae71"
+        }
+      },
+      {
+        "id": "jgc.decoration.ignored",
+        "description": "Color of Git-ignored files (File Status: Ignored)",
+        "defaults": {
+          "dark": "#a17554",
+          "light": "#a17554",
+          "highContrast": "#a17554",
+          "highContrastLight": "#a17554"
+        }
+      },
+      {
+        "id": "jgc.decoration.conflict",
+        "description": "Color of files with unresolved merge conflicts (File Status: Merged with conflicts)",
+        "defaults": {
+          "dark": "#de6b66",
+          "light": "#de6b66",
+          "highContrast": "#de6b66",
+          "highContrastLight": "#de6b66"
+        }
       }
     ],
     "configuration": {
