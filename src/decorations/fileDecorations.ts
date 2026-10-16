@@ -84,9 +84,6 @@ export class FileDecorationController
     if (uri.scheme !== "file") return undefined;
     const found = this.states.get(relativeKey(this.root, uri.fsPath));
     if (!found) return undefined;
-    this.log?.(
-      `file decoration: ${uri.fsPath} -> ${found.state}${found.propagate ? " (dir)" : ""}`,
-    );
     return {
       color: new vscode.ThemeColor(`jgc.decoration.${found.state}`),
       // Folders (gitignored / untracked directories) should carry the color to

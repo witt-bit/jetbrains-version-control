@@ -46,8 +46,14 @@ export class GutterMarkers implements vscode.Disposable {
    * run) through types that no longer exist.
    */
   private generation = 0;
-  /** Per-repo "is there a HEAD to diff against", cleared on Git state changes. */
-  private headReady = new Map<string, boolean>();
+  /**
+   * Caches that keep a run from spawning Git per file per keystroke. All of
+   * them are dropped when the repository state changes, which is also when
+   * `HEAD` may have moved.
+   */
+  private readonly headCommitByRoot = new Map<string, string | null>();
+  private readonly headContent = new Map<string, string | undefined>();
+  private readonly ignoredPaths = new Map<string, boolean>();
 
   constructor(
     private readonly repos: RepoEntry[],
@@ -71,7 +77,15 @@ export class GutterMarkers implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidChangeActiveTextEditor(() => this.schedule()),
       vscode.window.onDidChangeVisibleTextEditors(() => this.schedule()),
-      vscode.workspace.onDidChangeTextDocument(() => this.schedule()),
+      vscode.workspace.onDidChangeTextDocument((event) => {
+        // Only a visible editor's own text can change its markers. Output
+        // channels, terminals and background documents would otherwise make
+        // every visible file re-diff.
+        const visible = vscode.window.visibleTextEditors.some(
+          (editor) => editor.document === event.document,
+        );
+        if (visible) this.schedule();
+      }),
     );
   }
 
@@ -123,13 +137,14 @@ export class GutterMarkers implements vscode.Disposable {
   }
 
   /**
-   * Drop what is known about the repositories themselves (whether they have a
-   * `HEAD`). Call this when Git state changes, so a repository that gained its
-   * first commit — or a folder that only now became a repository — starts
-   * painting markers without needing a reload.
+   * Drop what is known about the repositories themselves: whether they have a
+   * `HEAD` and what it contains. Call this when Git state changes, so a commit,
+   * a new repository or a changed ignore list is picked up without a reload.
    */
   invalidateRepoState(): void {
-    this.headReady.clear();
+    this.headCommitByRoot.clear();
+    this.headContent.clear();
+    this.ignoredPaths.clear();
   }
 
   private async apply(): Promise<void> {
@@ -275,20 +290,61 @@ export class GutterMarkers implements vscode.Disposable {
   }
 
   /**
-   * Whether the repository can be diffed at all, cached per root: the answer
-   * only changes on Git state changes, which invalidate the cache.
+   * The commit to compare against, cached per root. `null` means the folder is
+   * not a repository (or has no commits), in which case there is nothing to
+   * diff against and no file is painted.
    */
-  private async hasHead(repo: RepoEntry): Promise<boolean> {
-    const cached = this.headReady.get(repo.root);
-    if (cached !== undefined) return cached;
-    let ready: boolean;
-    try {
-      ready = await repo.service.hasCommits();
-    } catch {
-      ready = false;
+  private async headCommit(repo: RepoEntry): Promise<string | null> {
+    if (this.headCommitByRoot.has(repo.root)) {
+      return this.headCommitByRoot.get(repo.root) ?? null;
     }
-    this.headReady.set(repo.root, ready);
-    return ready;
+    let commit: string | null = null;
+    try {
+      commit = await repo.service.headCommit();
+    } catch {
+      commit = null;
+    }
+    this.headCommitByRoot.set(repo.root, commit);
+    return commit;
+  }
+
+  /**
+   * The file's contents in `HEAD`, cached per commit so that a keystroke costs
+   * no Git process at all: the base only changes when `HEAD` moves, which
+   * invalidates the cache.
+   */
+  private async headText(
+    repo: RepoEntry,
+    commit: string,
+    relative: string,
+  ): Promise<string | undefined> {
+    const key = `${repo.root}\0${commit}\0${relative}`;
+    if (this.headContent.has(key)) {
+      return this.headContent.get(key);
+    }
+    let text: string | undefined;
+    try {
+      text = await repo.service.showFileAtHead(relative);
+    } catch {
+      text = undefined;
+    }
+    this.headContent.set(key, text);
+    return text;
+  }
+
+  /** Whether Git ignores the path, cached until the repository state changes. */
+  private async isIgnored(repo: RepoEntry, relative: string): Promise<boolean> {
+    const key = `${repo.root}\0${relative}`;
+    const cached = this.ignoredPaths.get(key);
+    if (cached !== undefined) return cached;
+    let ignored: boolean;
+    try {
+      ignored = await repo.service.isIgnored(relative);
+    } catch {
+      ignored = false;
+    }
+    this.ignoredPaths.set(key, ignored);
+    return ignored;
   }
 
   private repoFor(uri: vscode.Uri): RepoEntry | undefined {
@@ -332,16 +388,19 @@ export class GutterMarkers implements vscode.Disposable {
     // Without a HEAD there is no base to diff against. Marking every line as
     // added would paint whole files green in a folder that is not a repository
     // at all, or in a repository that has no commit yet.
-    if (!(await this.hasHead(repo))) {
+    const commit = await this.headCommit(repo);
+    if (!commit) {
       return { added, modified, deleted };
     }
 
-    let baseLines: string[] | undefined;
-    try {
-      baseLines = (await repo.service.showFileAtHead(relative))?.split("\n");
-    } catch {
-      baseLines = undefined;
+    // An ignored file is not tracked, so every line would read as added.
+    if (await this.isIgnored(repo, relative)) {
+      return { added, modified, deleted };
     }
+
+    const baseLines = (await this.headText(repo, commit, relative))?.split(
+      "\n",
+    );
 
     // The repository has a HEAD and this path is not in it: a new file.
     if (baseLines === undefined) {

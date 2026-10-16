@@ -1059,19 +1059,38 @@ export class GitService {
   }
 
   /**
-   * Whether there is a `HEAD` to compare the working tree against.
+   * The commit `HEAD` points at, or `null` when the folder is not a repository
+   * or the repository has no commits yet.
    *
-   * `false` for a folder that is not a repository at all, and for a repository
-   * without commits. Callers need to know the difference: a missing file in an
-   * existing `HEAD` means "this file is new", while a missing `HEAD` means
-   * "there is nothing to compare against".
+   * Callers that compare the working tree against `HEAD` need to tell "no HEAD
+   * at all" from "this path is not in HEAD" (i.e. the file is new): the first
+   * means there is nothing to compare, the second means everything is added.
+   * The commit id doubles as a cache key for the base contents.
    */
-  async hasCommits(): Promise<boolean> {
+  async headCommit(): Promise<string | null> {
     try {
-      // `--quiet` keeps the failure silent: exit code 1, no output.
-      await this.execGit(["rev-parse", "--verify", "--quiet", "HEAD"]);
+      const output = await this.execGit(["rev-parse", "--verify", "HEAD"]);
+      const commit = output.trim();
+      return commit || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Whether Git ignores this path.
+   *
+   * Ignored files get no change markers: they are not tracked, so painting them
+   * all green would report a change the user never made — and opening a file
+   * under `node_modules` would fill the editor with bars.
+   */
+  async isIgnored(filePath: string): Promise<boolean> {
+    try {
+      await this.execGit(["check-ignore", "-q", "--", filePath]);
       return true;
     } catch {
+      // Exit code 1 means "not ignored"; anything else (no repository, bad
+      // path) is treated the same way, so markers stay on.
       return false;
     }
   }

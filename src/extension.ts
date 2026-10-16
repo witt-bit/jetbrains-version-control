@@ -45,6 +45,17 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(log);
   log.info("activating");
 
+  /**
+   * Per-decoration tracing, off unless the user raises the channel to Debug
+   * ("Developer: Set Log Level…"). The decoration layers log per file and per
+   * run, which is far too much for the default Info level.
+   */
+  const trace = (message: string): void => {
+    if (log.logLevel <= vscode.LogLevel.Debug) {
+      log.debug(message);
+    }
+  };
+
   // 1. MessageRouter (always created)
   const messageRouter = new MessageRouter();
 
@@ -1802,17 +1813,14 @@ export function activate(context: vscode.ExtensionContext) {
 
   gutterMarkers = new GutterMarkers(
     repos,
-    (message) => log.appendLine(message),
+    trace,
     // Blame knows which lines carry a label and how wide the column is;
     // markers draw the spacer that keeps their own column stable on the rest.
     (uri, doc) => blameManager.padFor(uri, doc),
   );
   const statusBar = new StatusBarController();
   const fileDecorations = repos.map(
-    (repo) =>
-      new FileDecorationController(repo.root, repo.service, (message) =>
-        log.appendLine(message),
-      ),
+    (repo) => new FileDecorationController(repo.root, repo.service, trace),
   );
 
   context.subscriptions.push(gutterMarkers, statusBar, ...fileDecorations);
