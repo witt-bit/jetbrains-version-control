@@ -1,6 +1,5 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
-import type { GitCache } from "../git/cache";
 import type { MessageRouter } from "../messages/messageRouter";
 
 type Scope = "all" | "branches" | "status" | "mergeState" | "log";
@@ -17,16 +16,25 @@ export class GitWatcher implements vscode.Disposable {
   readonly onDidChangeState = this.stateEmitter.event;
 
   constructor(
-    private readonly workspaceRoot: string,
+    private readonly workspaceRoots: string[],
     private readonly messageRouter: MessageRouter,
-    private readonly cache: GitCache,
+    private readonly invalidateCaches: () => void,
   ) {
     this.setupFileWatchers();
     this.setupEditorWatchers();
   }
 
   private setupFileWatchers(): void {
-    const gitBase = vscode.Uri.file(`${this.workspaceRoot}/.git`);
+    // Every workspace folder gets its own set of watchers: in a multi-root
+    // workspace the single-root version missed Git state changes in every
+    // folder but the first.
+    for (const workspaceRoot of this.workspaceRoots) {
+      this.watchRoot(workspaceRoot);
+    }
+  }
+
+  private watchRoot(workspaceRoot: string): void {
+    const gitBase = vscode.Uri.file(`${workspaceRoot}/.git`);
 
     // .git/HEAD → all
     const headWatcher = vscode.workspace.createFileSystemWatcher(
@@ -119,10 +127,10 @@ export class GitWatcher implements vscode.Disposable {
     // untracked file writes neither .git/index nor a saved text document, so
     // without this the untracked count goes stale.
     const untrackedWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(this.workspaceRoot, "**/*"),
+      new vscode.RelativePattern(workspaceRoot, "**/*"),
     );
     const inGitDir = (uri: vscode.Uri) =>
-      uri.fsPath.startsWith(`${this.workspaceRoot}${path.sep}.git`);
+      uri.fsPath.startsWith(`${workspaceRoot}${path.sep}.git`);
     untrackedWatcher.onDidCreate((uri) => {
       if (!inGitDir(uri)) this.notify("status");
     });
@@ -150,7 +158,7 @@ export class GitWatcher implements vscode.Disposable {
       scope,
       setTimeout(() => {
         this.debounceTimers.delete(scope);
-        this.cache.invalidate();
+        this.invalidateCaches();
         this.messageRouter.broadcastEvent("gitStateChanged", { scope });
         this.stateEmitter.fire(scope);
       }, 300),

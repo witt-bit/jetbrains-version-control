@@ -25,6 +25,7 @@ export class FileDecorationController
 
   private readonly registration: vscode.Disposable;
   private states = new Map<string, FileDecorationState>();
+  private enabled = true;
 
   constructor(
     private readonly root: string,
@@ -36,6 +37,18 @@ export class FileDecorationController
 
   /** Re-read the status of the whole tree. Cheap: one Git call, debounced. */
   async refresh(): Promise<void> {
+    if (!this.enabled) {
+      // Nothing to report: clear what the Explorer still shows.
+      const previous = [...this.states.keys()];
+      this.states.clear();
+      if (previous.length > 0) {
+        this.changeEmitter.fire(
+          previous.map((key) => vscode.Uri.file(path.join(this.root, key))),
+        );
+      }
+      return;
+    }
+
     let statuses: FileStatus[] = [];
     try {
       statuses = await this.service.getStatus({ ignored: true });
@@ -80,8 +93,17 @@ export class FileDecorationController
     }
   }
 
+  /**
+   * Turn the colouring on or off. Switching off clears the states and tells the
+   * Explorer to re-query, so the names lose their tint immediately.
+   */
+  setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) return;
+    this.enabled = enabled;
+  }
+
   provideFileDecoration(uri: vscode.Uri): vscode.FileDecoration | undefined {
-    if (uri.scheme !== "file") return undefined;
+    if (!this.enabled || uri.scheme !== "file") return undefined;
     const found = this.states.get(relativeKey(this.root, uri.fsPath));
     if (!found) return undefined;
     return {

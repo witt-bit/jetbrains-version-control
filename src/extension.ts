@@ -1798,8 +1798,14 @@ export function activate(context: vscode.ExtensionContext) {
 
   // 7. GitWatcher (only if GitService is available)
   let watcher: GitWatcher | null = null;
-  if (gitService && workspaceRoot) {
-    watcher = new GitWatcher(workspaceRoot, messageRouter, gitService.cache);
+  if (gitService && allWorkspaceRoots.length > 0) {
+    // Every root is watched, and every root's cache is dropped on a change:
+    // a multi-root workspace has one GitService per folder.
+    watcher = new GitWatcher(allWorkspaceRoots, messageRouter, () => {
+      for (const service of allGitServices) {
+        service.cache.invalidate();
+      }
+    });
     context.subscriptions.push(watcher);
   }
 
@@ -1810,6 +1816,17 @@ export function activate(context: vscode.ExtensionContext) {
     root,
     service: allGitServices[index] ?? new GitService(root),
   }));
+
+  /** The three decoration switches, resolved on demand so changes take effect. */
+  const decorationSettings = () => {
+    const config = vscode.workspace.getConfiguration("jgc.decorations");
+    const enabled = config.get<boolean>("enabled", true);
+    return {
+      enabled,
+      fileColors: enabled && config.get<boolean>("fileColors", true),
+      gutterMarkers: enabled && config.get<boolean>("gutterMarkers", true),
+    };
+  };
 
   gutterMarkers = new GutterMarkers(
     repos,
@@ -1826,6 +1843,16 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(gutterMarkers, statusBar, ...fileDecorations);
 
   statusBar.setRepos(repos);
+
+  /** Push the decoration switches into both layers. */
+  const applyDecorationSettings = () => {
+    const { fileColors, gutterMarkers: markers } = decorationSettings();
+    for (const decoration of fileDecorations) {
+      decoration.setEnabled(fileColors);
+    }
+    gutterMarkers.setEnabled(markers);
+  };
+  applyDecorationSettings();
 
   const refreshAll = () => {
     void statusBar.refresh();
@@ -1864,9 +1891,14 @@ export function activate(context: vscode.ExtensionContext) {
       refreshAll();
     }),
     vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("jgc.decorations")) {
+        applyDecorationSettings();
+        refreshAll();
+      }
       if (event.affectsConfiguration("jgc.blame")) {
         // The blame labels (and with them the column the markers reserve) may
-        // have changed width; re-apply so the pads follow.
+        // have changed width or which lines carry one; re-apply so the pads
+        // follow.
         gutterMarkers.schedule();
       }
       if (!event.affectsConfiguration("workbench.colorCustomizations")) return;
