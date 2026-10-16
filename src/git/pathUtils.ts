@@ -6,13 +6,13 @@ const SINGLE_QUOTE = 0x27;
 
 /** git's c-style escapes for control bytes, keyed by the emitted letter byte. */
 const LETTER_ESCAPES: Record<number, number> = {
-  0x61: 0x07, // \a bell
-  0x62: 0x08, // \b backspace
-  0x66: 0x0c, // \f form feed
-  0x6e: 0x0a, // \n newline
-  0x72: 0x0d, // \r carriage return
-  0x74: 0x09, // \t tab
-  0x76: 0x0b, // \v vertical tab
+  97: 0x07, // \a bell
+  98: 0x08, // \b backspace
+  102: 0x0c, // \f form feed
+  110: 0x0a, // \n newline
+  114: 0x0d, // \r carriage return
+  116: 0x09, // \t tab
+  118: 0x0b, // \v vertical tab
 };
 
 /**
