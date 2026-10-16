@@ -570,7 +570,6 @@ function segmentStyle(
 function blankStyle(): vscode.TextEditorDecorationType {
   return vscode.window.createTextEditorDecorationType({
     before: markerBox("transparent", "both"),
-    cursor: "pointer",
   });
 }
 
