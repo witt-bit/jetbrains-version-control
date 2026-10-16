@@ -54,6 +54,7 @@ export class GutterMarkers implements vscode.Disposable {
   private readonly headCommitByRoot = new Map<string, string | null>();
   private readonly headContent = new Map<string, string | undefined>();
   private readonly ignoredPaths = new Map<string, boolean>();
+  private enabled = true;
 
   constructor(
     private readonly repos: RepoEntry[],
@@ -85,6 +86,12 @@ export class GutterMarkers implements vscode.Disposable {
           (editor) => editor.document === event.document,
         );
         if (visible) this.schedule();
+      }),
+      vscode.window.onDidChangeTextEditorSelection(() => {
+        // In `cursor` / `around` blame mode the annotated window follows the
+        // caret, so which lines carry a label — and which need a pad —
+        // changes without any edit to the document.
+        if (blameFollowsCursor()) this.schedule();
       }),
     );
   }
@@ -147,7 +154,37 @@ export class GutterMarkers implements vscode.Disposable {
     this.ignoredPaths.clear();
   }
 
+  /**
+   * Turn the markers on or off. Switching off removes every decoration they
+   * carry, including the reserved columns, so the text goes back to column 0.
+   */
+  setEnabled(enabled: boolean): void {
+    if (this.enabled === enabled) return;
+    this.enabled = enabled;
+    if (enabled) {
+      this.apply();
+    } else {
+      this.clear();
+    }
+  }
+
+  /** Drop the markers from every editor they were applied to. */
+  private clear(): void {
+    const types = this.types;
+    if (!types) return;
+    for (const editor of this.tracked) {
+      for (const type of allStyles(types)) {
+        editor.setDecorations(type, []);
+      }
+    }
+    this.tracked.clear();
+  }
+
   private async apply(): Promise<void> {
+    if (!this.enabled) {
+      this.clear();
+      return;
+    }
     const types = this.types;
     if (!types) return;
     const generation = this.generation;
@@ -584,6 +621,17 @@ function markerBox(
   };
   box.borderRadius = radius;
   return box;
+}
+
+/**
+ * Whether the blame annotation paints only a window around the caret, in which
+ * case moving the caret changes which lines the marker layer has to pad.
+ */
+function blameFollowsCursor(): boolean {
+  const mode = vscode.workspace
+    .getConfiguration("jgc.blame")
+    .get<string>("displayMode", "all");
+  return mode === "cursor" || mode === "around";
 }
 
 /** When two buckets claim a line, the full-height bar wins over the short one. */

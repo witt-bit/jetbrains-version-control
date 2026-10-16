@@ -361,6 +361,21 @@
           "default": "F4",
           "markdownDescription": "Text shown next to **Jump to Source** / **Edit Source** in context menus. Webview menus are drawn by the extension, so this label cannot be derived from your keybindings automatically — update it (or set it to empty to hide) if you rebind the shortcut under **Preferences: Open Keyboard Shortcuts**."
         },
+        "jgc.decorations.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show Git decorations: file colors in the Explorer and change markers in the line-number gutter. Turn this off to fall back to VS Code's built-in Git decorations alone."
+        },
+        "jgc.decorations.fileColors": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Color file names in the Explorer by Git status. Colors are the `jgc.decoration.*` entries under **Color Customizations**."
+        },
+        "jgc.decorations.gutterMarkers": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Draw a colored marker in the line-number gutter for every added, modified or deleted line."
+        },
         "jgc.blame.displayMode": {
           "type": "string",
           "enum": [

@@ -62,7 +62,22 @@ export class StatusBarController implements vscode.Disposable {
 
     const branch = await repo.service.getCurrentBranch();
     if (!branch) {
-      this.item.hide();
+      // No branch name means either a detached HEAD or a repository without
+      // commits. IDEA shows the detached state rather than hiding the item, and
+      // a hidden item would leave the user with no way back.
+      const detached = await repo.service.headCommit().catch(() => null);
+      if (!detached) {
+        this.item.hide();
+        return;
+      }
+      this.item.text = "$(git-commit) detached HEAD";
+      this.item.tooltip = new vscode.MarkdownString(
+        `**JetBrains Git Control**\n\nDetached HEAD at \`${detached.slice(
+          0,
+          7,
+        )}\`\n\nClick for Git actions`,
+      );
+      this.item.show();
       return;
     }
 
@@ -122,7 +137,7 @@ export class StatusBarController implements vscode.Disposable {
     const repo = this.current;
     if (!repo) return;
 
-    const branch = (await repo.service.getCurrentBranch()) ?? "unknown";
+    const branch = (await repo.service.getCurrentBranch()) ?? "detached HEAD";
     const pick = vscode.window.createQuickPick();
     pick.title = `JetBrains Git Control — ${branch}`;
     pick.placeholder = "Select a Git action";
@@ -247,16 +262,27 @@ export class StatusBarController implements vscode.Disposable {
       description: branch.isCurrent
         ? "current"
         : branch.isRemote
-          ? "remote"
+          ? "remote — checking out detaches HEAD"
           : branch.ahead > 0
             ? `↑${branch.ahead}`
             : "",
       id: branch.name,
     }));
+    // The current branch is offered for orientation only: selecting it is a
+    // no-op, so accepting it does nothing.
+    const currentName = branches.find((entry) => entry.isCurrent)?.name;
     pick.onDidAccept(async () => {
       const selected = pick.selectedItems[0];
       pick.hide();
-      if (!selected) return;
+      if (!selected || selected.id === currentName) return;
+      if (selected.description?.startsWith("remote")) {
+        const answer = await vscode.window.showWarningMessage(
+          `Checking out ${selected.id} leaves you on a detached HEAD.`,
+          "Checkout",
+          "Cancel",
+        );
+        if (answer !== "Checkout") return;
+      }
       try {
         await service.checkout(selected.id);
       } catch (error) {
