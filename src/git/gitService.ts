@@ -1059,11 +1059,30 @@ export class GitService {
   }
 
   /**
+   * Whether there is a `HEAD` to compare the working tree against.
+   *
+   * `false` for a folder that is not a repository at all, and for a repository
+   * without commits. Callers need to know the difference: a missing file in an
+   * existing `HEAD` means "this file is new", while a missing `HEAD` means
+   * "there is nothing to compare against".
+   */
+  async hasCommits(): Promise<boolean> {
+    try {
+      // `--quiet` keeps the failure silent: exit code 1, no output.
+      await this.execGit(["rev-parse", "--verify", "--quiet", "HEAD"]);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Contents of a file as recorded in `HEAD`, used as the base side when
    * computing line-level change markers.
    *
-   * @returns the file text, or `undefined` when it is untracked or the
-   *   repository has no commits.
+   * @returns the file text, or `undefined` when the path is not recorded in
+   *   `HEAD` (untracked or newly added). Only meaningful once `hasCommits()`
+   *   answered `true`.
    */
   async showFileAtHead(filePath: string): Promise<string | undefined> {
     try {

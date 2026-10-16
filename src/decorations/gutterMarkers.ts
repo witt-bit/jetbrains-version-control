@@ -1,8 +1,8 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
+import { transparentPixelUri } from "./box";
 import { type GutterState, readStateColor } from "./palette";
-import { solidColorPng } from "./png";
 
 /** A repository root together with the service that talks to it. */
 export interface RepoEntry {
@@ -38,6 +38,15 @@ export class GutterMarkers implements vscode.Disposable {
     | undefined;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private tracked = new Set<vscode.TextEditor>();
+  /**
+   * Bumped by `rebuild()`. An `apply()` that is still awaiting diffs when the
+   * styles are rebuilt holds references to disposed decoration types, so it
+   * drops its results instead of writing them (and possibly overwriting a newer
+   * run) through types that no longer exist.
+   */
+  private generation = 0;
+  /** Per-repo "is there a HEAD to diff against", cleared on Git state changes. */
+  private headReady = new Map<string, boolean>();
 
   constructor(
     private readonly repos: RepoEntry[],
@@ -67,6 +76,9 @@ export class GutterMarkers implements vscode.Disposable {
 
   /** Build the marker styles from the configured palette. */
   rebuild(): void {
+    // Any in-flight `apply()` is now writing to styles that are about to be
+    // disposed; the generation bump tells it to throw its results away.
+    this.generation++;
     for (const type of this.types ? allStyles(this.types) : []) {
       type.dispose();
     }
@@ -109,9 +121,22 @@ export class GutterMarkers implements vscode.Disposable {
     }, DEBOUNCE_MS);
   }
 
+  /**
+   * Drop what is known about the repositories themselves (whether they have a
+   * `HEAD`). Call this when Git state changes, so a repository that gained its
+   * first commit — or a folder that only now became a repository — starts
+   * painting markers without needing a reload.
+   */
+  invalidateRepoState(): void {
+    this.headReady.clear();
+  }
+
   private async apply(): Promise<void> {
     const types = this.types;
     if (!types) return;
+    const generation = this.generation;
+    /** True once the styles were rebuilt under us and this run is stale. */
+    const stale = () => generation !== this.generation;
 
     const visible = vscode.window.visibleTextEditors.filter(
       (editor) => editor.document.uri.scheme === "file",
@@ -141,6 +166,7 @@ export class GutterMarkers implements vscode.Disposable {
       this.tracked.add(editor);
 
       const ranges = await this.markersFor(repo, editor);
+      if (stale()) return;
       this.log?.(
         `gutter: ${editor.document.uri.fsPath} -> a=${ranges.added.length} m=${ranges.modified.length} d=${ranges.deleted.length}`,
       );
@@ -190,6 +216,7 @@ export class GutterMarkers implements vscode.Disposable {
       // render no blame label, so their markers would slide left into the blame
       // column; a transparent pad re-reserves it.
       const pad = await this.blamePad?.(editor.document.uri, editor.document);
+      if (stale()) return;
       const pads: vscode.DecorationOptions[] = [];
 
       const lineCount = editor.document.lineCount;
@@ -246,6 +273,23 @@ export class GutterMarkers implements vscode.Disposable {
     }
   }
 
+  /**
+   * Whether the repository can be diffed at all, cached per root: the answer
+   * only changes on Git state changes, which invalidate the cache.
+   */
+  private async hasHead(repo: RepoEntry): Promise<boolean> {
+    const cached = this.headReady.get(repo.root);
+    if (cached !== undefined) return cached;
+    let ready: boolean;
+    try {
+      ready = await repo.service.hasCommits();
+    } catch {
+      ready = false;
+    }
+    this.headReady.set(repo.root, ready);
+    return ready;
+  }
+
   private repoFor(uri: vscode.Uri): RepoEntry | undefined {
     let best: RepoEntry | undefined;
     for (const repo of this.repos) {
@@ -284,6 +328,13 @@ export class GutterMarkers implements vscode.Disposable {
       return { added, modified, deleted };
     }
 
+    // Without a HEAD there is no base to diff against. Marking every line as
+    // added would paint whole files green in a folder that is not a repository
+    // at all, or in a repository that has no commit yet.
+    if (!(await this.hasHead(repo))) {
+      return { added, modified, deleted };
+    }
+
     let baseLines: string[] | undefined;
     try {
       baseLines = (await repo.service.showFileAtHead(relative))?.split("\n");
@@ -291,7 +342,7 @@ export class GutterMarkers implements vscode.Disposable {
       baseLines = undefined;
     }
 
-    // A file that does not exist in HEAD is entirely new.
+    // The repository has a HEAD and this path is not in it: a new file.
     if (baseLines === undefined) {
       for (let i = 0; i < limit; i++) {
         added.push(new vscode.Range(i, 0, i, 0));
@@ -527,7 +578,9 @@ function markerBox(
   const box: vscode.ThemableDecorationAttachmentRenderOptions & {
     borderRadius?: string;
   } = {
-    contentIconPath: markerIconUri(),
+    // A transparent replaced element, so the box has no text for the caret to
+    // land on and no glyphs of its own.
+    contentIconPath: transparentPixelUri(),
     width: "6px",
     height,
     // No vertical margin: it would open a gap between segments of a run.
@@ -538,20 +591,6 @@ function markerBox(
   box.borderRadius = radius;
   return box;
 }
-
-/** 1×1 transparent PNG, cached; only there to make the box a replaced element. */
-function markerIconUri(): vscode.Uri {
-  let cached = markerIconUriCache;
-  if (!cached) {
-    cached = vscode.Uri.parse(
-      `data:image/png;base64,${Buffer.from(solidColorPng(1, 1, "transparent")).toString("base64")}`,
-    );
-    markerIconUriCache = cached;
-  }
-  return cached;
-}
-
-let markerIconUriCache: vscode.Uri | undefined;
 
 /** When two buckets claim a line, the full-height bar wins over the short one. */
 function rank(state: GutterState): number {
