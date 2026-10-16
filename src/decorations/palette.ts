@@ -20,8 +20,6 @@ const DEFAULT_COLORS: Record<DecoState, string> = {
   conflict: "#de6b66",
 };
 
-const FALLBACK = "#808080";
-
 /**
  * `workbench.colorCustomizations` as a flat map.
  *

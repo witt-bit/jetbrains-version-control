@@ -832,10 +832,10 @@ export function activate(context: vscode.ExtensionContext) {
       for (const filePath of filePaths) {
         const status = statusMap.get(filePath) ?? "modified";
         if (status === "added" || status === "untracked") {
-          if (deleteLocalCopies) {
+          if (deleteLocalCopies && workspaceRoot) {
             // Delete untracked/added file from filesystem
             const absPath = vscode.Uri.joinPath(
-              vscode.Uri.file(workspaceRoot!),
+              vscode.Uri.file(workspaceRoot),
               filePath,
             );
             await vscode.workspace.fs.delete(absPath);
