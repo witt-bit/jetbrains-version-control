@@ -1833,12 +1833,8 @@ export function activate(context: vscode.ExtensionContext) {
     };
   };
 
-  gutterMarkers = new GutterMarkers(
-    repos,
-    trace,
-    // Blame knows which lines carry a label and how wide the column is;
-    // markers draw the spacer that keeps their own column stable on the rest.
-    (uri, doc) => blameManager.padFor(uri, doc),
+  gutterMarkers = new GutterMarkers(repos, trace, (uri, doc) =>
+    blameManager.padFor(uri, doc),
   );
   const statusBar = new StatusBarController();
   const fileDecorations = repos.map(

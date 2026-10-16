@@ -308,9 +308,8 @@ export class BlameManager implements vscode.Disposable {
       }),
       // order/author colors depend on the active theme kind
       vscode.window.onDidChangeActiveColorTheme(() => {
-        if (readConfig().colorMode !== "hide") {
-          void this.refreshAll();
-        }
+        // Backgrounds on empty blame placeholders also depend on theme.
+        void this.refreshAll();
       }),
     );
   }
