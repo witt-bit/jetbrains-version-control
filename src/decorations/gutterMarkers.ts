@@ -2,6 +2,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
 import { transparentPixelUri } from "./box";
+import { pairEdits } from "./editPairing";
 import { type GutterState, readStateColor } from "./palette";
 
 /** A repository root together with the service that talks to it. */
@@ -417,72 +418,6 @@ export class GutterMarkers implements vscode.Disposable {
       disposable.dispose();
     }
   }
-}
-
-/**
- * Which new lines of a mixed diff chunk are edits of an old line.
- *
- * Exactly `min(old, new)` lines pair up — the most similar ones win — and
- * the leftovers read as pure additions, so a changed statement followed by
- * freshly inserted blanks keeps the edit on the statement and the blanks
- * green. Big chunks fall back to pairing by position; a full rewrite has no
- * similarity structure worth an O(n*m) scan.
- */
-function pairEdits(oldLines: string[], newLines: string[]): boolean[] {
-  const pairs = Math.min(oldLines.length, newLines.length);
-  const isEdit = new Array<boolean>(newLines.length).fill(false);
-
-  if (oldLines.length * newLines.length > 4096) {
-    for (let i = 0; i < pairs; i++) {
-      isEdit[i] = true;
-    }
-    return isEdit;
-  }
-
-  const usedOld = new Set<number>();
-  for (let picked = 0; picked < pairs; picked++) {
-    let bestNew = -1;
-    let bestOld = -1;
-    let bestScore = -1;
-    for (let j = 0; j < newLines.length; j++) {
-      if (isEdit[j]) continue;
-      for (let i = 0; i < oldLines.length; i++) {
-        if (usedOld.has(i)) continue;
-        const score = lineSimilarity(oldLines[i], newLines[j]);
-        if (score > bestScore) {
-          bestScore = score;
-          bestOld = i;
-          bestNew = j;
-        }
-      }
-    }
-    isEdit[bestNew] = true;
-    usedOld.add(bestOld);
-  }
-  return isEdit;
-}
-
-/**
- * How much two lines share as a common prefix and suffix relative to the
- * longer one. An edited line scores near 1, unrelated lines near 0.
- */
-function lineSimilarity(a: string, b: string): number {
-  if (a.length === 0 || b.length === 0) {
-    return a.length === b.length ? 1 : 0;
-  }
-  const max = Math.min(a.length, b.length);
-  let prefix = 0;
-  while (prefix < max && a[prefix] === b[prefix]) {
-    prefix++;
-  }
-  let suffix = 0;
-  while (
-    suffix < max - prefix &&
-    a[a.length - 1 - suffix] === b[b.length - 1 - suffix]
-  ) {
-    suffix++;
-  }
-  return (prefix + suffix) / Math.max(a.length, b.length);
 }
 
 /** Flatten the nested style groups into a disposable list. */
