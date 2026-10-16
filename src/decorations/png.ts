@@ -39,6 +39,29 @@ const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export type Rgba = readonly [number, number, number, number];
 
+export type Rgb = readonly [number, number, number];
+
+/** Parse `#rgb`/`#rrggbb`; returns undefined for anything else. */
+export function parseHex(value: string | undefined): Rgb | undefined {
+  if (!value) return undefined;
+  const text = value.trim();
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(text);
+  if (short) {
+    return [
+      parseInt(short[1] + short[1], 16),
+      parseInt(short[2] + short[2], 16),
+      parseInt(short[3] + short[3], 16),
+    ];
+  }
+  const long = /^#([0-9a-f]{6})$/i.exec(text);
+  if (!long) return undefined;
+  return [
+    parseInt(long[1].slice(0, 2), 16),
+    parseInt(long[1].slice(2, 4), 16),
+    parseInt(long[1].slice(4, 6), 16),
+  ];
+}
+
 /**
  * A solid-color PNG, accepting `#rgb`/`#rrggbb` or the literal `transparent`.
  * The image is 1×1 and stretched via decoration width/height, so one cache
@@ -55,25 +78,8 @@ export function solidColorPng(
 
 function toRgba(color: string): Rgba {
   if (color === "transparent") return [0, 0, 0, 0];
-  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(color.trim());
-  if (short) {
-    return [
-      parseInt(short[1] + short[1], 16),
-      parseInt(short[2] + short[2], 16),
-      parseInt(short[3] + short[3], 16),
-      255,
-    ];
-  }
-  const long = /^#([0-9a-f]{6})$/i.exec(color.trim());
-  if (long) {
-    return [
-      parseInt(long[1].slice(0, 2), 16),
-      parseInt(long[1].slice(2, 4), 16),
-      parseInt(long[1].slice(4, 6), 16),
-      255,
-    ];
-  }
-  return [128, 128, 128, 255];
+  const rgb = parseHex(color) ?? [128, 128, 128];
+  return [rgb[0], rgb[1], rgb[2], 255];
 }
 
 /** Encode an image as an 8-bit RGBA PNG. */

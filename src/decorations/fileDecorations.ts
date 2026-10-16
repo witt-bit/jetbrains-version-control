@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
 import type { FileStatus } from "../git/types";
 import type { DecoState } from "./palette";
+import { normalizeRelative, relativeKey, stateOf } from "./statusColors";
 
 /**
  * Paints the Explorer's file names by Git state, so disabling VS Code's
@@ -108,32 +109,3 @@ interface FileDecorationState {
 }
 
 /** Match a status entry to one of our palette keys, or undefined to ignore. */
-function stateOf(status: FileStatus): DecoState | undefined {
-  const index = status.indexStatus;
-  const workTree = status.workTreeStatus;
-  const both = index + workTree;
-
-  if (index === "?") return "untracked";
-  if (index === "!") return "ignored";
-  if (both.includes("U") || both === "DD" || both === "AA") {
-    return "conflict";
-  }
-  if (status.oldPath) return "added";
-  if (index === "D" || workTree === "D") return "deleted";
-  if (index === "A") return "added";
-  if (index === "M" || workTree === "M" || index === "T") {
-    return "modified";
-  }
-  return undefined;
-}
-
-function relativeKey(root: string, filePath: string): string {
-  const rel = path.relative(root, filePath);
-  return rel.split(path.sep).join("/");
-}
-
-/** Normalize a repo-relative path from Git into stable `/`-separated form. */
-function normalizeRelative(filePath: string): string {
-  const normalized = filePath.split(path.sep).join("/");
-  return normalized.endsWith("/") ? normalized.slice(0, -1) : normalized;
-}
