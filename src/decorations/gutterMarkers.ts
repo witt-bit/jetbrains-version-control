@@ -1,7 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
-import { transparentPixelUri } from "./box";
 import { pairEdits } from "./editPairing";
 import { type GutterState, readStateColor } from "./palette";
 
@@ -11,7 +10,7 @@ export interface RepoEntry {
   service: GitService;
 }
 
-/** The four styles a run of same-state lines needs for rounded ends. */
+/** The four icons needed to make adjacent same-state gutter rows join. */
 interface SegmentStyles {
   single: vscode.TextEditorDecorationType;
   first: vscode.TextEditorDecorationType;
@@ -19,7 +18,9 @@ interface SegmentStyles {
   last: vscode.TextEditorDecorationType;
 }
 
-const DEBOUNCE_MS = 300;
+// Recompute on the next short UI beat after edits. A long debounce leaves the
+// old line-by-line gutter icons visible while the user is typing.
+const DEBOUNCE_MS = 16;
 
 /**
  * Per-line change markers (added / modified / deleted) drawn as a thin colored
@@ -33,7 +34,6 @@ export class GutterMarkers implements vscode.Disposable {
         added: SegmentStyles;
         modified: SegmentStyles;
         deleted: vscode.TextEditorDecorationType;
-        blank: vscode.TextEditorDecorationType;
         pad: vscode.TextEditorDecorationType;
       }
     | undefined;
@@ -46,6 +46,8 @@ export class GutterMarkers implements vscode.Disposable {
    * run) through types that no longer exist.
    */
   private generation = 0;
+  /** Prevents an older async diff from painting over a newer document state. */
+  private applySequence = 0;
   /**
    * Caches that keep a run from spawning Git per file per keystroke. All of
    * them are dropped when the repository state changes, which is also when
@@ -59,11 +61,6 @@ export class GutterMarkers implements vscode.Disposable {
   constructor(
     private readonly repos: RepoEntry[],
     private readonly log?: (message: string) => void,
-    /**
-     * Supplies a transparent box plus the set of lines that carry no blame
-     * label, so their change markers land in the same column as the labelled
-     * rows. Undefined when the document is not annotated.
-     */
     private readonly blamePad?: (
       uri: vscode.Uri,
       doc: vscode.TextDocument,
@@ -105,11 +102,6 @@ export class GutterMarkers implements vscode.Disposable {
       type.dispose();
     }
     this.types = {
-      // Attachment order inside a line follows decoration-type creation order:
-      // the pad must be created before every marker style, or its box renders
-      // to the right of the bars and pushes them out of their column. The box
-      // comes per line from `blamePad`.
-      pad: vscode.window.createTextEditorDecorationType({ before: {} }),
       added: {
         single: segmentStyle("added", "both"),
         first: segmentStyle("added", "top"),
@@ -122,12 +114,10 @@ export class GutterMarkers implements vscode.Disposable {
         middle: segmentStyle("modified", "none"),
         last: segmentStyle("modified", "bottom"),
       },
-      // Deletions sit on the line boundary, so they stay half-height and are
-      // never merged with neighbours.
-      deleted: deletionStyle("deleted"),
-      // Reserves the marker column on every unchanged line, so the code column
-      // (and the cursor positions) does not shift when a marker appears.
-      blank: blankStyle(),
+      deleted: gutterStyle(readStateColor("deleted"), "both"),
+      // Keep the blame column reserved on lines that have no blame label.
+      // This is only an invisible spacer; change markers remain in the gutter.
+      pad: vscode.window.createTextEditorDecorationType({ before: {} }),
     };
     this.log?.(
       `gutter markers rebuilt: ${Object.values(this.types).length} group(s)`,
@@ -188,8 +178,10 @@ export class GutterMarkers implements vscode.Disposable {
     const types = this.types;
     if (!types) return;
     const generation = this.generation;
+    const sequence = ++this.applySequence;
     /** True once the styles were rebuilt under us and this run is stale. */
-    const stale = () => generation !== this.generation;
+    const stale = () =>
+      generation !== this.generation || sequence !== this.applySequence;
 
     const visible = vscode.window.visibleTextEditors.filter(
       (editor) => editor.document.uri.scheme === "file",
@@ -198,7 +190,6 @@ export class GutterMarkers implements vscode.Disposable {
     for (const editor of this.tracked) {
       if (!visible.includes(editor)) {
         const t = types;
-        editor.setDecorations(t.blank, []);
         editor.setDecorations(t.deleted, []);
         editor.setDecorations(t.pad, []);
         for (const group of [t.added, t.modified]) {
@@ -224,9 +215,8 @@ export class GutterMarkers implements vscode.Disposable {
         `gutter: ${editor.document.uri.fsPath} -> a=${ranges.added.length} m=${ranges.modified.length} d=${ranges.deleted.length}`,
       );
 
-      // Exactly one marker attachment per line: a colored bar for changed
-      // lines, an invisible spacer elsewhere. Overlapping buckets are resolved
-      // so preference is given to a full-height changed-line bar.
+      // Overlapping buckets are resolved so preference is given to a full
+      // height added/modified marker over a deletion marker.
       const byLine = new Map<number, GutterState>();
       const add = (line: number, state: GutterState) => {
         const existing = byLine.get(line);
@@ -244,11 +234,9 @@ export class GutterMarkers implements vscode.Disposable {
         add(range.start.line, "added");
       }
 
-      // One decoration per line. A `before` attachment only renders at the
-      // start of its range, so a multi-line range would leave every following
-      // line bare and break the reserved marker column. Adjacent same-state
-      // lines instead get boxes with matching corners and no vertical gap, so
-      // they read as one continuous capsule.
+      // Gutter icons are independent of editor text and cursor positions. Each
+      // line receives an icon with matching square edges when its neighbour
+      // has the same state, so contiguous rows appear as one capsule.
       const buckets = {
         addedSingle: [] as vscode.Range[],
         addedFirst: [] as vscode.Range[],
@@ -259,24 +247,16 @@ export class GutterMarkers implements vscode.Disposable {
         modifiedMiddle: [] as vscode.Range[],
         modifiedLast: [] as vscode.Range[],
         deleted: [] as vscode.Range[],
-        blank: [] as vscode.Range[],
       } satisfies Record<string, vscode.Range[]>;
 
       const stateAt = (line: number): GutterState | undefined =>
         byLine.get(line);
 
-      // Lines the annotation leaves bare — empty when it ran, or added since —
-      // render no blame label, so their markers would slide left into the blame
-      // column; a transparent pad re-reserves it.
       const pad = await this.blamePad?.(editor.document.uri, editor.document);
       if (stale()) return;
       const pads: vscode.DecorationOptions[] = [];
-
       const lineCount = editor.document.lineCount;
       for (let line = 0; line < lineCount; line++) {
-        // A non-empty range keeps the rendered attachment anchored to the line
-        // without turning it into a cursor anchor point: zero-width ranges are
-        // the ones the cursor can land on, which is how markers were reachable.
         const range = new vscode.Range(line, 0, line, 1);
         if (pad?.unlabeled[line]) {
           pads.push({ range, renderOptions: { before: pad.box } });
@@ -303,15 +283,10 @@ export class GutterMarkers implements vscode.Disposable {
         }
         if (state === "deleted") {
           buckets.deleted.push(range);
-          continue;
         }
-        buckets.blank.push(range);
       }
 
       const t = types;
-      // The pad's decoration type is created before every marker style (see
-      // `rebuild`), which is what keeps its box left of the marker on a line
-      // that carries both.
       editor.setDecorations(t.pad, pads);
       editor.setDecorations(t.added.single, buckets.addedSingle);
       editor.setDecorations(t.added.first, buckets.addedFirst);
@@ -322,7 +297,6 @@ export class GutterMarkers implements vscode.Disposable {
       editor.setDecorations(t.modified.middle, buckets.modifiedMiddle);
       editor.setDecorations(t.modified.last, buckets.modifiedLast);
       editor.setDecorations(t.deleted, buckets.deleted);
-      editor.setDecorations(t.blank, buckets.blank);
     }
   }
 
@@ -523,7 +497,6 @@ function allStyles(
         added: SegmentStyles;
         modified: SegmentStyles;
         deleted: vscode.TextEditorDecorationType;
-        blank: vscode.TextEditorDecorationType;
         pad: vscode.TextEditorDecorationType;
       }
     | undefined,
@@ -533,93 +506,39 @@ function allStyles(
     ...Object.values(types.added),
     ...Object.values(types.modified),
     types.deleted,
-    types.blank,
     types.pad,
   ];
 }
 
 /**
- * A colored segment of a change run, rendered as a `before` attachment.
- *
- * `before` is required, not a stylistic choice: the editor's cursor movement
- * treats `after` attachments as positions it can land on, so a marker attached
- * with `after` can be reached with the Left arrow (and included in a
- * selection). `before` attachments are not cursor-accessible, which is why the
- * Blame text on the same line behaves correctly.
- *
- * The box is anchored by a transparent 1×1 icon rather than `contentText`: an
- * icon is a replaced element the cursor cannot enter, while `contentText`
- * would be treated as editable content.
+ * A colored segment of a change run, rendered in the editor gutter.
  */
 function segmentStyle(
   state: "added" | "modified",
   ends: "both" | "top" | "bottom" | "none",
 ): vscode.TextEditorDecorationType {
   const color = readStateColor(state);
-  return vscode.window.createTextEditorDecorationType({
-    before: markerBox(color, ends),
-    cursor: "pointer",
-  });
+  return gutterStyle(color, ends);
 }
 
-/**
- * The invisible counterpart of a marker: same box, so the code column starts at
- * the same place on every line, but no visible bar. Applied to lines without a
- * change marker.
- */
-function blankStyle(): vscode.TextEditorDecorationType {
-  return vscode.window.createTextEditorDecorationType({
-    before: markerBox("transparent", "both"),
-  });
-}
-
-/**
- * Deletion markers are half-height and hug the row, which visually straddles
- * the boundary between the previous and next line.
- */
-function deletionStyle(state: GutterState): vscode.TextEditorDecorationType {
-  const color = readStateColor(state);
-  return vscode.window.createTextEditorDecorationType({
-    before: markerBox(color, "both", "0.5em"),
-    cursor: "pointer",
-  });
-}
-
-function markerBox(
+function gutterStyle(
   color: string,
   ends: "both" | "top" | "bottom" | "none",
-  height = "1lh",
-): vscode.ThemableDecorationAttachmentRenderOptions {
-  // `1lh` is the line box height, so adjacent segments touch vertically with
-  // no gap. Only the ends of a run are rounded, which makes a multi-line run
-  // read as one capsule rather than a stack of pills.
-  const radius =
-    ends === "both"
-      ? "3px"
-      : ends === "top"
-        ? "3px 3px 0 0"
-        : ends === "bottom"
-          ? "0 0 3px 3px"
-          : "0";
+): vscode.TextEditorDecorationType {
+  return vscode.window.createTextEditorDecorationType({
+    gutterIconPath: gutterIcon(color, ends),
+    gutterIconSize: "contain",
+  });
+}
 
-  // `borderRadius` is understood by the renderer's CSS whitelist but is absent
-  // from the public attachment typings, so it is attached through a widened
-  // view of the same object rather than dropped.
-  const box: vscode.ThemableDecorationAttachmentRenderOptions & {
-    borderRadius?: string;
-  } = {
-    // A transparent replaced element, so the box has no text for the caret to
-    // land on and no glyphs of its own.
-    contentIconPath: transparentPixelUri(),
-    width: "6px",
-    height,
-    // No vertical margin: it would open a gap between segments of a run.
-    margin: "0 4px",
-    border: `3px solid ${color}`,
-    backgroundColor: color,
-  };
-  box.borderRadius = radius;
-  return box;
+function gutterIcon(
+  color: string,
+  ends: "both" | "top" | "bottom" | "none",
+): vscode.Uri {
+  const top = ends === "both" || ends === "top" ? 3 : 0;
+  const bottom = ends === "both" || ends === "bottom" ? 3 : 0;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="6" height="20" viewBox="0 0 6 20"><path fill="${color}" d="M${top} 0H${6 - top}Q6 0 6 ${top}V${20 - bottom}Q6 20 ${6 - bottom} 20H${bottom}Q0 20 0 ${20 - bottom}V${top}Q0 0 ${top} 0Z"/></svg>`;
+  return vscode.Uri.parse(`data:image/svg+xml,${encodeURIComponent(svg)}`);
 }
 
 /**

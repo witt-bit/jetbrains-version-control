@@ -44,10 +44,16 @@ export function blameBoxStyle(maxWidth: number): string {
 export function blankBlameBox(
   maxWidth: number,
 ): vscode.ThemableDecorationAttachmentRenderOptions {
+  const darkTheme =
+    vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.Dark ||
+    vscode.window.activeColorTheme.kind === vscode.ColorThemeKind.HighContrast;
   return {
     contentIconPath: transparentPixelUri(),
     width: `${Math.max(maxWidth, 1)}ch`,
     height: "1lh",
+    // Keep empty / newly added blame rows visibly inside the blame column.
+    // Match the neutral background used by fixed-color blame labels.
+    backgroundColor: darkTheme ? "#1b2027" : "#eef1f5",
     textDecoration: blameBoxStyle(maxWidth),
   };
 }
