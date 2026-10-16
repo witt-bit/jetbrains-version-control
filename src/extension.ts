@@ -1836,27 +1836,41 @@ export function activate(context: vscode.ExtensionContext) {
     }
   };
 
-  /** Marker styles embed the configured colors, so they need rebuilding. */
+  /**
+   * Marker styles embed the configured colors, so they need rebuilding. Colors
+   * can be bound to a theme (`"[Dark+]": { "jgc.decoration.added": ... }`), which
+   * only becomes visible on a theme switch — hence this runs for theme changes
+   * too, not just for edits to the settings themselves.
+   */
   const redrawGutter = () => {
     gutterMarkers.rebuild();
   };
 
-  watcher?.onDidChangeState(() => refreshAll());
-  vscode.window.onDidChangeActiveTextEditor(() => {
-    void statusBar.refresh();
-    gutterMarkers.schedule();
-  });
-  vscode.window.onDidChangeActiveColorTheme(() => refreshAll());
-  vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration("jgc.blame")) {
-      // The blame labels (and with them the column the markers reserve) may
-      // have changed width; re-apply so the pads follow.
-      gutterMarkers.schedule();
-    }
-    if (!event.affectsConfiguration("workbench.colorCustomizations")) return;
-    redrawGutter();
+  watcher?.onDidChangeState(() => {
+    // A repository may have gained its first commit since the last check.
+    gutterMarkers.invalidateRepoState();
     refreshAll();
   });
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(() => {
+      void statusBar.refresh();
+      gutterMarkers.schedule();
+    }),
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      redrawGutter();
+      refreshAll();
+    }),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("jgc.blame")) {
+        // The blame labels (and with them the column the markers reserve) may
+        // have changed width; re-apply so the pads follow.
+        gutterMarkers.schedule();
+      }
+      if (!event.affectsConfiguration("workbench.colorCustomizations")) return;
+      redrawGutter();
+      refreshAll();
+    }),
+  );
 
   void statusBar.refresh();
   gutterMarkers.rebuild();

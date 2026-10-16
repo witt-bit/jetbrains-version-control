@@ -1,5 +1,6 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { blameBoxStyle, blankBlameBox } from "../decorations/box";
 import type { GitService } from "../git/gitService";
 import type { BlameLine } from "../git/types";
 import type { MessageRouter } from "../messages/messageRouter";
@@ -231,19 +232,13 @@ function readConfig(): BlameConfig {
  * with the surrounding rows. Any line the annotation leaves bare qualifies:
  * empty when it ran, or added since.
  *
- * Temporary diagnostic form: the fill is visible "0"s rather than blanks, so
- * the width the column actually reserves can be eyeballed on screen. The
- * metrics mirror the label boxes in `annotate()` — `maxWidth` characters plus
- * the same padding and trailing margin — so a marker placed after either box
- * lands on the same column.
+ * The metrics are the label boxes', so a marker placed after either box lands
+ * on the same column.
  */
 function blankPadBox(
   maxWidth: number,
 ): vscode.ThemableDecorationAttachmentRenderOptions {
-  return {
-    contentText: "0".repeat(Math.max(maxWidth, 1)),
-    textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; padding:0 0.4ch; margin-right:1ch; cursor:pointer;`,
-  };
+  return blankBlameBox(maxWidth);
 }
 
 /**
@@ -470,31 +465,25 @@ export class BlameManager implements vscode.Disposable {
             ...(hover ? { hoverMessage: hover } : {}),
             renderOptions: {
               before: {
-                // Temporary diagnostic fill: lines without history (added /
-                // uncommitted) reserve the column with visible "0"s instead of
-                // blank spaces, so the reserved width can be eyeballed.
-                contentText: blameLine.uncommitted
-                  ? "0".repeat(Math.max(maxWidth, 1))
-                  : labels[labelIndex].padEnd(maxWidth),
+                // A line without history (added / uncommitted) keeps the label's
+                // box metrics but shows no text, so the column still lines up.
+                ...(blameLine.uncommitted
+                  ? blankBlameBox(maxWidth)
+                  : { contentText: labels[labelIndex].padEnd(maxWidth) }),
                 color: textColor,
                 backgroundColor,
                 fontStyle: "italic",
-                textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; padding:0 0.4ch; margin-right:1ch; cursor:pointer;`,
+                textDecoration: blameBoxStyle(maxWidth),
               },
             },
           });
         }
       } else {
-        // Line has no blame info - show empty space to align content
+        // Line has no blame history: reserve the column with an empty box, so
+        // it keeps the same width as the labelled rows.
         allOptions.push({
           range: new vscode.Range(line.range.start, line.range.start),
-          renderOptions: {
-            before: {
-              // Diagnostic fill: visible "0"s instead of blanks (see above).
-              contentText: "0".repeat(Math.max(maxWidth + 1, 1)),
-              textDecoration: `none; display:inline-block; min-width:${maxWidth}ch; margin-right:1ch; cursor:pointer;`,
-            },
-          },
+          renderOptions: { before: blankBlameBox(maxWidth) },
         });
       }
     }
@@ -569,10 +558,28 @@ export class BlameManager implements vscode.Disposable {
       current.push(doc.lineAt(i).text);
     }
 
-    // The annotation labeled every non-empty line of its snapshot; lines it
-    // skipped and lines created since carry no attachment. Matching the live
-    // document against the snapshot line by line keeps shifted and edited
-    // lines labelled, so only genuinely bare lines need a pad.
+    // Which snapshot lines carry an attachment right now. This mirrors
+    // `renderDecorations` rather than assuming every line is labelled: in
+    // `cursor` and `around` mode only a window around the caret is painted, so
+    // treating the rest as labelled would leave their markers unreserved.
+    const { displayMode, aroundLines } = readConfig();
+    const activeLine =
+      vscode.window.visibleTextEditors.find(
+        (editor) => editor.document.uri.toString() === uri.toString(),
+      )?.selection.active.line ?? 0;
+    const isPainted = (snapshotLine: number): boolean => {
+      if (state.annotatedLines[snapshotLine].length === 0) return false;
+      if (displayMode === "all") return true;
+      const line = snapshotLine + 1;
+      return displayMode === "cursor"
+        ? line === activeLine
+        : Math.abs(line - activeLine) <= aroundLines;
+    };
+
+    // The annotation attached a box to every non-empty line of its snapshot;
+    // lines it skipped and lines created since carry nothing. Matching the live
+    // document against the snapshot line by line keeps shifted and edited lines
+    // labelled, so only genuinely bare lines need a pad.
     const unlabeled = new Array<boolean>(current.length).fill(true);
     const { diffIndices } = await import("node-diff3");
     let oldPos = 0;
@@ -581,24 +588,23 @@ export class BlameManager implements vscode.Disposable {
       const [oldStart, oldCount] = chunk.buffer1;
       const [newStart, newCount] = chunk.buffer2;
       // Unchanged lines ahead of the chunk keep their label if the snapshot
-      // line had text.
+      // line had one.
       while (oldPos < oldStart && newPos < newStart) {
-        unlabeled[newPos] = state.annotatedLines[oldPos].length === 0;
+        unlabeled[newPos] = !isPainted(oldPos);
         oldPos++;
         newPos++;
       }
-      // Within a chunk the lines pair up by position; text on the snapshot
-      // side means the line kept its label. Extra live lines stay unlabeled.
+      // Within a chunk the lines pair up by position; a painted snapshot line
+      // means the line kept its label. Extra live lines stay unlabeled.
       const paired = Math.min(oldCount, newCount);
       for (let i = 0; i < paired; i++) {
-        unlabeled[newStart + i] =
-          state.annotatedLines[oldStart + i].length === 0;
+        unlabeled[newStart + i] = !isPainted(oldStart + i);
       }
       oldPos = oldStart + oldCount;
       newPos = newStart + newCount;
     }
     while (oldPos < state.annotatedLines.length && newPos < current.length) {
-      unlabeled[newPos] = state.annotatedLines[oldPos].length === 0;
+      unlabeled[newPos] = !isPainted(oldPos);
       oldPos++;
       newPos++;
     }
