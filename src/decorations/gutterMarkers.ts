@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
-import { pairEdits } from "./editPairing";
+import { classifyLines } from "./lineDiff";
 import { type GutterState, readStateColor } from "./palette";
 
 /** A repository root together with the service that talks to it. */
@@ -433,47 +433,19 @@ export class GutterMarkers implements vscode.Disposable {
         ? current.slice(0, -1)
         : current;
 
-    // `node-diff3` is ESM-only and the extension host is CommonJS, so it is
-    // loaded lazily rather than at module scope.
-    const { diffIndices } = await import("node-diff3");
-
-    for (const chunk of diffIndices(base, now)) {
-      const [oldStart, oldCount] = chunk.buffer1;
-      const [newStart, newCount] = chunk.buffer2;
-
-      if (newCount === 0) {
-        // Anchor the short bar to the line that follows the gap, so it sits on
-        // the boundary between the previous and next line.
-        deleted.push(new vscode.Range(at(newStart), 0, at(newStart), 0));
-        continue;
-      }
-
-      if (oldCount === 0) {
-        for (let i = 0; i < newCount; i++) {
-          const index = at(newStart + i);
-          added.push(new vscode.Range(index, 0, index, 0));
-        }
-        continue;
-      }
-
-      // A chunk that both replaces old lines and adds new ones is usually one
-      // edit wrapped in insertions (a changed line followed by fresh blanks).
-      // The most similar old/new lines pair up as edits; the leftovers read
-      // as pure additions, so inserted blanks stay green inside a rewritten
-      // region instead of painting the whole replacement blue.
-      const edits = pairEdits(
-        base.slice(oldStart, oldStart + oldCount),
-        now.slice(newStart, newStart + newCount),
-      );
-      for (let i = 0; i < newCount; i++) {
-        const index = at(newStart + i);
-        const range = new vscode.Range(index, 0, index, 0);
-        if (edits[i]) {
-          modified.push(range);
-        } else {
-          added.push(range);
-        }
-      }
+    // Block semantics (see `classifyLines`): a paired removed+added run is a
+    // modification of every replaced line, a lone added run an insertion, a
+    // lone removed run a deletion — with the editor's own quick-diff heuristics
+    // for joining blocks that a blank line happens to separate.
+    const classification = classifyLines(base, now);
+    for (const line of classification.added) {
+      added.push(new vscode.Range(at(line), 0, at(line), 0));
+    }
+    for (const line of classification.modified) {
+      modified.push(new vscode.Range(at(line), 0, at(line), 0));
+    }
+    for (const line of classification.deleted) {
+      deleted.push(new vscode.Range(at(line), 0, at(line), 0));
     }
 
     return { added, modified, deleted };
