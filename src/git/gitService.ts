@@ -60,6 +60,7 @@ export class GitService {
   private async execGit(
     args: string[],
     maxBuffer = MAX_BUFFER,
+    env?: Record<string, string | undefined>,
   ): Promise<string> {
     // core.quotepath=false keeps non-ASCII paths raw instead of \NNN escaped.
     // Callers still unquote, because git quotes for other reasons too.
@@ -73,6 +74,7 @@ export class GitService {
           ...process.env,
           LC_ALL: "C",
           GIT_TERMINAL_PROMPT: "0",
+          ...env,
         },
       },
     );
@@ -1055,6 +1057,80 @@ export class GitService {
       return branch === "HEAD" ? null : branch;
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Commit a single change block of one file, leaving everything else the user
+   * changed out of the commit.
+   *
+   * The whole-file content `content` is the file as it would read if only that
+   * block were applied to `HEAD` (see `committedContent`). It goes in through
+   * a throwaway index, so the user's own staged state is never touched: a
+   * temp index is seeded from `HEAD`, the file's entry is swapped for a blob
+   * of `content`, and the resulting tree is committed on the current branch.
+   * The working tree and the real index stay exactly as they were.
+   *
+   * Returns the new commit id.
+   */
+  async commitBlockChange(
+    filePath: string,
+    content: string,
+    message: string,
+  ): Promise<string> {
+    // Detached HEAD has no branch to advance; update-ref would point HEAD
+    // straight at a commit and lose it on the next checkout.
+    const branch = await this.getCurrentBranch();
+    if (!branch) {
+      throw new Error("Cannot commit a single change in detached HEAD state");
+    }
+
+    // `hash-object -w --path` applies the path's CRLF/filters, so the blob
+    // matches what a plain `git add` would have stored.
+    const tmp = path.join(
+      os.tmpdir(),
+      `jgc-block-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.writeFile(tmp, content, "utf8");
+    try {
+      const blob = (
+        await this.execGit(["hash-object", "-w", "--path", filePath, tmp])
+      ).trim();
+
+      const indexEnv = {
+        GIT_INDEX_FILE: path.join(
+          os.tmpdir(),
+          `jgc-index-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        ),
+      };
+      try {
+        await this.execGit(["read-tree", "HEAD"], MAX_BUFFER, indexEnv);
+        await this.execGit(
+          [
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            `100644,${blob},${filePath}`,
+          ],
+          MAX_BUFFER,
+          indexEnv,
+        );
+        const tree = (
+          await this.execGit(["write-tree"], MAX_BUFFER, indexEnv)
+        ).trim();
+        const parent = (
+          await this.execGit(["rev-parse", "--verify", "HEAD"])
+        ).trim();
+        const commit = (
+          await this.execGit(["commit-tree", tree, "-p", parent, "-m", message])
+        ).trim();
+        await this.execGit(["update-ref", `refs/heads/${branch}`, commit]);
+        return commit;
+      } finally {
+        await fs.rm(indexEnv.GIT_INDEX_FILE, { force: true }).catch(() => {});
+      }
+    } finally {
+      await fs.rm(tmp, { force: true }).catch(() => {});
     }
   }
 

@@ -2,6 +2,7 @@ import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
 import { BlameManager } from "./blame/blameManager";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
+import { registerMarkerActions } from "./commands/markerActions";
 import { FileDecorationController } from "./decorations/fileDecorations";
 import { GutterMarkers, type RepoEntry } from "./decorations/gutterMarkers";
 import { GitService } from "./git/gitService";
@@ -1842,6 +1843,17 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(gutterMarkers, statusBar, ...fileDecorations);
+
+  for (const action of registerMarkerActions({
+    markers: () => gutterMarkers,
+    log: trace,
+    onMutated: () => {
+      gutterMarkers?.invalidateRepoState();
+      gutterMarkers?.schedule();
+    },
+  })) {
+    context.subscriptions.push(action);
+  }
 
   statusBar.setRepos(repos);
 

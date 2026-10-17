@@ -1,7 +1,9 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
-import { classifyLines } from "./lineDiff";
+import { type ChangeBlock, changeBlocks, classifyFromBlocks } from "./lineDiff";
+import { blockAtLine, buildCard } from "./markerCard";
+import { hoverFor } from "./markerHover";
 import { type GutterState, readStateColor } from "./palette";
 
 /** A repository root together with the service that talks to it. */
@@ -16,6 +18,29 @@ interface SegmentStyles {
   first: vscode.TextEditorDecorationType;
   middle: vscode.TextEditorDecorationType;
   last: vscode.TextEditorDecorationType;
+}
+
+/** What one diff pass yields: the painted ranges plus the block model. */
+interface Computed {
+  added: vscode.Range[];
+  modified: vscode.Range[];
+  deleted: vscode.Range[];
+  blocks: ChangeBlock[];
+  /** The file's lines in `HEAD`; `undefined` when the path is new. */
+  base: string[] | undefined;
+  now: string[];
+  /** Whether the `HEAD` file (or, for a new file, the buffer) ends with `\n`. */
+  trailingNewline: boolean;
+}
+
+/** The block model the marker commands act on. */
+export interface BlockPeek {
+  repo: RepoEntry;
+  uri: vscode.Uri;
+  base: string[] | undefined;
+  now: string[];
+  blocks: ChangeBlock[];
+  trailingNewline: boolean;
 }
 
 // Recompute on the next short UI beat after edits. A long debounce leaves the
@@ -209,10 +234,10 @@ export class GutterMarkers implements vscode.Disposable {
       }
       this.tracked.add(editor);
 
-      const ranges = await this.markersFor(repo, editor);
+      const computed = await this.compute(repo, editor.document);
       if (stale()) return;
       this.log?.(
-        `gutter: ${editor.document.uri.fsPath} -> a=${ranges.added.length} m=${ranges.modified.length} d=${ranges.deleted.length}`,
+        `gutter: ${editor.document.uri.fsPath} -> a=${computed.added.length} m=${computed.modified.length} d=${computed.deleted.length}`,
       );
 
       // Overlapping buckets are resolved so preference is given to a full
@@ -224,42 +249,68 @@ export class GutterMarkers implements vscode.Disposable {
           byLine.set(line, state);
         }
       };
-      for (const range of ranges.deleted) {
+      for (const range of computed.deleted) {
         add(range.start.line, "deleted");
       }
-      for (const range of ranges.modified) {
+      for (const range of computed.modified) {
         add(range.start.line, "modified");
       }
-      for (const range of ranges.added) {
+      for (const range of computed.added) {
         add(range.start.line, "added");
       }
 
+      // Hover cards are built once per block and shared by every line the
+      // block spans.
+      const cards = new Map<ChangeBlock, vscode.MarkdownString>();
+      const hover = (line: number): vscode.MarkdownString | undefined => {
+        const block = blockAtLine(computed.blocks, line);
+        if (!block) return undefined;
+        let md = cards.get(block);
+        if (!md) {
+          md = hoverFor(
+            buildCard(block, computed.base ?? [], computed.now),
+            editor.document.uri,
+          );
+          cards.set(block, md);
+        }
+        return md;
+      };
+
       // Gutter icons are independent of editor text and cursor positions. Each
       // line receives an icon with matching square edges when its neighbour
-      // has the same state, so contiguous rows appear as one capsule.
+      // has the same state, so contiguous rows appear as one capsule. The
+      // decoration range spans the whole line so the hover card shows wherever
+      // the changed line is hovered.
       const buckets = {
-        addedSingle: [] as vscode.Range[],
-        addedFirst: [] as vscode.Range[],
-        addedMiddle: [] as vscode.Range[],
-        addedLast: [] as vscode.Range[],
-        modifiedSingle: [] as vscode.Range[],
-        modifiedFirst: [] as vscode.Range[],
-        modifiedMiddle: [] as vscode.Range[],
-        modifiedLast: [] as vscode.Range[],
-        deleted: [] as vscode.Range[],
-      } satisfies Record<string, vscode.Range[]>;
+        addedSingle: [] as vscode.DecorationOptions[],
+        addedFirst: [] as vscode.DecorationOptions[],
+        addedMiddle: [] as vscode.DecorationOptions[],
+        addedLast: [] as vscode.DecorationOptions[],
+        modifiedSingle: [] as vscode.DecorationOptions[],
+        modifiedFirst: [] as vscode.DecorationOptions[],
+        modifiedMiddle: [] as vscode.DecorationOptions[],
+        modifiedLast: [] as vscode.DecorationOptions[],
+        deleted: [] as vscode.DecorationOptions[],
+      } satisfies Record<string, vscode.DecorationOptions[]>;
 
       const stateAt = (line: number): GutterState | undefined =>
         byLine.get(line);
+
+      const lineRange = (line: number): vscode.Range => {
+        const length = editor.document.lineAt(line).text.length;
+        return new vscode.Range(line, 0, line, Math.max(length, 1));
+      };
 
       const pad = await this.blamePad?.(editor.document.uri, editor.document);
       if (stale()) return;
       const pads: vscode.DecorationOptions[] = [];
       const lineCount = editor.document.lineCount;
       for (let line = 0; line < lineCount; line++) {
-        const range = new vscode.Range(line, 0, line, 1);
         if (pad?.unlabeled[line]) {
-          pads.push({ range, renderOptions: { before: pad.box } });
+          pads.push({
+            range: new vscode.Range(line, 0, line, 1),
+            renderOptions: { before: pad.box },
+          });
         }
         const state = stateAt(line);
         const prev = line > 0 ? stateAt(line - 1) : undefined;
@@ -278,11 +329,17 @@ export class GutterMarkers implements vscode.Disposable {
                   : "middle";
           const key =
             `${state}${shape[0].toUpperCase()}${shape.slice(1)}` as keyof typeof buckets;
-          buckets[key].push(range);
+          buckets[key].push({
+            range: lineRange(line),
+            hoverMessage: hover(line),
+          });
           continue;
         }
         if (state === "deleted") {
-          buckets.deleted.push(range);
+          buckets.deleted.push({
+            range: lineRange(line),
+            hoverMessage: hover(line),
+          });
         }
       }
 
@@ -375,15 +432,29 @@ export class GutterMarkers implements vscode.Disposable {
   }
 
   /**
+   * The block model for the commands behind the marker hover cards: what the
+   * painted markers show, plus the base/current lines and block spans. Cheap
+   * on repeat calls — `HEAD` content and ignore checks are cached.
+   */
+  async peek(editor: vscode.TextEditor): Promise<BlockPeek | undefined> {
+    const repo = this.repoFor(editor.document.uri);
+    if (!repo) return undefined;
+    return {
+      repo,
+      uri: editor.document.uri,
+      ...(await this.compute(repo, editor.document)),
+    };
+  }
+
+  /**
    * Compute per-line change markers by diffing the document text (including
    * unsaved edits) against `HEAD`, so an unsaved buffer shows markers the same
    * way a saved file does.
    */
-  private async markersFor(
+  private async compute(
     repo: RepoEntry,
-    editor: vscode.TextEditor,
-  ): Promise<Record<GutterState, vscode.Range[]>> {
-    const doc = editor.document;
+    doc: vscode.TextDocument,
+  ): Promise<Computed> {
     const relative = path.relative(repo.root, doc.uri.fsPath);
     const limit = doc.lineCount;
     const at = (line: number) => Math.max(0, Math.min(line, limit - 1));
@@ -391,9 +462,18 @@ export class GutterMarkers implements vscode.Disposable {
     const added: vscode.Range[] = [];
     const modified: vscode.Range[] = [];
     const deleted: vscode.Range[] = [];
+    const empty = {
+      added,
+      modified,
+      deleted,
+      blocks: [] as ChangeBlock[],
+      base: undefined,
+      now: [] as string[],
+      trailingNewline: true,
+    };
 
     if (doc.uri.scheme !== "file") {
-      return { added, modified, deleted };
+      return empty;
     }
 
     // Without a HEAD there is no base to diff against. Marking every line as
@@ -401,43 +481,52 @@ export class GutterMarkers implements vscode.Disposable {
     // at all, or in a repository that has no commit yet.
     const commit = await this.headCommit(repo);
     if (!commit) {
-      return { added, modified, deleted };
+      return empty;
     }
 
     // An ignored file is not tracked, so every line would read as added.
     if (await this.isIgnored(repo, relative)) {
-      return { added, modified, deleted };
+      return empty;
     }
 
-    const baseLines = (await this.headText(repo, commit, relative))?.split(
-      "\n",
-    );
+    const rawBase = (await this.headText(repo, commit, relative))?.split("\n");
 
-    // The repository has a HEAD and this path is not in it: a new file.
-    if (baseLines === undefined) {
+    const nowLines = doc.getText().split("\n");
+    const nowFlag = nowLines.length > 1 && nowLines[nowLines.length - 1] === "";
+    const now = nowFlag ? nowLines.slice(0, -1) : nowLines;
+
+    // The repository has a HEAD and this path is not in it: a new file, whose
+    // every line is one added block.
+    if (rawBase === undefined) {
+      const block: ChangeBlock = {
+        baseStart: 0,
+        baseCount: 0,
+        curStart: 0,
+        curCount: now.length,
+      };
       for (let i = 0; i < limit; i++) {
         added.push(new vscode.Range(i, 0, i, 0));
       }
-      return { added, modified, deleted };
+      return {
+        ...empty,
+        added,
+        blocks: [block],
+        now,
+        trailingNewline: nowFlag,
+      };
     }
 
     // A trailing newline in the file would otherwise diff as a phantom empty
     // last line; drop it so only real content lines are compared.
-    const base =
-      baseLines.length > 0 && baseLines[baseLines.length - 1] === ""
-        ? baseLines.slice(0, -1)
-        : baseLines;
-    const current = doc.getText().split("\n");
-    const now =
-      current.length > 0 && current[current.length - 1] === ""
-        ? current.slice(0, -1)
-        : current;
+    const baseFlag = rawBase.length > 1 && rawBase[rawBase.length - 1] === "";
+    const base = baseFlag ? rawBase.slice(0, -1) : rawBase;
 
-    // Block semantics (see `classifyLines`): a paired removed+added run is a
+    // Block semantics (see `changeBlocks`): a paired removed+added run is a
     // modification of every replaced line, a lone added run an insertion, a
-    // lone removed run a deletion — with the editor's own quick-diff heuristics
-    // for joining blocks that a blank line happens to separate.
-    const classification = classifyLines(base, now);
+    // lone removed run a deletion — with the editor's own quick-diff
+    // heuristics for joining blocks that a blank line happens to separate.
+    const blocks = changeBlocks(base, now);
+    const classification = classifyFromBlocks(blocks, now);
     for (const line of classification.added) {
       added.push(new vscode.Range(at(line), 0, at(line), 0));
     }
@@ -448,7 +537,15 @@ export class GutterMarkers implements vscode.Disposable {
       deleted.push(new vscode.Range(at(line), 0, at(line), 0));
     }
 
-    return { added, modified, deleted };
+    return {
+      added,
+      modified,
+      deleted,
+      blocks,
+      base,
+      now,
+      trailingNewline: baseFlag,
+    };
   }
 
   dispose(): void {

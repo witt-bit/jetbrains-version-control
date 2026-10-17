@@ -12,11 +12,55 @@ export interface LineClassification {
 }
 
 /** One contiguous change: a span of base lines mapped to a span of current lines. */
-interface Change {
+export interface ChangeBlock {
   baseStart: number;
   baseCount: number;
   curStart: number;
   curCount: number;
+}
+
+/**
+ * The contiguous change blocks behind the per-line classification, in the same
+ * order the diff produces them. Consumers that need whole edits (gutter-click
+ * cards, block navigation, block rollback) use this; `classifyLines` itself is
+ * a thin flatten of it.
+ */
+export function changeBlocks(base: string[], current: string[]): ChangeBlock[] {
+  if (base.length === 0 && current.length === 0) return [];
+  const changes = diffToChanges(base, current);
+  joinChangesAcrossShortGaps(changes, base);
+  return changes;
+}
+
+/**
+ * Flatten blocks into per-line classification. Split from `classifyLines` so
+ * callers that need the blocks too (gutter-click cards) diff only once.
+ */
+export function classifyFromBlocks(
+  blocks: ChangeBlock[],
+  current: string[],
+): LineClassification {
+  const result: LineClassification = {
+    added: [],
+    modified: [],
+    deleted: [],
+  };
+  const lastCurrent = Math.max(current.length - 1, 0);
+  for (const change of blocks) {
+    if (change.baseCount > 0 && change.curCount > 0) {
+      for (let i = 0; i < change.curCount; i++) {
+        result.modified.push(change.curStart + i);
+      }
+    } else if (change.curCount > 0) {
+      for (let i = 0; i < change.curCount; i++) {
+        result.added.push(change.curStart + i);
+      }
+    } else {
+      // Pure deletion: anchor the short bar on the line after the gap.
+      result.deleted.push(Math.min(change.curStart, lastCurrent));
+    }
+  }
+  return result;
 }
 
 /**
@@ -38,44 +82,21 @@ export function classifyLines(
   base: string[],
   current: string[],
 ): LineClassification {
-  const result: LineClassification = {
-    added: [],
-    modified: [],
-    deleted: [],
-  };
-  if (base.length === 0 && current.length === 0) return result;
-
-  const changes = diffToChanges(base, current);
-  joinChangesAcrossShortGaps(changes, base);
-
-  const lastCurrent = Math.max(current.length - 1, 0);
-  for (const change of changes) {
-    if (change.baseCount > 0 && change.curCount > 0) {
-      for (let i = 0; i < change.curCount; i++) {
-        result.modified.push(change.curStart + i);
-      }
-    } else if (change.curCount > 0) {
-      for (let i = 0; i < change.curCount; i++) {
-        result.added.push(change.curStart + i);
-      }
-    } else {
-      // Pure deletion: anchor the short bar on the line after the gap.
-      result.deleted.push(Math.min(change.curStart, lastCurrent));
-    }
+  if (base.length === 0 && current.length === 0) {
+    return { added: [], modified: [], deleted: [] };
   }
-
-  return result;
+  return classifyFromBlocks(changeBlocks(base, current), current);
 }
 
 /** Walk the diff blocks into contiguous change spans on both sides. */
-function diffToChanges(base: string[], current: string[]): Change[] {
-  const changes: Change[] = [];
+function diffToChanges(base: string[], current: string[]): ChangeBlock[] {
+  const changes: ChangeBlock[] = [];
   let basePos = 0;
   let curPos = 0;
   for (const part of diffArrays(base, current)) {
     const count = part.count ?? 0;
     if (part.added || part.removed) {
-      const change: Change = {
+      const change: ChangeBlock = {
         baseStart: basePos,
         baseCount: part.removed ? count : 0,
         curStart: curPos,
@@ -113,10 +134,13 @@ function diffToChanges(base: string[], current: string[]): Change[] {
  * keep the blank as context, splitting one replacement into a deletion and an
  * insertion.
  */
-function joinChangesAcrossShortGaps(changes: Change[], base: string[]): void {
+function joinChangesAcrossShortGaps(
+  changes: ChangeBlock[],
+  base: string[],
+): void {
   for (let round = 0; round < 10; round++) {
     let merged = false;
-    const joined: Change[] = [];
+    const joined: ChangeBlock[] = [];
     for (const change of changes) {
       const prev = joined[joined.length - 1];
       if (prev && shouldJoin(prev, change, base)) {
@@ -137,7 +161,11 @@ function joinChangesAcrossShortGaps(changes: Change[], base: string[]): void {
   }
 }
 
-function shouldJoin(prev: Change, next: Change, base: string[]): boolean {
+function shouldJoin(
+  prev: ChangeBlock,
+  next: ChangeBlock,
+  base: string[],
+): boolean {
   const gapStart = prev.baseStart + prev.baseCount;
   const gapEnd = next.baseStart;
   let nonWhitespace = 0;

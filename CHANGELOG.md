@@ -10,6 +10,12 @@
   - A detached HEAD shows up instead of disappearing, and checking out a remote branch warns before leaving you detached / 处于 detached HEAD 时状态栏会显示提示而不是消失；检出远程分支前会先警告
 
 ### Added / 新增
+- **Marker hover card (IDEA-style)** — hovering a change marker or any changed line shows a card of exactly that block: modified lines are word-diffed with the changed words highlighted in the editor's diff colors, a deleted block shows the content as it reads in `HEAD`, an insertion shows just the actions — no second diff editor in between / 悬停变更标记或任意变更行会显示该块的改动卡片：修改行按词级高亮变化的部分（取编辑器 diff 主题色），删除块直接显示 `HEAD` 中的内容，新增块只有操作按钮——中间不再需要打开第二个 diff 编辑器
+  - **Prev Change / Next Change** walk between blocks in the file, wrapping around / 在文件的变更块之间循环跳转
+  - **Rollback Lines** reverts exactly this block to `HEAD`, keeping unsaved-buffer semantics / 只回滚该块到 `HEAD`，支持未保存的缓冲内容
+  - **Show Diff for Lines** opens the `HEAD ↔ Working Tree` diff and lands on the block / 打开 `HEAD ↔ Working Tree` 的 diff 并定位到该块
+  - **Copy** takes the current lines (or the deleted content from `HEAD`) / 复制当前内容（删除块复制 `HEAD` 中的内容）
+  - **Commit this change** commits only this block through a throwaway index, leaving the rest of the file — staged or not — exactly as it was / 通过临时 index 只提交该块，文件其余的暂存与未暂存状态原样保留
 - **Turn the decorations off** — `JGC Decorations › Enabled`, `… › File Colors` and `… › Gutter Markers` switch off the Explorer colors and the gutter markers independently, so either layer can fall back to VS Code's built-in Git decorations / `JGC Decorations › Enabled`、`… › File Colors`、`… › Gutter Markers` 可分别关闭资源管理器着色与行号槽标记，某一层可退回使用 VS Code 内置 Git 的装饰
 - **Explorer file colors by Git status** — file names in the Explorer are tinted by their Git status (added, modified, deleted, untracked, ignored, conflict), so built-in Git can be disabled without losing them / 资源管理器中的文件名按 Git 状态着色（新增、修改、删除、未跟踪、已忽略、冲突），禁用内置 git 后依然保留
 - **Gutter change markers** — the line-number gutter shows a colored bar next to every added or modified line, and a short marker at the position where lines were deleted / 行号槽中为每个新增或修改的行显示彩色小竖条，删除位置显示较短的标记

@@ -81,6 +81,36 @@
     },
     "commands": [
       {
+        "command": "jgc.marker.prevChange",
+        "title": "Previous Change",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.marker.nextChange",
+        "title": "Next Change",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.marker.rollbackLines",
+        "title": "Rollback Lines",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.marker.showDiffForLines",
+        "title": "Show Diff for Lines",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.marker.copyBlock",
+        "title": "Copy Change Block",
+        "category": "JGC"
+      },
+      {
+        "command": "jgc.marker.commitBlock",
+        "title": "Commit this Change",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.status.menu",
         "title": "Git Actions",
         "icon": "$(git-branch)",
