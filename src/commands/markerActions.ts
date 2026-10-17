@@ -275,16 +275,35 @@ export function registerMarkerActions(deps: {
           }
         }),
     ),
-    vscode.commands.registerCommand(MARKER_COMMANDS.manage, async () =>
-      withBlock(undefined, undefined, async ({ editor, block, peek }) => {
-        // The comment-widget card is the popup: it stays open until the user
-        // acts on it, where the summoned hover gets reaped by the focus and
-        // mouse logic — flaky enough to be unreadable. Its frame width is
-        // VS Code chrome and cannot be styled; the content inside hugs.
-        focusBlock(editor, block);
-        log(`manage selection: popup at line ${block.curStart + 1}`);
-        showPopup(peek, block);
-      }),
+    vscode.commands.registerCommand(
+      MARKER_COMMANDS.manage,
+      async (
+        arg?: { lineNumber?: number; uri?: string | vscode.Uri } | number,
+      ) => {
+        // From the line-number menu the clicked line arrives as a 1-based
+        // `lineNumber` (with the clicked file's uri); from the editor context
+        // menu it arrives as a bare number or nothing at all. The block model
+        // is 0-based, so the menu's line is shifted down by one.
+        const line =
+          typeof arg === "number"
+            ? arg
+            : typeof arg?.lineNumber === "number"
+              ? arg.lineNumber - 1
+              : undefined;
+        // The menu forwards its target as a `Uri`; `withBlock` compares
+        // strings, so it is flattened here.
+        const uri =
+          typeof arg === "object" && arg?.uri ? `${arg.uri}` : undefined;
+        await withBlock(line, uri, async ({ editor, block, peek }) => {
+          // The comment-widget card is the popup: it stays open until the user
+          // acts on it, where the summoned hover gets reaped by the focus and
+          // mouse logic — flaky enough to be unreadable. Its frame width is
+          // VS Code chrome and cannot be styled; the content inside hugs.
+          focusBlock(editor, block);
+          log(`manage selection: popup at line ${block.curStart + 1}`);
+          showPopup(peek, block);
+        });
+      },
     ),
     vscode.commands.registerCommand(MARKER_COMMANDS.close, () =>
       deps.popup?.()?.close(),
