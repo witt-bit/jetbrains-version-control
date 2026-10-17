@@ -5,6 +5,7 @@ import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
 import { registerMarkerActions } from "./commands/markerActions";
 import { FileDecorationController } from "./decorations/fileDecorations";
 import { GutterMarkers, type RepoEntry } from "./decorations/gutterMarkers";
+import { registerMarkerHoverProvider } from "./decorations/markerHoverProvider";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
@@ -1854,6 +1855,9 @@ export function activate(context: vscode.ExtensionContext) {
   })) {
     context.subscriptions.push(action);
   }
+  context.subscriptions.push(
+    registerMarkerHoverProvider(() => gutterMarkers, trace),
+  );
 
   statusBar.setRepos(repos);
 
