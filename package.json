@@ -141,7 +141,7 @@
       },
       {
         "command": "git-brains.showFileHistory",
-        "title": "(JetBrains Git Control) Show File History",
+        "title": "Show File History",
         "icon": "$(history)",
         "category": "JGC"
       },
@@ -201,7 +201,7 @@
       },
       {
         "command": "git-brains.editSource",
-        "title": "(JGC) Edit Source",
+        "title": "Edit Source",
         "icon": "$(go-to-file)",
         "category": "JGC"
       },
@@ -226,6 +226,16 @@
         "title": "Refresh Worktrees",
         "icon": "$(refresh)",
         "category": "JGC"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "jgc.editorGit",
+        "label": "Git"
+      },
+      {
+        "id": "jgc.git.manageSelection",
+        "label": "Manage Selection..."
       }
     ],
     "menus": {
@@ -253,14 +263,51 @@
       ],
       "editor/context": [
         {
-          "command": "git-brains.showFileHistory",
+          "submenu": "jgc.editorGit",
           "when": "editorTextFocus",
           "group": "git@1"
+        }
+      ],
+      "jgc.editorGit": [
+        {
+          "command": "git-brains.showFileHistory",
+          "when": "editorTextFocus",
+          "group": "1_history@1"
         },
         {
           "command": "git-brains.editSource",
           "when": "isInDiffEditor && resourceScheme != file",
-          "group": "git@2"
+          "group": "1_history@2"
+        },
+        {
+          "submenu": "jgc.git.manageSelection",
+          "group": "2_selection@1"
+        }
+      ],
+      "jgc.git.manageSelection": [
+        {
+          "command": "jgc.marker.prevChange",
+          "group": "block@1"
+        },
+        {
+          "command": "jgc.marker.nextChange",
+          "group": "block@2"
+        },
+        {
+          "command": "jgc.marker.rollbackLines",
+          "group": "block@3"
+        },
+        {
+          "command": "jgc.marker.showDiffForLines",
+          "group": "block@4"
+        },
+        {
+          "command": "jgc.marker.copyBlock",
+          "group": "block@5"
+        },
+        {
+          "command": "jgc.marker.commitBlock",
+          "group": "block@6"
         }
       ],
       "editor/lineNumber/context": [

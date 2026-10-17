@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Changed / 变更
+- **Everything lives under the Git context menu** — the editor's right-click menu has one top-level **Git** submenu: **Show File History** moved into it, and the new **Manage Selection...** submenu holds the marker card actions (Prev Change, Next Change, Rollback Lines, Show Diff for Lines, Copy, Commit this change) for the change block at the cursor / 编辑器右键菜单收敛为一个一级 **Git** 子菜单：**Show File History** 移入其中，新的 **Manage Selection...** 子菜单承载胶囊卡片的动作（Prev Change、Next Change、Rollback Lines、Show Diff for Lines、Copy、Commit this change），作用于光标所在的变更块
 - **Jump to Source keeps your selection** — in a diff editor, **Jump to Source** now carries over the whole selection and pins the scroll position, so text you selected stays selected after the jump instead of collapsing to a bare cursor line / diff 编辑器中的 **Jump to Source** 现在会保留完整选区并固定滚动位置，之前选中的文字跳转后仍然处于选中状态，而不是收缩成一个光标点
 - **Status bar shows the current branch** — the status bar item now displays the branch of the repository you are working in, with incoming/outgoing commit counts, replacing VS Code's built-in Git status bar item / 状态栏现在显示当前仓库的分支名与待推送/待拉取提交数，替代 VS Code 内置 git 的状态栏项
   - Click it for a menu of common actions: Update Project, Commit, Push, New Branch, Switch Branch and the Git Log view / 点击可打开常用操作菜单：更新项目、提交、推送、新建分支、切换分支、Git Log

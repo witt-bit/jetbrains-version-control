@@ -73,6 +73,9 @@ export function registerMarkerActions(deps: {
     const block = blockAtLine(peek.blocks, line);
     if (!block) {
       log(`marker action: no change block at line ${line + 1}`);
+      void vscode.window.showInformationMessage(
+        "No change block at the cursor.",
+      );
       return;
     }
     await fn({ editor, block, peek });
