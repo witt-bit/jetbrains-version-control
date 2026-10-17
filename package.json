@@ -116,6 +116,11 @@
         "category": "JGC"
       },
       {
+        "command": "jgc.marker.closePopup",
+        "title": "Close Change Popup",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.status.menu",
         "title": "Git Actions",
         "icon": "$(git-branch)",
@@ -307,6 +312,11 @@
       ]
     },
     "keybindings": [
+      {
+        "command": "jgc.marker.closePopup",
+        "key": "escape",
+        "when": "jgc.markerPopupVisible"
+      },
       {
         "command": "git-brains.openPushPanel",
         "key": "ctrl+shift+k",

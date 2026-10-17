@@ -11,7 +11,7 @@
   - A detached HEAD shows up instead of disappearing, and checking out a remote branch warns before leaving you detached / 处于 detached HEAD 时状态栏会显示提示而不是消失；检出远程分支前会先警告
 
 ### Added / 新增
-- **Marker hover card (IDEA-style)** — hovering a change marker or any changed line shows a card of exactly that block: modified lines are word-diffed with the changed words highlighted in the editor's diff colors, a deleted block shows the content as it reads in `HEAD`, an insertion shows just the actions — no second diff editor in between / 悬停变更标记或任意变更行会显示该块的改动卡片：修改行按词级高亮变化的部分（取编辑器 diff 主题色），删除块直接显示 `HEAD` 中的内容，新增块只有操作按钮——中间不再需要打开第二个 diff 编辑器
+- **Marker hover card (IDEA-style)** — hovering a change marker or any changed line shows a card of exactly that block: modified lines are word-diffed with the changed words highlighted in the editor's diff colors, a deleted block shows the content as it reads in `HEAD`, an insertion shows just the actions — the six action buttons are the bundled JetBrains UI icons (light and dark theme variants), and **Manage Selection...** in the Git context menu floats the same card over the block, staying open until you act on it / 悬停变更标记或任意变更行会显示该块的改动卡片：修改行按词级高亮变化的部分（取编辑器 diff 主题色），删除块直接显示 `HEAD` 中的内容，新增块只有操作按钮——六个操作按钮用打包的 JetBrains UI 图标（浅色/深色两套），右键 Git 菜单的 **Manage Selection...** 会把同一张卡片浮在该块上方，保持显示直到你操作它
   - **Prev Change / Next Change** walk between blocks in the file, wrapping around / 在文件的变更块之间循环跳转
   - **Rollback Lines** reverts exactly this block to `HEAD`, keeping unsaved-buffer semantics / 只回滚该块到 `HEAD`，支持未保存的缓冲内容
   - **Show Diff for Lines** opens the `HEAD ↔ Working Tree` diff and lands on the block / 打开 `HEAD ↔ Working Tree` 的 diff 并定位到该块

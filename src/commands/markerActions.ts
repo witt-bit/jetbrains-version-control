@@ -4,11 +4,14 @@ import type { BlockPeek, GutterMarkers } from "../decorations/gutterMarkers";
 import type { ChangeBlock } from "../decorations/lineDiff.ts";
 import {
   blockAtLine,
+  buildCard,
   committedContent,
   nextBlock,
   prevBlock,
   rollbackEdit,
 } from "../decorations/markerCard";
+import { hoverFor } from "../decorations/markerHover";
+import type { MarkerPopup } from "../decorations/markerPopup";
 
 /** Command ids, as contributed in `package.json`. */
 export const MARKER_COMMANDS = {
@@ -19,6 +22,7 @@ export const MARKER_COMMANDS = {
   copy: "jgc.marker.copyBlock",
   commit: "jgc.marker.commitBlock",
   manage: "jgc.marker.manageSelection",
+  close: "jgc.marker.closePopup",
 } as const;
 
 /**
@@ -33,9 +37,25 @@ export function registerMarkerActions(deps: {
   log?: (message: string) => void;
   /** Called after the repository state changed (a block was committed). */
   onMutated?: () => void;
+  /** The extension-wide floating card, shared with the Manage Selection flow. */
+  popup?: () => MarkerPopup | undefined;
 }): vscode.Disposable[] {
   const log = deps.log ?? (() => {});
   const getMarkers = () => deps.markers();
+
+  /** Open the floating card anchored to one block's first line. */
+  const showPopup = (peek: BlockPeek, block: ChangeBlock): void => {
+    const popup = deps.popup?.();
+    if (!popup) return;
+    const end =
+      block.curCount > 0 ? block.curStart + block.curCount - 1 : block.curStart;
+    popup.show(
+      peek.uri,
+      block.curStart,
+      Math.min(end, peek.now.length - 1),
+      hoverFor(buildCard(block, peek.base ?? [], peek.now), peek.uri),
+    );
+  };
 
   /**
    * Resolve the block the command targets. Card links pass the line they were
@@ -102,13 +122,28 @@ export function registerMarkerActions(deps: {
     );
   };
 
+  /**
+   * Park the caret on one block's first line and scroll it into view: both
+   * the floating card and the block jumps anchor at the caret, so jumps keep
+   * the caret on the target's first line instead of selecting the block.
+   */
+  const focusBlock = (editor: vscode.TextEditor, block: ChangeBlock): void => {
+    const line = Math.min(block.curStart, editor.document.lineCount - 1);
+    editor.selection = new vscode.Selection(line, 0, line, 0);
+    editor.revealRange(
+      new vscode.Range(line, 0, line, 1),
+      vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+    );
+  };
+
   return [
     vscode.commands.registerCommand(
       MARKER_COMMANDS.prev,
       async (line?: unknown) =>
         withBlock(line, undefined, async ({ editor, block, peek }) => {
           const target = prevBlock(peek.blocks, block.curStart);
-          if (target) selectBlock(editor, target);
+          if (target) focusBlock(editor, target);
+          showPopup(peek, target ?? block);
         }),
     ),
     vscode.commands.registerCommand(
@@ -116,7 +151,8 @@ export function registerMarkerActions(deps: {
       async (line?: unknown) =>
         withBlock(line, undefined, async ({ editor, block, peek }) => {
           const target = nextBlock(peek.blocks, block.curStart);
-          if (target) selectBlock(editor, target);
+          if (target) focusBlock(editor, target);
+          showPopup(peek, target ?? block);
         }),
     ),
     vscode.commands.registerCommand(
@@ -145,6 +181,7 @@ export function registerMarkerActions(deps: {
             return;
           }
           await editor.document.save();
+          deps.popup?.()?.close();
           log(
             `marker rollback: ${editor.document.uri.fsPath} lines ${edit.start + 1}-${edit.end}`,
           );
@@ -226,6 +263,7 @@ export function registerMarkerActions(deps: {
               message,
             );
             log(`marker commit: ${commit} (${basename})`);
+            deps.popup?.()?.close();
             deps.onMutated?.();
             void vscode.window.showInformationMessage(
               `Committed this change: ${commit.slice(0, 7)} — ${basename}`,
@@ -238,29 +276,18 @@ export function registerMarkerActions(deps: {
         }),
     ),
     vscode.commands.registerCommand(MARKER_COMMANDS.manage, async () =>
-      withBlock(undefined, undefined, async ({ editor, block }) => {
-        // The hover widget anchors at the caret, so park it at the first
-        // line of the block; the floating card then lines up with the line
-        // start the way IDEA's change toolbar does.
-        const line = Math.min(block.curStart, editor.document.lineCount - 1);
-        editor.selection = new vscode.Selection(line, 0, line, 0);
-        editor.revealRange(
-          new vscode.Range(line, 0, line, 1),
-          vscode.TextEditorRevealType.Default,
-        );
-        // Invoked from the context menu, the workbench is still closing the
-        // menu and restoring focus; a beat keeps that from swallowing the
-        // hover we are about to open.
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        log(`manage selection: hover at line ${line + 1}`);
-        try {
-          await vscode.commands.executeCommand("editor.action.showHover");
-        } catch (error) {
-          void vscode.window.showErrorMessage(
-            `Opening the change card failed: ${error instanceof Error ? error.message : String(error)}`,
-          );
-        }
+      withBlock(undefined, undefined, async ({ editor, block, peek }) => {
+        // The comment-widget card is the popup: it stays open until the user
+        // acts on it, where the summoned hover gets reaped by the focus and
+        // mouse logic — flaky enough to be unreadable. Its frame width is
+        // VS Code chrome and cannot be styled; the content inside hugs.
+        focusBlock(editor, block);
+        log(`manage selection: popup at line ${block.curStart + 1}`);
+        showPopup(peek, block);
       }),
+    ),
+    vscode.commands.registerCommand(MARKER_COMMANDS.close, () =>
+      deps.popup?.()?.close(),
     ),
   ];
 }
