@@ -18,6 +18,7 @@ export const MARKER_COMMANDS = {
   showDiff: "jgc.marker.showDiffForLines",
   copy: "jgc.marker.copyBlock",
   commit: "jgc.marker.commitBlock",
+  manage: "jgc.marker.manageSelection",
 } as const;
 
 /**
@@ -235,6 +236,22 @@ export function registerMarkerActions(deps: {
             );
           }
         }),
+    ),
+    vscode.commands.registerCommand(MARKER_COMMANDS.manage, async () =>
+      withBlock(undefined, undefined, async ({ editor, block }) => {
+        // The hover widget anchors at the caret, so park it at the first
+        // line of the block; the floating card then lines up with the line
+        // start the way IDEA's change toolbar does. `showHover` is the
+        // user-facing "Show or Focus Hover" command — it renders the card
+        // the hover provider serves for that position.
+        const line = Math.min(block.curStart, editor.document.lineCount - 1);
+        editor.selection = new vscode.Selection(line, 0, line, 0);
+        editor.revealRange(
+          new vscode.Range(line, 0, line, 1),
+          vscode.TextEditorRevealType.Default,
+        );
+        await vscode.commands.executeCommand("editor.action.showHover");
+      }),
     ),
   ];
 }

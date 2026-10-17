@@ -111,6 +111,11 @@
         "category": "JGC"
       },
       {
+        "command": "jgc.marker.manageSelection",
+        "title": "Manage Selection...",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.status.menu",
         "title": "Git Actions",
         "icon": "$(git-branch)",
@@ -232,10 +237,6 @@
       {
         "id": "jgc.editorGit",
         "label": "Git"
-      },
-      {
-        "id": "jgc.git.manageSelection",
-        "label": "Manage Selection..."
       }
     ],
     "menus": {
@@ -280,34 +281,8 @@
           "group": "1_history@2"
         },
         {
-          "submenu": "jgc.git.manageSelection",
+          "command": "jgc.marker.manageSelection",
           "group": "2_selection@1"
-        }
-      ],
-      "jgc.git.manageSelection": [
-        {
-          "command": "jgc.marker.prevChange",
-          "group": "block@1"
-        },
-        {
-          "command": "jgc.marker.nextChange",
-          "group": "block@2"
-        },
-        {
-          "command": "jgc.marker.rollbackLines",
-          "group": "block@3"
-        },
-        {
-          "command": "jgc.marker.showDiffForLines",
-          "group": "block@4"
-        },
-        {
-          "command": "jgc.marker.copyBlock",
-          "group": "block@5"
-        },
-        {
-          "command": "jgc.marker.commitBlock",
-          "group": "block@6"
         }
       ],
       "editor/lineNumber/context": [
