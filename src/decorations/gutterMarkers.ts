@@ -2,9 +2,8 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
 import { type ChangeBlock, changeBlocks, classifyFromBlocks } from "./lineDiff";
-import { blockAtLine, buildCard } from "./markerCard";
-import { hoverFor } from "./markerHover";
-import { type GutterState, readStateColor } from "./palette";
+import type { GutterState } from "./palette";
+import { readStateColor } from "./palette";
 
 /** A repository root together with the service that talks to it. */
 export interface RepoEntry {
@@ -33,7 +32,10 @@ interface Computed {
   trailingNewline: boolean;
 }
 
-/** The block model the marker commands act on. */
+/**
+ * The block model for the commands behind the marker hover cards: what the
+ * painted markers show, plus the base/current lines and block spans.
+ */
 export interface BlockPeek {
   repo: RepoEntry;
   uri: vscode.Uri;
@@ -259,47 +261,23 @@ export class GutterMarkers implements vscode.Disposable {
         add(range.start.line, "added");
       }
 
-      // Hover cards are built once per block and shared by every line the
-      // block spans.
-      const cards = new Map<ChangeBlock, vscode.MarkdownString>();
-      const hover = (line: number): vscode.MarkdownString | undefined => {
-        const block = blockAtLine(computed.blocks, line);
-        if (!block) return undefined;
-        let md = cards.get(block);
-        if (!md) {
-          md = hoverFor(
-            buildCard(block, computed.base ?? [], computed.now),
-            editor.document.uri,
-          );
-          cards.set(block, md);
-        }
-        return md;
-      };
-
       // Gutter icons are independent of editor text and cursor positions. Each
       // line receives an icon with matching square edges when its neighbour
-      // has the same state, so contiguous rows appear as one capsule. The
-      // decoration range spans the whole line so the hover card shows wherever
-      // the changed line is hovered.
+      // has the same state, so contiguous rows appear as one capsule.
       const buckets = {
-        addedSingle: [] as vscode.DecorationOptions[],
-        addedFirst: [] as vscode.DecorationOptions[],
-        addedMiddle: [] as vscode.DecorationOptions[],
-        addedLast: [] as vscode.DecorationOptions[],
-        modifiedSingle: [] as vscode.DecorationOptions[],
-        modifiedFirst: [] as vscode.DecorationOptions[],
-        modifiedMiddle: [] as vscode.DecorationOptions[],
-        modifiedLast: [] as vscode.DecorationOptions[],
-        deleted: [] as vscode.DecorationOptions[],
-      } satisfies Record<string, vscode.DecorationOptions[]>;
+        addedSingle: [] as vscode.Range[],
+        addedFirst: [] as vscode.Range[],
+        addedMiddle: [] as vscode.Range[],
+        addedLast: [] as vscode.Range[],
+        modifiedSingle: [] as vscode.Range[],
+        modifiedFirst: [] as vscode.Range[],
+        modifiedMiddle: [] as vscode.Range[],
+        modifiedLast: [] as vscode.Range[],
+        deleted: [] as vscode.Range[],
+      } satisfies Record<string, vscode.Range[]>;
 
       const stateAt = (line: number): GutterState | undefined =>
         byLine.get(line);
-
-      const lineRange = (line: number): vscode.Range => {
-        const length = editor.document.lineAt(line).text.length;
-        return new vscode.Range(line, 0, line, Math.max(length, 1));
-      };
 
       const pad = await this.blamePad?.(editor.document.uri, editor.document);
       if (stale()) return;
@@ -329,17 +307,11 @@ export class GutterMarkers implements vscode.Disposable {
                   : "middle";
           const key =
             `${state}${shape[0].toUpperCase()}${shape.slice(1)}` as keyof typeof buckets;
-          buckets[key].push({
-            range: lineRange(line),
-            hoverMessage: hover(line),
-          });
+          buckets[key].push(new vscode.Range(line, 0, line, 1));
           continue;
         }
         if (state === "deleted") {
-          buckets.deleted.push({
-            range: lineRange(line),
-            hoverMessage: hover(line),
-          });
+          buckets.deleted.push(new vscode.Range(line, 0, line, 1));
         }
       }
 
@@ -437,12 +409,17 @@ export class GutterMarkers implements vscode.Disposable {
    * on repeat calls — `HEAD` content and ignore checks are cached.
    */
   async peek(editor: vscode.TextEditor): Promise<BlockPeek | undefined> {
-    const repo = this.repoFor(editor.document.uri);
+    return this.peekDoc(editor.document);
+  }
+
+  /** The document variant of `peek`, for hover providers and commands. */
+  async peekDoc(doc: vscode.TextDocument): Promise<BlockPeek | undefined> {
+    const repo = this.repoFor(doc.uri);
     if (!repo) return undefined;
     return {
       repo,
-      uri: editor.document.uri,
-      ...(await this.compute(repo, editor.document)),
+      uri: doc.uri,
+      ...(await this.compute(repo, doc)),
     };
   }
 
