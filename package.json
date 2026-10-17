@@ -300,6 +300,10 @@
           "command": "git-brains.clearGitBlameAnnotation",
           "when": "jgc.blameActive",
           "group": "git@1"
+        },
+        {
+          "command": "jgc.marker.manageSelection",
+          "group": "git@2"
         }
       ],
       "commandPalette": [],
