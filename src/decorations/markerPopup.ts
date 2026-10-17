@@ -24,6 +24,12 @@ export function createMarkerPopup(): MarkerPopup {
     "jgc.markerPopup",
     "Manage Selection",
   );
+  // The reply box doubles as the commit-message field: its prompt labels the
+  // collapsed button and its placeholder guides the expanded input.
+  controller.options = {
+    prompt: "Commit message…",
+    placeHolder: "Commit message for this change",
+  };
 
   let thread: vscode.CommentThread | undefined;
   let uri: vscode.Uri | undefined;
@@ -77,7 +83,12 @@ export function createMarkerPopup(): MarkerPopup {
         new vscode.Range(start, 0, start, 1),
         [{ body, author: { name: "" }, mode: vscode.CommentMode.Preview }],
       );
-      thread.canReply = false;
+      // The reply box is the card's commit-message field: keeping it open lets
+      // the user type the message, and its submit button runs the Commit
+      // action contributed to `comments/commentThread/context`. The context
+      // value scopes that action to this popup's threads.
+      thread.canReply = true;
+      thread.contextValue = "jgc.markerPopup";
       thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
       setVisible(true);
     },

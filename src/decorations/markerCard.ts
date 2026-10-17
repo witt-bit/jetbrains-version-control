@@ -1,4 +1,3 @@
-import { diffWordsWithSpace } from "diff";
 import { type ChangeBlock, changeBlocks } from "./lineDiff.ts";
 
 /**
@@ -8,37 +7,24 @@ import { type ChangeBlock, changeBlocks } from "./lineDiff.ts";
  * stays thin.
  */
 
-/** Which tone a rendered diff line carries. */
-export type CardLineTone = "removed" | "added" | "context";
+/**
+ * The toolbar actions the card offers, in display order. Commit is not here:
+ * it lives in the card's reply box, whose text becomes the commit message.
+ */
+export type CardAction = "prev" | "next" | "rollback" | "showDiff" | "copy";
 
-/** One rendered line of the card's preview area. */
-export interface CardLine {
-  tone: CardLineTone;
-  /**
-   * Word-level pieces of the line, or `undefined` when the whole line shares
-   * one tone. Only modified lines get pieces: it is the only case where the
-   * changed part is a fraction of the line.
-   */
-  pieces?: Array<{ text: string; changed: boolean }>;
-  text: string;
-}
-
-/** The actions the card offers, in display order. */
-export type CardAction =
-  | "prev"
-  | "next"
-  | "rollback"
-  | "showDiff"
-  | "copy"
-  | "commit";
-
-/** A block's full card: a preview and the commands it triggers. */
+/** A block's full card: the code to preview and the commands it triggers. */
 export interface MarkerCard {
   state: "added" | "modified" | "deleted";
   /** 1-based, user-facing line span in the current text. */
   from: number;
   to: number;
-  lines: CardLine[];
+  /** HEAD lines shown as the removed side; empty for an insertion. */
+  removed: string[];
+  /** Current lines shown as the added side; empty for a deletion. */
+  added: string[];
+  /** The document's language id, so the preview's fence highlights correctly. */
+  languageId: string;
   actions: CardAction[];
 }
 
@@ -86,20 +72,22 @@ export function prevBlock(
 }
 
 /**
- * How many lines the card's preview area shows per side before it is cut off.
+ * How many lines the card's preview shows per side before it is cut off.
  * IDEA's card scrolls; a hover tooltip is a poor scroller, so long edits trim.
  */
 const MAX_PREVIEW_LINES = 8;
 
 /**
- * Build the card for one block. A modification pairs its removed and added
- * lines and word-diffs each pair; a deletion shows its removed lines; an
- * insertion shows nothing — IDEA shows just the toolbar there too.
+ * Build the card for one block. The preview keeps the two sides apart — the
+ * removed HEAD lines and the current lines — so the renderer can show them as
+ * the code they are. An insertion carries only its current lines, which the
+ * card leaves out (they sit right there in the editor).
  */
 export function buildCard(
   block: ChangeBlock,
   base: string[],
   now: string[],
+  languageId: string,
 ): MarkerCard {
   const state: MarkerCard["state"] =
     block.baseCount > 0 && block.curCount > 0
@@ -108,87 +96,29 @@ export function buildCard(
         ? "added"
         : "deleted";
 
-  const lines: CardLine[] = [];
-  if (state === "modified") {
-    const paired = Math.min(block.baseCount, block.curCount);
-    for (let i = 0; i < paired; i++) {
-      const oldLine = base[block.baseStart + i];
-      const newLine = now[block.curStart + i];
-      if (i > 0 && lines.length < MAX_PREVIEW_LINES) {
-        lines.push({ tone: "context", text: "" });
-      }
-      pushWordDiff(lines, oldLine, newLine);
-    }
-    // A block can be unbalanced (2 removed, 3 added): the leftovers have no
-    // partner and read as a plain removal/insertion of their own.
-    for (let i = paired; i < block.baseCount; i++) {
-      pushTone(lines, "removed", base[block.baseStart + i]);
-    }
-    for (let i = paired; i < block.curCount; i++) {
-      pushTone(lines, "added", now[block.curStart + i]);
-    }
-  } else if (state === "deleted") {
-    for (let i = 0; i < block.baseCount; i++) {
-      pushTone(lines, "removed", base[block.baseStart + i]);
-    }
-  }
-
   return {
     state,
     from: block.curStart + 1,
     to: block.curStart + Math.max(block.curCount, 1),
-    lines: trimPreview(lines),
-    actions: ["prev", "next", "rollback", "showDiff", "copy", "commit"],
+    removed: trimPreview(
+      base.slice(block.baseStart, block.baseStart + block.baseCount),
+    ),
+    added: trimPreview(
+      now.slice(block.curStart, block.curStart + block.curCount),
+    ),
+    languageId,
+    actions: ["prev", "next", "rollback", "showDiff", "copy"],
   };
 }
 
-/** The empty preview an insertion gets: nothing to show before the toolbar. */
-function pushTone(lines: CardLine[], tone: CardLineTone, text: string): void {
-  if (lines.length >= MAX_PREVIEW_LINES) return;
-  lines.push({ tone, text });
-}
-
-/** Word-diff one replaced pair into a removed and an added card line. */
-function pushWordDiff(
-  lines: CardLine[],
-  oldLine: string,
-  newLine: string,
-): void {
-  if (oldLine === newLine) {
-    pushTone(lines, "context", oldLine);
-    return;
-  }
-  if (lines.length + 2 > MAX_PREVIEW_LINES) return;
-  const parts = diffWordsWithSpace(oldLine, newLine);
-  lines.push({
-    tone: "removed",
-    text: oldLine,
-    pieces: parts
-      .filter((part) => part.removed || !part.added)
-      .map((part) => ({ text: part.value, changed: Boolean(part.removed) })),
-  });
-  lines.push({
-    tone: "added",
-    text: newLine,
-    pieces: parts
-      .filter((part) => part.added || !part.removed)
-      .map((part) => ({ text: part.value, changed: Boolean(part.added) })),
-  });
-}
-
 /**
- * Cut the preview from both ends around the middle so the first and last
- * changes stay visible, and note nothing — the card stays silent about the
- * trim, matching how tight the IDEA card is.
+ * Cut a side from both ends around the middle so its first and last changes
+ * stay visible; the elision line reads as part of the code.
  */
-function trimPreview(lines: CardLine[]): CardLine[] {
+function trimPreview(lines: string[]): string[] {
   if (lines.length <= MAX_PREVIEW_LINES) return lines;
   const half = Math.floor(MAX_PREVIEW_LINES / 2);
-  return [
-    ...lines.slice(0, half),
-    { tone: "context", text: "…" },
-    ...lines.slice(lines.length - half),
-  ];
+  return [...lines.slice(0, half), "…", ...lines.slice(lines.length - half)];
 }
 
 /** A replacement of a span of current lines, 0-based, end-exclusive. */

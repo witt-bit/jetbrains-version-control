@@ -95,49 +95,42 @@ describe("block navigation", () => {
 });
 
 describe("buildCard", () => {
-  it("shows word-level pieces for a modified block", () => {
+  it("keeps the two sides of a modified block apart", () => {
     const base = ["const value = compute(1);"];
     const now = ["const value = compute(42);"];
-    const card = buildCard(changeBlocks(base, now)[0], base, now);
+    const card = buildCard(changeBlocks(base, now)[0], base, now, "typescript");
     assert.equal(card.state, "modified");
-    assert.equal(card.lines.length, 2);
-    assert.equal(card.lines[0].tone, "removed");
-    // The removed line marks its old words as changed, the added line its new.
-    const removedChanged = card.lines[0].pieces
-      ?.filter((p) => p.changed)
-      .map((p) => p.text)
-      .join("");
-    const addedChanged = card.lines[1].pieces
-      ?.filter((p) => p.changed)
-      .map((p) => p.text)
-      .join("");
-    assert.equal(removedChanged, "1");
-    assert.equal(addedChanged, "42");
+    assert.deepEqual(card.removed, ["const value = compute(1);"]);
+    assert.deepEqual(card.added, ["const value = compute(42);"]);
+    assert.equal(card.languageId, "typescript");
   });
 
-  it("shows removed lines for a deletion and no lines for an insertion", () => {
+  it("shows the removed side for a deletion and only the added side for an insertion", () => {
     const deleted = buildCard(
       changeBlocks(["a", "gone", "b"], ["a", "b"])[0],
       ["a", "gone", "b"],
       ["a", "b"],
+      "plaintext",
     );
     assert.equal(deleted.state, "deleted");
-    assert.equal(deleted.lines.length, 1);
-    assert.equal(deleted.lines[0].tone, "removed");
+    assert.deepEqual(deleted.removed, ["gone"]);
+    assert.deepEqual(deleted.added, []);
 
     const added = buildCard(
       changeBlocks(["a", "b"], ["a", "new", "b"])[0],
       ["a", "b"],
       ["a", "new", "b"],
+      "plaintext",
     );
     assert.equal(added.state, "added");
-    assert.equal(added.lines.length, 0);
+    assert.deepEqual(added.removed, []);
+    assert.deepEqual(added.added, ["new"]);
   });
 
   it("reports a one-based line span", () => {
     const base = ["l0", "l1", "l2", "l3"];
     const now = ["l0", "x", "y", "l3"];
-    const card = buildCard(changeBlocks(base, now)[0], base, now);
+    const card = buildCard(changeBlocks(base, now)[0], base, now, "plaintext");
     assert.deepEqual([card.from, card.to], [2, 3]);
   });
 });

@@ -45,7 +45,10 @@ export function registerMarkerHoverProvider(
           0,
         );
         return new vscode.Hover(
-          hoverFor(buildCard(block, peek.base ?? [], peek.now), document.uri),
+          hoverFor(
+            buildCard(block, peek.base ?? [], peek.now, document.languageId),
+            document.uri,
+          ),
           range,
         );
       },

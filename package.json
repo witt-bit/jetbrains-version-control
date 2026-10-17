@@ -306,6 +306,13 @@
           "group": "git@2"
         }
       ],
+      "comments/commentThread/context": [
+        {
+          "command": "jgc.marker.commitBlock",
+          "group": "inline@1",
+          "when": "commentThread == jgc.markerPopup"
+        }
+      ],
       "commandPalette": [],
       "explorer/context": [
         {

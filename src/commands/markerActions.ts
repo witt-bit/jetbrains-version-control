@@ -44,7 +44,11 @@ export function registerMarkerActions(deps: {
   const getMarkers = () => deps.markers();
 
   /** Open the floating card anchored to one block's first line. */
-  const showPopup = (peek: BlockPeek, block: ChangeBlock): void => {
+  const showPopup = (
+    editor: vscode.TextEditor,
+    peek: BlockPeek,
+    block: ChangeBlock,
+  ): void => {
     const popup = deps.popup?.();
     if (!popup) return;
     const end =
@@ -53,7 +57,10 @@ export function registerMarkerActions(deps: {
       peek.uri,
       block.curStart,
       Math.min(end, peek.now.length - 1),
-      hoverFor(buildCard(block, peek.base ?? [], peek.now), peek.uri),
+      hoverFor(
+        buildCard(block, peek.base ?? [], peek.now, editor.document.languageId),
+        peek.uri,
+      ),
     );
   };
 
@@ -143,7 +150,7 @@ export function registerMarkerActions(deps: {
         withBlock(line, undefined, async ({ editor, block, peek }) => {
           const target = prevBlock(peek.blocks, block.curStart);
           if (target) focusBlock(editor, target);
-          showPopup(peek, target ?? block);
+          showPopup(editor, peek, target ?? block);
         }),
     ),
     vscode.commands.registerCommand(
@@ -152,7 +159,7 @@ export function registerMarkerActions(deps: {
         withBlock(line, undefined, async ({ editor, block, peek }) => {
           const target = nextBlock(peek.blocks, block.curStart);
           if (target) focusBlock(editor, target);
-          showPopup(peek, target ?? block);
+          showPopup(editor, peek, target ?? block);
         }),
     ),
     vscode.commands.registerCommand(
@@ -233,47 +240,62 @@ export function registerMarkerActions(deps: {
     ),
     vscode.commands.registerCommand(
       MARKER_COMMANDS.commit,
-      async (line?: unknown, uri?: unknown) =>
-        withBlock(line, uri, async ({ editor, block }) => {
-          // The committed content is read from the buffer, so unsaved edits
-          // are saved first — the same thing IDEA does before its block commit.
-          if (editor.document.isDirty && !(await editor.document.save()))
-            return;
-          const fresh = await getMarkers()?.peek(editor);
-          if (!fresh) return;
-          const freshBlock = blockAtLine(fresh.blocks, block.curStart);
-          if (!freshBlock) return;
-
-          const content = committedContent(
-            freshBlock,
-            fresh.base ?? [],
-            fresh.now,
-            fresh.trailingNewline,
+      async (arg?: unknown) => {
+        // Invoked from the card's reply box, the argument is a `CommentReply`
+        // carrying the typed message and the thread the card rides on; its
+        // single-line range names the block to commit.
+        const reply =
+          arg && typeof arg === "object" && "thread" in arg && "text" in arg
+            ? (arg as vscode.CommentReply)
+            : undefined;
+        if (!reply) return;
+        const message = reply.text.trim();
+        if (!message) {
+          void vscode.window.showWarningMessage(
+            "Type a commit message before committing this change.",
           );
-          const basename = path.basename(fresh.uri.fsPath);
-          const message = await vscode.window.showInputBox({
-            prompt: "Commit message for this change",
-            value: `Change block in ${basename}`,
-          });
-          if (message === undefined) return;
-          try {
-            const commit = await fresh.repo.service.commitBlockChange(
-              path.relative(fresh.repo.root, fresh.uri.fsPath),
-              content,
-              message,
-            );
-            log(`marker commit: ${commit} (${basename})`);
-            deps.popup?.()?.close();
-            deps.onMutated?.();
-            void vscode.window.showInformationMessage(
-              `Committed this change: ${commit.slice(0, 7)} — ${basename}`,
-            );
-          } catch (error) {
-            void vscode.window.showErrorMessage(
-              `Committing this change failed: ${error instanceof Error ? error.message : String(error)}`,
-            );
-          }
-        }),
+          return;
+        }
+        const uri = reply.thread.uri;
+        const line = reply.thread.range.start.line;
+        const editor = vscode.window.visibleTextEditors.find(
+          (candidate) => candidate.document.uri.toString() === uri.toString(),
+        );
+        const markers = getMarkers();
+        if (!editor || !markers) return;
+        // The committed content is read from the buffer, so unsaved edits are
+        // saved first — the same thing IDEA does before its block commit.
+        if (editor.document.isDirty && !(await editor.document.save())) return;
+        const fresh = await markers.peek(editor);
+        if (!fresh) return;
+        const freshBlock = blockAtLine(fresh.blocks, line);
+        if (!freshBlock) return;
+
+        const content = committedContent(
+          freshBlock,
+          fresh.base ?? [],
+          fresh.now,
+          fresh.trailingNewline,
+        );
+        const basename = path.basename(fresh.uri.fsPath);
+        try {
+          const commit = await fresh.repo.service.commitBlockChange(
+            path.relative(fresh.repo.root, fresh.uri.fsPath),
+            content,
+            message,
+          );
+          log(`marker commit: ${commit} (${basename})`);
+          deps.popup?.()?.close();
+          deps.onMutated?.();
+          void vscode.window.showInformationMessage(
+            `Committed this change: ${commit.slice(0, 7)} — ${basename}`,
+          );
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            `Committing this change failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      },
     ),
     vscode.commands.registerCommand(
       MARKER_COMMANDS.manage,
@@ -301,7 +323,7 @@ export function registerMarkerActions(deps: {
           // VS Code chrome and cannot be styled; the content inside hugs.
           focusBlock(editor, block);
           log(`manage selection: popup at line ${block.curStart + 1}`);
-          showPopup(peek, block);
+          showPopup(editor, peek, block);
         });
       },
     ),
