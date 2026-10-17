@@ -241,16 +241,25 @@ export function registerMarkerActions(deps: {
       withBlock(undefined, undefined, async ({ editor, block }) => {
         // The hover widget anchors at the caret, so park it at the first
         // line of the block; the floating card then lines up with the line
-        // start the way IDEA's change toolbar does. `showHover` is the
-        // user-facing "Show or Focus Hover" command — it renders the card
-        // the hover provider serves for that position.
+        // start the way IDEA's change toolbar does.
         const line = Math.min(block.curStart, editor.document.lineCount - 1);
         editor.selection = new vscode.Selection(line, 0, line, 0);
         editor.revealRange(
           new vscode.Range(line, 0, line, 1),
           vscode.TextEditorRevealType.Default,
         );
-        await vscode.commands.executeCommand("editor.action.showHover");
+        // Invoked from the context menu, the workbench is still closing the
+        // menu and restoring focus; a beat keeps that from swallowing the
+        // hover we are about to open.
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        log(`manage selection: hover at line ${line + 1}`);
+        try {
+          await vscode.commands.executeCommand("editor.action.showHover");
+        } catch (error) {
+          void vscode.window.showErrorMessage(
+            `Opening the change card failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
       }),
     ),
   ];
