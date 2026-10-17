@@ -1247,34 +1247,39 @@ export function activate(context: vscode.ExtensionContext) {
     const filePath = params.filePath as string;
     const staged = params.staged as boolean | undefined;
 
-    const rightUri = vscode.Uri.joinPath(
+    const diskUri = vscode.Uri.joinPath(
       vscode.Uri.file(workspaceRoot),
       filePath,
     );
 
+    // Deleted files have no working-tree content and a staged deletion has
+    // no index entry either; both sides must then come from virtual documents
+    // (which resolve to empty content), otherwise vscode.diff fails with
+    // ENOENT on the missing disk file.
+    let rightUri: vscode.Uri;
+    let rightLabel: string;
     if (staged) {
-      // Show diff between HEAD and staged
-      const leftUri = vscode.Uri.parse(
-        `${GIT_BRAINS_SCHEME}:/${filePath}?ref=HEAD`,
-      );
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        leftUri,
-        rightUri,
-        `${filePath} (HEAD ↔ Staged)`,
-      );
+      rightUri = vscode.Uri.parse(`${GIT_BRAINS_SCHEME}:/${filePath}?ref=:0`);
+      rightLabel = "Staged";
     } else {
-      // Show diff between HEAD and working tree
-      const leftUri = vscode.Uri.parse(
-        `${GIT_BRAINS_SCHEME}:/${filePath}?ref=HEAD`,
-      );
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        leftUri,
-        rightUri,
-        `${filePath} (HEAD ↔ Working Tree)`,
-      );
+      rightLabel = "Working Tree";
+      try {
+        await vscode.workspace.fs.stat(diskUri);
+        rightUri = diskUri;
+      } catch {
+        rightUri = vscode.Uri.parse(`${GIT_BRAINS_SCHEME}:/${filePath}?ref=`);
+      }
     }
+
+    const leftUri = vscode.Uri.parse(
+      `${GIT_BRAINS_SCHEME}:/${filePath}?ref=HEAD`,
+    );
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      leftUri,
+      rightUri,
+      `${filePath} (HEAD ↔ ${rightLabel})`,
+    );
     return { success: true };
   });
 
