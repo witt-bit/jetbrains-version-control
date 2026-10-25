@@ -90,6 +90,30 @@ export class GitService {
     }
   }
 
+  /**
+   * Names of the configured remotes, cached like the branch list: `%D` in log
+   * output only prefixes remote-tracking branches with these names, so this
+   * set is what tells a `origin/main`-style remote ref apart from a local
+   * branch that merely contains a slash.
+   */
+  private async getRemoteNames(): Promise<Set<string>> {
+    const cacheKey = "remotes";
+    const cached = this.cache.get<Set<string>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const output = await this.execGit(["remote"]).catch(() => "");
+    const names = new Set(
+      output
+        .trim()
+        .split("\n")
+        .map((r) => r.trim())
+        .filter(Boolean),
+    );
+    this.cache.set(cacheKey, names);
+    return names;
+  }
+
   async getLog(options: LogOptions = {}): Promise<CommitNode[]> {
     const cacheKey = `log:${JSON.stringify(options)}`;
     const cached = this.cache.get<CommitNode[]>(cacheKey);
@@ -133,7 +157,8 @@ export class GitService {
     }
 
     const output = await this.execGit(args);
-    const commits = parseLogOutput(output);
+    const remoteNames = await this.getRemoteNames();
+    const commits = parseLogOutput(output, remoteNames);
     this.cache.set(cacheKey, commits);
     return commits;
   }
@@ -323,6 +348,18 @@ export class GitService {
     return this.execGit(args);
   }
 
+  /**
+   * Unified patch of everything `branchName` has relative to `currentBranch`
+   * (diff from their merge base), the content behind the branch sidebar's
+   * "Compare with Current".
+   */
+  async getDiffBetweenBranches(
+    currentBranch: string,
+    branchName: string,
+  ): Promise<string> {
+    return this.execGit(["diff", `${currentBranch}...${branchName}`]);
+  }
+
   async getFileContent(ref: string, filePath: string): Promise<string> {
     if (!ref) {
       return "";
@@ -426,6 +463,26 @@ export class GitService {
     return parseBlamePorcelain(output);
   }
 
+  /**
+   * Blame a file as of `ref` (a commit-ish), for annotating virtual diff
+   * sides whose content is `git show ref:path` — their line numbers match
+   * that revision, not the working tree. Only real revisions work here: the
+   * index (`:0`) and the empty placeholder have none, callers gate on that.
+   */
+  async blameAt(ref: string, filePath: string): Promise<BlameLine[]> {
+    const output = await this.execGit([
+      "blame",
+      "--porcelain",
+      "-l",
+      "-w",
+      "-M",
+      ref,
+      "--",
+      filePath,
+    ]);
+    return parseBlamePorcelain(output);
+  }
+
   async getStatus(options: { ignored?: boolean } = {}): Promise<FileStatus[]> {
     const args = ["status", "--porcelain=v1"];
     // `matching` keeps ignored-file listing cheap on repos with big ignored
@@ -465,6 +522,24 @@ export class GitService {
       .filter((s) => s.length > 0);
   }
 
+  /**
+   * Whether `hash` is an ancestor of (or equal to) `HEAD` — i.e. whether the
+   * current branch's history contains it, which rebasing operations require.
+   * `merge-base --is-ancestor` signals "not an ancestor" with exit code 1,
+   * which resolves to `false`; anything else is a real error and throws.
+   */
+  async isAncestorOfHead(hash: string): Promise<boolean> {
+    try {
+      await this.execGit(["merge-base", "--is-ancestor", hash, "HEAD"]);
+      return true;
+    } catch (err: unknown) {
+      if ((err as { code?: number }).code === 1) {
+        return false;
+      }
+      throw err;
+    }
+  }
+
   async getMergeState(): Promise<MergeState> {
     try {
       const mergeHead = (
@@ -496,10 +571,27 @@ export class GitService {
     }
   }
 
+  /**
+   * Stage only the paths still unmerged in the index, for `--continue` flows.
+   * The old `git add -u` swept every modified tracked file — including edits
+   * the user never meant to commit — into the continuation commit.
+   */
+  private async stageUnmerged(): Promise<void> {
+    const output = await this.execGit([
+      "diff",
+      "--name-only",
+      "--diff-filter=U",
+    ]);
+    const files = output.trim().split("\n").filter(Boolean).map(unquoteGitPath);
+    if (files.length > 0) {
+      await this.execGit(["add", "--", ...files]);
+    }
+  }
+
   async cherryPickAction(action: "continue" | "abort" | "skip"): Promise<void> {
     if (action === "continue") {
-      // Stage all resolved files before continuing (like IntelliJ IDEA behavior)
-      await this.execGit(["add", "-u"]);
+      // Stage the resolved files before continuing (like IntelliJ IDEA does)
+      await this.stageUnmerged();
       // Use --allow-empty to handle the case where cherry-pick becomes empty after conflict resolution
       try {
         await this.execGit(["cherry-pick", "--continue"]);
@@ -677,8 +769,8 @@ export class GitService {
 
   async rebaseAction(action: "continue" | "abort" | "skip"): Promise<void> {
     if (action === "continue") {
-      // Stage all resolved files before continuing
-      await this.execGit(["add", "-u"]);
+      // Stage the resolved files before continuing
+      await this.stageUnmerged();
     }
     await this.execGit(["rebase", `--${action}`]);
     this.invalidateCache();
@@ -690,8 +782,8 @@ export class GitService {
   }
 
   async mergeContinue(): Promise<void> {
-    // Stage all resolved files before committing
-    await this.execGit(["add", "-u"]);
+    // Stage the resolved files before committing
+    await this.stageUnmerged();
     await this.execGit(["commit", "--no-edit"]);
     this.invalidateCache();
   }
@@ -727,6 +819,7 @@ export class GitService {
     branchName: string,
     remote?: string,
   ): Promise<CommitNode[]> {
+    const remoteNames = await this.getRemoteNames();
     const remoteName = remote || (await this.getDefaultRemote(branchName));
     const upstream = `${remoteName}/${branchName}`;
     // Check if upstream exists
@@ -741,7 +834,7 @@ export class GitService {
         "--max-count=50",
       ];
       const output = await this.execGit(args);
-      return parseLogOutput(output);
+      return parseLogOutput(output, remoteNames);
     }
     const args = [
       "log",
@@ -749,7 +842,7 @@ export class GitService {
       `${upstream}..${branchName}`,
     ];
     const output = await this.execGit(args);
-    return parseLogOutput(output);
+    return parseLogOutput(output, remoteNames);
   }
 
   async pull(branchName?: string): Promise<void> {
@@ -1097,6 +1190,19 @@ export class GitService {
         await this.execGit(["hash-object", "-w", "--path", filePath, tmp])
       ).trim();
 
+      // Keep the mode `HEAD` records for the path (executable bit etc.); a
+      // hardcoded 100644 would silently drop the executable bit.
+      let mode = "100644";
+      try {
+        const lsTree = await this.execGit(["ls-tree", "HEAD", "--", filePath]);
+        const modeMatch = /^(\d{6})\s/.exec(lsTree);
+        if (modeMatch) {
+          mode = modeMatch[1];
+        }
+      } catch {
+        // No HEAD entry (new file) — the default regular-file mode stands.
+      }
+
       const indexEnv = {
         GIT_INDEX_FILE: path.join(
           os.tmpdir(),
@@ -1110,7 +1216,7 @@ export class GitService {
             "update-index",
             "--add",
             "--cacheinfo",
-            `100644,${blob},${filePath}`,
+            `${mode},${blob},${filePath}`,
           ],
           MAX_BUFFER,
           indexEnv,
@@ -1125,6 +1231,7 @@ export class GitService {
           await this.execGit(["commit-tree", tree, "-p", parent, "-m", message])
         ).trim();
         await this.execGit(["update-ref", `refs/heads/${branch}`, commit]);
+        this.invalidateCache();
         return commit;
       } finally {
         await fs.rm(indexEnv.GIT_INDEX_FILE, { force: true }).catch(() => {});
@@ -1246,15 +1353,23 @@ export class GitService {
     }
   }
 
-  async rollbackFile(filePath: string): Promise<void> {
-    // Check if file exists in HEAD (i.e., was previously committed)
-    let existsInHead = false;
+  /**
+   * Whether the path is recorded in `HEAD`. Callers deciding how to roll a
+   * file back (restore vs. unstage/delete) need this distinction directly;
+   * `rollbackFile` uses the same check internally.
+   */
+  async fileExistsInHead(filePath: string): Promise<boolean> {
     try {
       await this.execGit(["cat-file", "-e", `HEAD:${filePath}`]);
-      existsInHead = true;
+      return true;
     } catch {
-      existsInHead = false;
+      return false;
     }
+  }
+
+  async rollbackFile(filePath: string): Promise<void> {
+    // Check if file exists in HEAD (i.e., was previously committed)
+    const existsInHead = await this.fileExistsInHead(filePath);
 
     if (existsInHead) {
       // File exists in HEAD - restore to HEAD version (handles both staged and unstaged changes)
@@ -1679,15 +1794,7 @@ export class GitService {
       const fullPath = path.join(this.cwd, filePath);
       try {
         const content = await fs.readFile(fullPath, "utf-8");
-        const lines = content.split("\n");
-        patch += `diff --git a/${filePath} b/${filePath}\n`;
-        patch += "new file mode 100644\n";
-        patch += "--- /dev/null\n";
-        patch += `+++ b/${filePath}\n`;
-        patch += `@@ -0,0 +1,${lines.length} @@\n`;
-        for (const line of lines) {
-          patch += `+${line}\n`;
-        }
+        patch += untrackedFilePatch(filePath, content);
       } catch {
         // skip files that can't be read
       }
@@ -1729,15 +1836,7 @@ export class GitService {
         const fullPath = path.join(this.cwd, filePath);
         try {
           const content = await fs.readFile(fullPath, "utf-8");
-          const lines = content.split("\n");
-          patch += `diff --git a/${filePath} b/${filePath}\n`;
-          patch += "new file mode 100644\n";
-          patch += "--- /dev/null\n";
-          patch += `+++ b/${filePath}\n`;
-          patch += `@@ -0,0 +1,${lines.length} @@\n`;
-          for (const line of lines) {
-            patch += `+${line}\n`;
-          }
+          patch += untrackedFilePatch(filePath, content);
         } catch {
           // skip binary or unreadable files
         }
@@ -1949,7 +2048,10 @@ function formatDate(date: Date): string {
   return `${y}/${m}/${d}`;
 }
 
-function parseLogOutput(output: string): CommitNode[] {
+function parseLogOutput(
+  output: string,
+  remoteNames: Set<string> = new Set(),
+): CommitNode[] {
   const commits: CommitNode[] = [];
   const records = output.split(RECORD_SEP);
 
@@ -1964,7 +2066,7 @@ function parseLogOutput(output: string): CommitNode[] {
     }
 
     const refsStr = fields[8]?.trim() ?? "";
-    const refs = parseRefs(refsStr);
+    const refs = parseRefs(refsStr, remoteNames);
 
     commits.push({
       hash: fields[0] ?? "",
@@ -1981,7 +2083,7 @@ function parseLogOutput(output: string): CommitNode[] {
   return commits;
 }
 
-function parseRefs(refsStr: string): RefInfo[] {
+function parseRefs(refsStr: string, remoteNames: Set<string>): RefInfo[] {
   if (!refsStr) {
     return [];
   }
@@ -2000,42 +2102,55 @@ function parseRefs(refsStr: string): RefInfo[] {
     } else if (part.startsWith("tag: ")) {
       refs.push({ type: "tag", name: part.replace("tag: ", "") });
     } else if (part.includes("/")) {
-      // Distinguish remote branches from local branches with slashes (e.g. feat/xxx)
-      // Remote branches in %D format are prefixed with remote name (origin/, upstream/, etc.)
-      // Common pattern: if first segment before / is a short name (likely a remote), treat as remote
+      // `%D` prefixes remote-tracking branches with their configured remote
+      // name, so a ref like `origin/main` is remote exactly when its first
+      // segment is a real remote — a local `dev/sub` or `user/feature` no
+      // longer reads as remote the way the old hardcoded prefix list made it.
       const firstSlash = part.indexOf("/");
       const prefix = part.substring(0, firstSlash);
-      // Heuristic: remote names are typically short (origin, upstream, fork, etc.)
-      // Local branch names with / typically start with feat/, fix/, hotfix/, release/, etc.
-      const localPrefixes = [
-        "feat",
-        "fix",
-        "hotfix",
-        "release",
-        "bugfix",
-        "feature",
-        "chore",
-        "docs",
-        "refactor",
-        "test",
-        "ci",
-        "build",
-        "perf",
-        "style",
-        "revert",
-        "wip",
-        "dependabot",
-      ];
-      if (localPrefixes.includes(prefix.toLowerCase())) {
-        refs.push({ type: "branch", name: part });
-      } else {
+      if (remoteNames.has(prefix)) {
         refs.push({ type: "remote-branch", name: part });
+      } else {
+        refs.push({ type: "branch", name: part });
       }
     } else {
       refs.push({ type: "branch", name: part });
     }
   }
   return refs;
+}
+
+/**
+ * Build a "new file" patch for an untracked file's exact content. Splitting on
+ * `\n` leaves a phantom trailing empty line when the file ends with a newline;
+ * counting real lines (and emitting no hunk for an empty file) keeps `git
+ * apply` from adding a blank last line when the shelf is unshelved.
+ */
+function untrackedFilePatch(filePath: string, content: string): string {
+  // `"".split("\n")` is `[""]`, not `[]` — an empty file must stay empty or
+  // the hunk would restore it as a single blank line. A trailing newline
+  // otherwise produces a phantom last element; drop it.
+  const lines = content === "" ? [] : content.split("\n");
+  if (lines.length > 0 && content.endsWith("\n")) {
+    lines.pop();
+  }
+  let patch = `diff --git a/${filePath} b/${filePath}\n`;
+  patch += "new file mode 100644\n";
+  patch += "--- /dev/null\n";
+  patch += `+++ b/${filePath}\n`;
+  if (lines.length === 0) {
+    // An empty file: `git diff` emits headers without any hunk.
+    return patch;
+  }
+  patch += `@@ -0,0 +1,${lines.length} @@\n`;
+  for (const line of lines) {
+    patch += `+${line}\n`;
+  }
+  if (!content.endsWith("\n")) {
+    // Without this marker git apply appends a newline that was never there.
+    patch += "\\ No newline at end of file\n";
+  }
+  return patch;
 }
 
 function parseTrack(track: string): { ahead: number; behind: number } {

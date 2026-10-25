@@ -97,6 +97,12 @@ interface SelectionSnapshot {
   rangeNewest: string | null;
 }
 
+/**
+ * Sequence guard for `selectCommit`: clicking commit B while commit A's file
+ * list is still loading must not let A's late response overwrite B's list.
+ */
+let commitFilesRequestSeq = 0;
+
 function filterCommits(
   commits: Commit[],
   filter: PanelFilter,
@@ -433,10 +439,13 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       rangeOldest: orderedHashes[orderedHashes.length - 1],
       rangeNewest: orderedHashes[0],
     });
+    const requestSeq = ++commitFilesRequestSeq;
     try {
       const files = (await bridge.request("getCommitRangeFiles", {
         hashes: orderedHashes,
       })) as DiffFile[] | null;
+      // A newer selection owns the file list now; drop this stale response.
+      if (requestSeq !== commitFilesRequestSeq) return;
       set({ commitFiles: files ?? [] });
     } catch (err) {
       console.error("selectCommit failed:", err);
@@ -746,6 +755,19 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
 // Listen for git state changes
 bridge.onEvent((event, data) => {
   if (event === "gitStateChanged") {
+    // A full refresh resets the user's selection and collapsed sequences, so
+    // it only runs for events that can actually move commits, branches or
+    // tags. Saving a file broadcasts scope:"status" every time, a merge state
+    // change broadcasts "mergeState", and "navigateToHead" is just a scroll
+    // request — none of those should rebuild the graph.
+    const { scope } = (data ?? {}) as { scope?: string };
+    if (
+      scope === "status" ||
+      scope === "mergeState" ||
+      scope === "navigateToHead"
+    ) {
+      return;
+    }
     usePanelStore.getState().refresh();
   }
   if (event === "showFileHistory") {

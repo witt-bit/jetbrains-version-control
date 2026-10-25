@@ -10,7 +10,6 @@ const BADGE_REFRESH_DEBOUNCE = 300;
 export class CommitViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "git-brains.commitPanel";
 
-  private view: vscode.WebviewView | null = null;
   private badgeTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly disposables: vscode.Disposable[] = [];
 
@@ -19,6 +18,15 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
     private readonly messageRouter: MessageRouter,
     private readonly caches: GitCache[] = [],
     private readonly gitServices: GitService[] = [],
+    /**
+     * Hidden TreeView in the same container that carries the activity bar
+     * badge. `WebviewView.badge` only exists once the view is resolved — the
+     * first time the user opens it — so before that first click the badge
+     * could never appear (microsoft/vscode#146330). `TreeView.badge` reaches
+     * the container icon without any resolution, so it is the sole badge
+     * source.
+     */
+    private readonly badgeView: vscode.TreeView<never>,
   ) {
     this.disposables.push(
       this.messageRouter.onBroadcast((event) => {
@@ -27,13 +35,13 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
         }
       }),
     );
+    // Window load: show the pending-changes count without waiting for the
+    // first broadcast or for the user to open the panel.
+    this.scheduleBadgeRefresh();
   }
 
   /** Recomputes the badge from the same source VS Code's SCM badge uses. */
   private async refreshBadge(): Promise<void> {
-    const view = this.view;
-    if (!view) return;
-
     let count = 0;
     for (const service of this.gitServices) {
       try {
@@ -47,9 +55,7 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
         // Folder is not a git repo — skip it.
       }
     }
-
-    if (this.view !== view) return;
-    view.badge =
+    this.badgeView.badge =
       count > 0
         ? { value: count, tooltip: `${count} pending changes` }
         : undefined;
@@ -71,7 +77,6 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
     _token: vscode.CancellationToken,
   ): void {
     const webview = webviewView.webview;
-    this.view = webviewView;
 
     webview.options = {
       enableScripts: true,
@@ -82,7 +87,6 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
 
     const routerDisposable = this.messageRouter.registerWebview(webview);
     webviewView.onDidDispose(() => {
-      this.view = null;
       if (this.badgeTimer !== null) {
         clearTimeout(this.badgeTimer);
         this.badgeTimer = null;
