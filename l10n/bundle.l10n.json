@@ -294,5 +294,25 @@
   [
     "remote — checking out detaches HEAD",
     "remote — checking out detaches HEAD"
+  ],
+  [
+    "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
+    "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?"
+  ],
+  [
+    "Disable built-in Git",
+    "Disable built-in Git"
+  ],
+  [
+    "Keep both",
+    "Keep both"
+  ],
+  [
+    "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
+    "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control."
+  ],
+  [
+    "Reload Now",
+    "Reload Now"
   ]
 ]

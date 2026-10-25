@@ -294,5 +294,25 @@
   [
     "remote — checking out detaches HEAD",
     "远程——检出将进入 detached HEAD"
+  ],
+  [
+    "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
+    "JetBrains Git Control 可以替代 VS Code 内置的 Git 界面。要禁用 VS Code 内置 Git 扩展吗（git.enabled = false）？"
+  ],
+  [
+    "Disable built-in Git",
+    "禁用内置 Git"
+  ],
+  [
+    "Keep both",
+    "两者都保留"
+  ],
+  [
+    "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
+    "已禁用内置 Git。重载窗口后生效；要从活动栏移除“源代码管理”图标，请右键活动栏并取消勾选“源代码管理”。"
+  ],
+  [
+    "Reload Now",
+    "立即重载"
   ]
 ]

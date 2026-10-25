@@ -339,5 +339,11 @@
   "contrib.config.worktree.openBehavior.desc": "Controls how projects are opened from Git worktrees.",
   "contrib.config.worktree.ask": "Always ask which window to open in",
   "contrib.config.worktree.thisWindow": "Always open in the current window",
-  "contrib.config.worktree.newWindow": "Always open in a new window"
+  "contrib.config.worktree.newWindow": "Always open in a new window",
+  "contrib.cmd.worktreesNew": "New Worktree...",
+  "contrib.cmd.worktreesRefresh": "Refresh Worktrees",
+  "contrib.view.commitBadge": "Commit",
+  "contrib.config.onboarding.desc": "Whether JGC may offer, via one dialog, to disable VS Code's built-in Git extension (git.enabled = false). Answering the dialog sets this to \"never\"; change it back to \"ask\" to see the dialog again.",
+  "contrib.config.onboarding.ask": "Show the dialog offering to disable VS Code's built-in Git extension",
+  "contrib.config.onboarding.never": "Never show the built-in Git dialog"
 }

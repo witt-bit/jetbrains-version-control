@@ -80,9 +80,11 @@ export class BuiltinGitPrompt implements vscode.Disposable {
     this.log?.("builtin git prompt: asking");
     try {
       const choice = await vscode.window.showInformationMessage(
-        "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
-        "Disable built-in Git",
-        "Keep both",
+        vscode.l10n.t(
+          "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
+        ),
+        vscode.l10n.t("Disable built-in Git"),
+        vscode.l10n.t("Keep both"),
       );
       if (choice === undefined) {
         // Dismissed without deciding — the setting stays "ask" and the
@@ -91,15 +93,17 @@ export class BuiltinGitPrompt implements vscode.Disposable {
       }
       // Either explicit answer settles the prompt.
       await this.settle();
-      if (choice === "Disable built-in Git") {
+      if (choice === vscode.l10n.t("Disable built-in Git")) {
         await vscode.workspace
           .getConfiguration("git")
           .update("enabled", false, vscode.ConfigurationTarget.Global);
         const reload = await vscode.window.showInformationMessage(
-          "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
-          "Reload Now",
+          vscode.l10n.t(
+            "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
+          ),
+          vscode.l10n.t("Reload Now"),
         );
-        if (reload === "Reload Now") {
+        if (reload === vscode.l10n.t("Reload Now")) {
           await vscode.commands.executeCommand("workbench.action.reloadWindow");
         }
       }

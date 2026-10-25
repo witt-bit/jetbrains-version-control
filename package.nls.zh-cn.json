@@ -51,5 +51,11 @@
   "contrib.config.worktree.openBehavior.desc": "控制如何从 Git 工作树打开项目。",
   "contrib.config.worktree.ask": "总是询问在哪个窗口中打开",
   "contrib.config.worktree.thisWindow": "总是在当前窗口打开",
-  "contrib.config.worktree.newWindow": "总是在新窗口打开"
+  "contrib.config.worktree.newWindow": "总是在新窗口打开",
+  "contrib.cmd.worktreesNew": "新建工作树...",
+  "contrib.cmd.worktreesRefresh": "刷新工作树",
+  "contrib.view.commitBadge": "提交",
+  "contrib.config.onboarding.desc": "是否允许 JGC 弹窗引导禁用 VS Code 内置 Git 扩展（git.enabled = false）。答复后该设置写为 \"never\"；改回 \"ask\" 可再次看到弹窗。",
+  "contrib.config.onboarding.ask": "显示引导禁用 VS Code 内置 Git 扩展的弹窗",
+  "contrib.config.onboarding.never": "不再显示内置 Git 引导弹窗"
 }
