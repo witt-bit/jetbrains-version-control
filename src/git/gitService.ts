@@ -57,6 +57,11 @@ export class GitService {
 
   constructor(private readonly cwd: string) {}
 
+  /** The repository root every git command runs against. */
+  get root(): string {
+    return this.cwd;
+  }
+
   private async execGit(
     args: string[],
     maxBuffer = MAX_BUFFER,
@@ -346,6 +351,16 @@ export class GitService {
       args.push("--", file);
     }
     return this.execGit(args);
+  }
+
+  /** Unified diff of one path's staged changes (index vs HEAD). */
+  async getStagedFileDiff(filePath: string): Promise<string> {
+    return this.execGit(["diff", "--cached", "--", filePath]);
+  }
+
+  /** Unified diff of one path's unstaged changes (worktree vs index). */
+  async getUnstagedFileDiff(filePath: string): Promise<string> {
+    return this.execGit(["diff", "--", filePath]);
   }
 
   /**
@@ -1344,6 +1359,44 @@ export class GitService {
   async getRecentCommitMessages(count = 20): Promise<string[]> {
     try {
       const output = await this.execGit(["log", `-${count}`, "--format=%s"]);
+      return output
+        .trim()
+        .split("\n")
+        .filter((msg) => msg.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
+  /** The configured committer identity, or null when neither field is set. */
+  async getCurrentUser(): Promise<{ name: string; email: string } | null> {
+    try {
+      const name = (await this.execGit(["config", "user.name"])).trim();
+      const email = (await this.execGit(["config", "user.email"])).trim();
+      if (!name && !email) {
+        return null;
+      }
+      return { name, email };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Recent commit subjects authored by `author` (an email or name, matched
+   * the way `git log --author` does). Empty when the person has no commits.
+   */
+  async getRecentCommitSubjectsByAuthor(
+    author: string,
+    count = 10,
+  ): Promise<string[]> {
+    try {
+      const output = await this.execGit([
+        "log",
+        `-${count}`,
+        `--author=${author}`,
+        "--format=%s",
+      ]);
       return output
         .trim()
         .split("\n")

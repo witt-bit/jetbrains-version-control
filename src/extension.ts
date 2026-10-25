@@ -1,14 +1,15 @@
 import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
+import { AiCommitMessageController, type PromptFile } from "./ai/commitMessage";
 import { BlameManager } from "./blame/blameManager";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
 import { registerMarkerActions } from "./commands/markerActions";
-import { registerAiProbe } from "./dev/aiProbe";
 import { FileDecorationController } from "./decorations/fileDecorations";
 import { GutterMarkers, type RepoEntry } from "./decorations/gutterMarkers";
 import { loadMarkerIcons } from "./decorations/markerHover";
 import { registerMarkerHoverProvider } from "./decorations/markerHoverProvider";
 import { createMarkerPopup } from "./decorations/markerPopup";
+import { registerAiProbe } from "./dev/aiProbe";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
@@ -124,6 +125,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     diffManager = new DiffEditorManager(gitService);
   }
+
+  // 2b. AI commit-message controller (needs a repository, so inside the guard)
+  const aiCommit = gitService
+    ? new AiCommitMessageController(context.workspaceState)
+    : null;
 
   // 2c. CommitViewProvider (always registered)
   // Carrier for the Commit activity-bar badge (see CommitViewProvider). The
@@ -1237,6 +1243,111 @@ export function activate(context: vscode.ExtensionContext) {
     messageRouter.broadcastEvent("commitStateChanged", {});
     messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
     return { success: true };
+  });
+
+  // ─── AI Commit Message Handlers ────────────────────────────────────
+  // Generation runs on the neutral vscode.lm layer; the checked files and
+  // their diffs are the only context, so the message describes exactly what
+  // the user is about to commit.
+
+  /** Per-file cap on untracked file content handed to the model. */
+  const MAX_UNTRACKED_CHARS = 8_000;
+
+  messageRouter.handle("generateCommitMessage", async (params) => {
+    if (!gitService || !aiCommit) return NOT_GIT_REPO;
+    if (aiCommit.busy) {
+      return { success: false, error: "A generation is already in progress" };
+    }
+    const files =
+      (params.files as
+        | { path: string; staged: boolean; status: string }[]
+        | undefined) ?? [];
+    if (files.length === 0) {
+      return { success: false, error: "No files are checked" };
+    }
+
+    try {
+      const promptFiles: PromptFile[] = [];
+      for (const file of files) {
+        let diff: string;
+        if (file.status === "untracked") {
+          try {
+            diff = await nodefs.readFile(
+              vscode.Uri.joinPath(vscode.Uri.file(gitService.root), file.path)
+                .fsPath,
+              "utf-8",
+            );
+          } catch {
+            diff = "(unreadable file)";
+          }
+          if (diff.length > MAX_UNTRACKED_CHARS) {
+            diff = `${diff.slice(0, MAX_UNTRACKED_CHARS)}\n… (content truncated)`;
+          }
+        } else if (file.staged) {
+          diff = await gitService.getStagedFileDiff(file.path);
+        } else {
+          diff = await gitService.getUnstagedFileDiff(file.path);
+        }
+        promptFiles.push({
+          path: file.path,
+          staged: file.staged,
+          status: file.status,
+          diff,
+        });
+      }
+
+      // Style reference: the committer's OWN recent commits first — their
+      // phrasing and message language are the best predictor of what they
+      // expect — falling back to the repository's latest history when this
+      // person has not committed here yet.
+      const user = await gitService.getCurrentUser();
+      let styleSubjects: string[] = [];
+      let styleSource: "author" | "repository" = "repository";
+      const author = user ? user.email || user.name : "";
+      if (author) {
+        styleSubjects = await gitService.getRecentCommitSubjectsByAuthor(
+          author,
+          10,
+        );
+        if (styleSubjects.length > 0) {
+          styleSource = "author";
+        }
+      }
+      if (styleSubjects.length === 0) {
+        styleSubjects = await gitService.getRecentCommitMessages(10);
+      }
+
+      const message = await aiCommit.generate(
+        promptFiles,
+        { subjects: styleSubjects, source: styleSource },
+        (chunk) =>
+          messageRouter.broadcastEvent("aiCommitMessageDelta", { text: chunk }),
+      );
+      return { success: true, message };
+    } catch (err: unknown) {
+      if (err instanceof vscode.CancellationError) {
+        return { success: false, cancelled: true };
+      }
+      const text = err instanceof Error ? err.message : String(err);
+      // Surface failures (consent denied, quota, model gone) visibly — the
+      // webview only resets its spinner.
+      void vscode.window.showErrorMessage(
+        `JGC: AI commit message failed: ${text}`,
+      );
+      return { success: false, error: text };
+    }
+  });
+
+  messageRouter.handle("cancelCommitMessage", async () => {
+    aiCommit?.cancel();
+    return { success: true };
+  });
+
+  /** The ✨ neighbor chevron: open the model picker and remember the choice. */
+  messageRouter.handle("chooseAiModel", async () => {
+    if (!aiCommit) return NOT_GIT_REPO;
+    const chosen = await aiCommit.chooseModel();
+    return { success: true, chosen };
   });
 
   messageRouter.handle("getAmendMessage", async () => {

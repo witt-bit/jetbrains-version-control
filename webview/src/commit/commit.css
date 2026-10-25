@@ -457,6 +457,47 @@
   color: var(--vscode-button-foreground);
 }
 
+/* Icon-only AI generate / stop button */
+.commit-ai-btn {
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--vscode-foreground);
+  border: none;
+}
+/* Enabled state keeps the icon's own colors: the sparkle SVG carries its
+   fills inline; the stop codicon reads the foreground below. */
+.commit-ai-btn:not(:disabled) {
+  color: var(--vscode-foreground);
+}
+.commit-ai-btn:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.15));
+}
+.commit-ai-btn:disabled {
+  /* Dimmed but clearly readable against any panel background */
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Compact fit inside the amend/history row above the textarea */
+.commit-amend-row .commit-ai-btn {
+  height: 22px;
+  padding: 0 7px;
+}
+.commit-amend-row .commit-ai-btn svg {
+  width: 14px;
+  height: 14px;
+}
+.commit-amend-row .commit-ai-model-btn {
+  padding: 0 4px;
+}
+.commit-amend-row .commit-ai-model-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
 .commit-btn-primary:hover {
   background: var(--vscode-button-hoverBackground);
 }

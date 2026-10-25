@@ -25,6 +25,9 @@ export interface EventMessage {
 export type Message = RequestMessage | ResponseMessage | EventMessage;
 
 export type CommandType =
+  | "generateCommitMessage"
+  | "chooseAiModel"
+  | "cancelCommitMessage"
   | "getLog"
   | "getGraphData"
   | "loadMoreLog"
@@ -134,7 +137,9 @@ export type EventType =
   /** data: { hash: string } — jump the Git Log graph to a specific commit */
   | "focusCommitInGraph"
   /** Open the highlighted Commit-panel file in an editor (host → webview) */
-  | "jumpToSourceRequested";
+  | "jumpToSourceRequested"
+  /** data: { text: string } — a streamed chunk of the AI commit message */
+  | "aiCommitMessageDelta";
 
 export interface RemoteBranchGroup {
   remote: string;

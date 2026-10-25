@@ -1,9 +1,42 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import CodiconDebugStop from "~icons/codicon/debug-stop";
 import { bridge } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useCommitStore } from "../../shared/store/commit-store";
+
+/**
+ * The emoji-style colored sparkle. The codicon is monochrome (it inherits the
+ * CSS `color`), so the AI button carries its own multicolor SVG instead: a
+ * gold gradient four-pointed star with a small orange companion.
+ */
+function SparkleIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="jgc-sparkle-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFE97F" />
+          <stop offset="1" stopColor="#FFB300" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M7 1 Q7.9 6.1 13 7 Q7.9 7.9 7 13 Q6.1 7.9 1 7 Q6.1 6.1 7 1 Z"
+        fill="url(#jgc-sparkle-gold)"
+      />
+      <path
+        d="M12.5 9 Q12.95 11.05 15 11.5 Q12.95 11.95 12.5 14 Q12.05 11.95 10 11.5 Q12.05 11.05 12.5 9 Z"
+        fill="#FF8A65"
+      />
+    </svg>
+  );
+}
 
 export function CommitMessageArea() {
   const {
@@ -14,6 +47,10 @@ export function CommitMessageArea() {
     commit,
     loading,
     selectedFiles,
+    aiGenerating,
+    generateCommitMessage,
+    cancelCommitMessage,
+    chooseAiModel,
   } = useCommitStore();
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -26,6 +63,19 @@ export function CommitMessageArea() {
   const hasSelectedFiles = selectedFiles.size > 0;
   const canCommit =
     commitMessage.trim().length > 0 && hasSelectedFiles && !loading;
+  const canGenerate = hasSelectedFiles && !loading;
+
+  const handleGenerate = useCallback(() => {
+    if (aiGenerating) {
+      void cancelCommitMessage();
+    } else {
+      void generateCommitMessage();
+    }
+  }, [aiGenerating, cancelCommitMessage, generateCommitMessage]);
+
+  const handleChooseModel = useCallback(() => {
+    void chooseAiModel();
+  }, [chooseAiModel]);
 
   const handleCommit = useCallback(async () => {
     if (!canCommit) return;
@@ -96,15 +146,6 @@ export function CommitMessageArea() {
 
   return (
     <div className="commit-message-area">
-      <textarea
-        className="commit-message-textarea"
-        placeholder="Commit message (Ctrl+Enter to commit)"
-        value={commitMessage}
-        onChange={(e) => setCommitMessage(e.target.value)}
-        onKeyDown={handleKeyDown}
-        rows={3}
-      />
-
       <div className="commit-amend-row">
         <label>
           <input
@@ -151,6 +192,34 @@ export function CommitMessageArea() {
             <HistoryIcon />
           </span>
         </Tooltip>
+        <Tooltip text="Generate commit message with AI" delay={400}>
+          <button
+            type="button"
+            className="commit-btn commit-ai-btn"
+            disabled={!canGenerate}
+            onClick={handleGenerate}
+          >
+            {aiGenerating ? <CodiconDebugStop /> : <SparkleIcon />}
+          </button>
+        </Tooltip>
+        <Tooltip text="Choose AI model" delay={400}>
+          <button
+            type="button"
+            className="commit-btn commit-ai-btn commit-ai-model-btn"
+            onClick={handleChooseModel}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            >
+              <polyline points="4,6 8,10 12,6" />
+            </svg>
+          </button>
+        </Tooltip>
         {showHistory &&
           createPortal(
             <HistoryDropdown
@@ -163,6 +232,15 @@ export function CommitMessageArea() {
             document.body,
           )}
       </div>
+
+      <textarea
+        className="commit-message-textarea"
+        placeholder="Commit message (Ctrl+Enter to commit)"
+        value={commitMessage}
+        onChange={(e) => setCommitMessage(e.target.value)}
+        onKeyDown={handleKeyDown}
+        rows={3}
+      />
 
       <div className="commit-buttons">
         <button

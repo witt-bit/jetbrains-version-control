@@ -1,5 +1,15 @@
 # Changelog / 更新日志
 
+## [Unreleased]
+
+### Added / 新增
+- **AI commit message generation** — a sparkle button next to **Commit** writes the commit message for exactly the files you checked: the prompt carries only their diffs (staged entries against the index, unstaged against worktree, untracked files as content) plus the repository's recent commit subjects as a style reference, and the result streams into our own input box where you can edit it before committing / **Commit** 按钮旁新增 ✨ 按钮，只为**你勾选的文件**生成提交信息：prompt 只携带这些文件的 diff（已暂存对比 index、未暂存对比工作区、未跟踪文件取内容）和本仓库最近的提交主题作为风格参考，结果流式写入我们自己的输入框，提交前可任意编辑
+  - Runs on VS Code's neutral Language Model API (`vscode.lm`): every model the user has made available is usable — GitHub Copilot out of the box, or any model added under **Chat: Manage Language Models** (OpenRouter, Ollama, OpenAI-compatible endpoints, …) or contributed by extensions. JGC adds zero configuration of its own / 基于 VS Code 中立的语言模型 API（`vscode.lm`）：用户配置过的所有模型均可用——GitHub Copilot 开箱即用，或在 **Chat: Manage Language Models**（OpenRouter、Ollama、OpenAI 兼容端点等）里添加，或由其它扩展贡献；JGC 自身零配置
+  - Multiple models installed: the first generation asks once which to use and remembers the choice; the chevron next to the sparkle reopens the model picker any time / 装有多个模型时首次生成会询问一次并记住选择；✨ 旁的下拉箭头可随时重新选择模型
+  - Style reference prefers the committer's OWN recent commits — their phrasing and message language are the best predictor — falling back to the repository's latest history when this person has not committed here yet; the generated message always follows the reference's language / 风格参照优先取当前提交人本人的最近提交（措辞与语言最贴近本人预期），本人尚无提交时回退到仓库最近历史；生成信息的语言始终跟随参照提交
+  - Generating again mid-flight cancels the request; clicking with no model configured shows where to add one / 生成中再次点击即取消；未配置任何模型时点击会提示添加模型的入口
+  - Requires VS Code 1.91+ (engine raised from 1.85) — the Language Model API's stable floor / 引擎要求提升至 VS Code 1.91+（语言模型 API 的稳定下限）
+
 ## [1.1.3] - 2026-10-25
 
 ### Changed / 变更

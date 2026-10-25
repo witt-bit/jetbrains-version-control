@@ -61,6 +61,9 @@ interface CommitStore {
   /** Collapsed directory paths in tree view */
   collapsedDirs: Set<string>;
 
+  // AI commit message
+  aiGenerating: boolean;
+
   // Actions
   fetchChanges: () => Promise<void>;
   fetchShelves: () => Promise<void>;
@@ -99,6 +102,9 @@ interface CommitStore {
   collapseAllDirs: (allDirPaths: string[]) => void;
   toggleGroupByDirectory: () => void;
   toggleShowUnversioned: () => void;
+  generateCommitMessage: () => Promise<void>;
+  cancelCommitMessage: () => Promise<void>;
+  chooseAiModel: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -117,6 +123,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
   groupByDirectory: true,
   showUnversioned: true,
   collapsedDirs: new Set<string>(),
+  aiGenerating: false,
 
   async fetchChanges() {
     set({ loading: true });
@@ -545,6 +552,59 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     set({ showUnversioned: !get().showUnversioned });
   },
 
+  /**
+   * Generate a commit message for the checked files. The extension host
+   * streams `aiCommitMessageDelta` events while the request is in flight;
+   * the accumulated text fills the input box live and the final response
+   * settles it.
+   */
+  async generateCommitMessage() {
+    const { changes, selectedFiles, aiGenerating } = get();
+    if (aiGenerating) return;
+    const files = changes
+      .filter((f) => selectedFiles.has(`${f.path}:${f.staged}`))
+      .map((f) => ({ path: f.path, staged: f.staged, status: f.status }));
+    if (files.length === 0) return;
+
+    set({ aiGenerating: true, commitMessage: "" });
+    try {
+      const result = (await bridge.request("generateCommitMessage", {
+        files,
+      })) as {
+        success?: boolean;
+        message?: string;
+        cancelled?: boolean;
+        error?: string;
+      };
+      if (result?.success && typeof result.message === "string") {
+        set({ commitMessage: result.message });
+      } else if (result?.error) {
+        console.error("generateCommitMessage failed:", result.error);
+      }
+    } catch (err) {
+      console.error("generateCommitMessage failed:", err);
+    } finally {
+      set({ aiGenerating: false });
+    }
+  },
+
+  /** Opens the host-side model picker and remembers the choice. */
+  async chooseAiModel() {
+    try {
+      await bridge.request("chooseAiModel");
+    } catch (err) {
+      console.error("chooseAiModel failed:", err);
+    }
+  },
+
+  async cancelCommitMessage() {
+    try {
+      await bridge.request("cancelCommitMessage");
+    } catch (err) {
+      console.error("cancelCommitMessage failed:", err);
+    }
+  },
+
   async refresh() {
     await Promise.all([
       get().fetchChanges(),
@@ -571,6 +631,13 @@ bridge.onEvent((event, data) => {
     if (!scope || scope === "all") {
       useCommitStore.getState().fetchIdeaShelves();
       useCommitStore.getState().fetchShelves();
+    }
+  }
+  if (event === "aiCommitMessageDelta") {
+    const { text } = (data ?? {}) as { text?: string };
+    const state = useCommitStore.getState();
+    if (state.aiGenerating && typeof text === "string" && text.length > 0) {
+      useCommitStore.setState({ commitMessage: state.commitMessage + text });
     }
   }
 });

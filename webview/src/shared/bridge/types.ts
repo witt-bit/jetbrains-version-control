@@ -22,6 +22,9 @@ export interface EventMessage {
 export type Message = RequestMessage | ResponseMessage | EventMessage;
 
 export type CommandType =
+  | "generateCommitMessage"
+  | "chooseAiModel"
+  | "cancelCommitMessage"
   | "getLog"
   | "getGraphData"
   | "loadMoreLog"

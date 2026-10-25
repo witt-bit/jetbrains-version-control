@@ -264,7 +264,7 @@ export function registerMarkerActions(deps: {
           return;
         }
         const uri = reply.thread.uri;
-        const line = reply.thread.range.start.line;
+        const line = reply.thread.range?.start.line ?? 0;
         const editor = vscode.window.visibleTextEditors.find(
           (candidate) => candidate.document.uri.toString() === uri.toString(),
         );
