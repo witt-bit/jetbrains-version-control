@@ -1,6 +1,6 @@
 # Changelog / 更新日志
 
-## [Unreleased]
+## [1.1.3] - 2026-10-25
 
 ### Changed / 变更
 - **Everything lives under the Git context menu** — the editor's right-click menu has one top-level **Git** submenu: **Show File History** moved into it, and **Manage Selection...** floats the marker card over the editor's first line of the change block at the cursor, with the six actions left to right: Prev Change, Next Change, Rollback Lines, Show Diff for Lines, Copy, Commit this change / 编辑器右键菜单收敛为一个一级 **Git** 子菜单：**Show File History** 移入其中，**Manage Selection...** 则在编辑器内浮动弹出胶囊卡片——锚定光标所在变更块的首行行首，从左到右依次是 Prev Change、Next Change、Rollback Lines、Show Diff for Lines、Copy、Commit this change 六个按钮
