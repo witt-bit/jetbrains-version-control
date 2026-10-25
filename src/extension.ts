@@ -2,6 +2,7 @@ import * as nodefs from "node:fs/promises";
 import * as vscode from "vscode";
 import { AiCommitMessageController, type PromptFile } from "./ai/commitMessage";
 import { BlameManager } from "./blame/blameManager";
+import { CaretBlameController } from "./blame/caretBlame";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
 import { registerMarkerActions } from "./commands/markerActions";
 import { FileDecorationController } from "./decorations/fileDecorations";
@@ -199,6 +200,16 @@ export function activate(context: vscode.ExtensionContext) {
   );
   blameManager.register();
   context.subscriptions.push(blameManager);
+
+  // End-of-line caret blame: `Who, date * summary` follows the caret.
+  const caretBlame = new CaretBlameController(
+    allGitServices.map((service, i) => ({
+      root: allWorkspaceRoots[i],
+      service,
+    })),
+    messageRouter,
+  );
+  context.subscriptions.push(caretBlame);
 
   /**
    * The editor a gutter menu entry was opened on. VS Code forwards
