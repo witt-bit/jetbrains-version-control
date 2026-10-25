@@ -96,7 +96,7 @@ export class BuiltinGitPrompt implements vscode.Disposable {
           .getConfiguration("git")
           .update("enabled", false, vscode.ConfigurationTarget.Global);
         const reload = await vscode.window.showInformationMessage(
-          "Built-in Git is now disabled. Reload the window to apply it. If the Source Control icon stays in the activity bar, right-click the icon and choose Hide.",
+          "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
           "Reload Now",
         );
         if (reload === "Reload Now") {
