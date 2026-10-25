@@ -6,7 +6,7 @@
 
 <h1>JetBrains Git Control</h1>
 
-The most complete **IntelliJ IDEA / JetBrains Git** experience for **VS Code** and **Cursor**. Includes Git graph visualization, IDEA-style commit panel with shelf and stash, branch management with context menus, cherry-pick, rebase, merge, 3-way merge editor, and WebStorm-style **Annotate with Git Blame** inline annotations. Works like WebStorm, PyCharm, GoLand, and Rider's Git tooling.
+The **IntelliJ IDEA / JetBrains Git** experience for **VS Code** and **Cursor**: Git graph visualization, IDEA-style commit panel with shelf and stash, branch management with context menus, cherry-pick, rebase, merge, a 3-way merge editor, and WebStorm-style **Annotate with Git Blame** inline annotations.
 
 > **Note**: This project is a fork of [JetBrains Git - IntelliJ IDEA Git Graph, Commit & Shelf for VS Code](https://github.com/aotemj/jetbrains-git-graph), extended with inline git blame annotations and commit-graph navigation.
 
@@ -29,6 +29,24 @@ WebStorm-style inline blame annotations for every line, with click-to-jump to th
 - **Name styles**: initials, last name, first name, full name, email
 - **Age-based coloring**: gradient colors based on commit age (new→blue, mid→green, old→gray)
 - **Left alignment**: all lines right-aligned, even without blame annotations
+
+### Caret Line-End Blame
+
+`Who, date * summary` at the end of the line the caret is on, JetBrains-style line blame that follows the caret instead of annotating every line.
+
+- **Own commits read `You`**; uncommitted (new) lines show nothing
+- **Template** (`jgc.caretBlame.format`): `${who}`, `${date}`, `${message}`, `${hash}` tokens
+- **Caps**: message at 50 characters (`jgc.caretBlame.messageMaxLength`), hash at 8, cut with an ellipsis
+- Toggle with `jgc.caretBlame.enabled`
+
+### AI Commit Message
+
+A sparkle button next to **Commit** writes the message for exactly the files you checked, streaming into the input box so you can edit before committing.
+
+- Runs on the VS Code Language Model API (`vscode.lm`): GitHub Copilot out of the box, plus models added under **Chat: Manage Language Models** (OpenRouter, Ollama, OpenAI-compatible endpoints) or contributed by other extensions; JGC itself has no configuration
+- Only the checked files: staged entries diff against the index, unstaged against the worktree, untracked files contribute content
+- Style reference: the committer's own recent commits first, falling back to the repository's latest history; the message follows the reference's language
+- Several models installed: asked once and remembered; the chevron beside the sparkle reopens the picker; clicking again cancels a running generation
 
 ### Branch Context Menu
 
@@ -134,13 +152,18 @@ Configure in VS Code Settings under `JGC`:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `jgc.blame.enabled` | Enable inline blame annotations | `true` |
-| `jgc.blame.columns` | Columns to display | `["revision", "author", "date"]` |
+| `jgc.blame.displayMode` | Display scope | `all` |
+| `jgc.blame.aroundLines` | Context lines (around mode) | `3` |
+| `jgc.blame.columns` | Columns to display | `["date", "author"]` |
 | `jgc.blame.colorMode` | Coloring mode | `order` |
-| `jgc.blame.nameStyle` | Name display style | `lastName` |
-| `jgc.blame.displayMode` | Display scope | `full` |
-| `jgc.blame.aroundLines` | Context lines (around mode) | `5` |
+| `jgc.blame.nameStyle` | Name display style | `fullName` |
 | `jgc.blame.dateFormat` | Date format | `yyyy-MM-dd HH:mm` |
+| `jgc.caretBlame.enabled` | Caret line-end blame | `true` |
+| `jgc.caretBlame.format` | Caret blame template | `${who}, ${date} * ${message}` |
+| `jgc.caretBlame.messageMaxLength` | Max characters of the summary part | `50` |
+| `jgc.decorations.enabled` | Explorer colors + gutter markers | `true` |
+| `jgc.decorations.fileColors` | Explorer file colors | `true` |
+| `jgc.decorations.gutterMarkers` | Gutter change markers | `true` |
 | `jgc.worktree.openBehavior` | How to open projects from worktrees | `ask` |
 
 ---
@@ -158,7 +181,7 @@ Search for **"JetBrains Git Control"** or **"JGC"** in VS Code Extensions.
 
 ## Requirements
 
-- VS Code 1.85.0+
+- VS Code 1.91.0+
 - Git installed and in PATH
 
 ## Local Development

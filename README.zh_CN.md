@@ -6,11 +6,11 @@
 
 <h1>JetBrains Git Control</h1>
 
-<strong>最完整的 IntelliJ IDEA / JetBrains Git 体验，适用于 VS Code 和 Cursor</strong>
+<strong>IntelliJ IDEA / JetBrains Git 体验，适用于 VS Code 和 Cursor</strong>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![VS Code](https://img.shields.io/badge/VS%20Code-1.85.0%2B-blue)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/badge/Version-1.1.2-green)](./package.json)
+[![VS Code](https://img.shields.io/badge/VS%20Code-1.91.0%2B-blue)](https://code.visualstudio.com/)
+[![Version](https://img.shields.io/badge/Version-1.1.3-green)](./package.json)
 
 > **注意**：本项目 fork 自 [JetBrains Git - IntelliJ IDEA Git Graph, Commit & Shelf for VS Code](https://github.com/aotemj/jetbrains-git-graph)，新增了 inline git blame 注解和提交图导航功能。
 
@@ -32,7 +32,25 @@ WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图�
 - **可配置列**：revision、date、author、commitNumber（按需选择）
 - **命名风格**：缩写、姓氏、名字、全名、邮箱
 - **年龄着色**：按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
-- **左对齐**：未注解行也向右对齐，保持代码整洁
+- **左对齐**：未注解行也向右对齐
+
+### 光标行尾 Blame
+
+光标所在行的行尾显示 `Who, 日期 * 摘要`，JetBrains 式行级 blame，跟随光标而非全量标注。
+
+- **本人提交显示 `You`**；未提交（新增）的行不显示
+- **模板**（`jgc.caretBlame.format`）：支持 `${who}`、`${date}`、`${message}`、`${hash}` 令牌
+- **长度上限**：message 最多 50 字符（`jgc.caretBlame.messageMaxLength`）、hash 最多 8 位，超出以省略号结尾
+- 开关：`jgc.caretBlame.enabled`
+
+### AI 提交信息
+
+Commit 按钮旁的 ✨ 按钮只为勾选的文件生成提交信息，结果流式写入输入框，提交前可编辑。
+
+- 基于 VS Code 语言模型 API（`vscode.lm`）：GitHub Copilot 开箱即用，也可用 **Chat: Manage Language Models**（OpenRouter、Ollama、OpenAI 兼容端点等）里添加的或其它扩展贡献的模型；JGC 自身没有配置项
+- 只描述勾选的文件：已暂存对比 index、未暂存对比工作区、未跟踪文件取内容
+- 风格参照先取当前提交人本人的最近提交，本人尚无提交时回退到仓库最近历史；信息语言跟随参照提交
+- 装有多个模型时询问一次并记住；✨ 旁的下拉箭头随时重选；生成中再点一次取消
 
 ### 分支右键菜单
 
@@ -72,7 +90,7 @@ WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图�
 ![冲突列表](images/conflicts-list.png)
 
 - 快捷操作：接受 Yours / 接受 Theirs / 合并
-- 与 VS Code 源代码管理面板无缝集成
+- 与 VS Code 源代码管理面板集成
 
 ### Git Worktree
 
@@ -138,13 +156,18 @@ JetBrains 风格的工作树管理面板，位于 Activity Bar 侧边栏。
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
-| `jgc.blame.enabled` | 启用内联 blame 注解 | `true` |
-| `jgc.blame.columns` | 显示的列 | `["revision", "author", "date"]` |
+| `jgc.blame.displayMode` | 显示范围 | `all` |
+| `jgc.blame.aroundLines` | 上下文行数（around 模式） | `3` |
+| `jgc.blame.columns` | 显示的列 | `["date", "author"]` |
 | `jgc.blame.colorMode` | 着色模式 | `order` |
-| `jgc.blame.nameStyle` | 名称显示风格 | `lastName` |
-| `jgc.blame.displayMode` | 显示范围 | `full` |
-| `jgc.blame.aroundLines` | 上下文行数（around 模式） | `5` |
+| `jgc.blame.nameStyle` | 名称显示风格 | `fullName` |
 | `jgc.blame.dateFormat` | 日期格式 | `yyyy-MM-dd HH:mm` |
+| `jgc.caretBlame.enabled` | 光标行尾 blame | `true` |
+| `jgc.caretBlame.format` | 行尾 blame 模板 | `${who}, ${date} * ${message}` |
+| `jgc.caretBlame.messageMaxLength` | 摘要部分的最大字符数 | `50` |
+| `jgc.decorations.enabled` | 资源管理器着色 + 行号槽标记 | `true` |
+| `jgc.decorations.fileColors` | 资源管理器文件着色 | `true` |
+| `jgc.decorations.gutterMarkers` | 行号槽变更标记 | `true` |
 | `jgc.worktree.openBehavior` | 从工作树打开项目的方式 | `ask` |
 
 ---
@@ -162,7 +185,7 @@ JetBrains 风格的工作树管理面板，位于 Activity Bar 侧边栏。
 
 ## 环境要求
 
-- VS Code 1.85.0+
+- VS Code 1.91.0+
 - Git 已安装并在 PATH 中
 
 ## 本地开发
