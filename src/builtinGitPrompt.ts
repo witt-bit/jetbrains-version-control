@@ -17,13 +17,22 @@ export class BuiltinGitPrompt implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private asking = false;
 
-  constructor(private readonly globalState: vscode.Memento) {
+  constructor(
+    private readonly globalState: vscode.Memento,
+    private readonly log?: (message: string) => void,
+  ) {
     // A workspace usually settles (folders, git repos) a beat after startup;
     // asking too early can surface before the window is even interactive.
     const timer = setTimeout(() => void this.maybePrompt(), 1_500);
     this.disposables.push({
       dispose: () => clearTimeout(timer),
     });
+  }
+
+  /** Forget the stored answer so the prompt shows again (troubleshooting). */
+  reset(): void {
+    void this.globalState.update(PROMPT_STATE_KEY, undefined);
+    this.log?.("builtin git prompt: stored answer cleared");
   }
 
   dispose(): void {
@@ -35,20 +44,24 @@ export class BuiltinGitPrompt implements vscode.Disposable {
 
   private async maybePrompt(): Promise<void> {
     if (this.globalState.get<boolean>(PROMPT_STATE_KEY)) {
+      this.log?.("builtin git prompt: skipped, already answered");
       return;
     }
     const builtin = vscode.extensions.getExtension("vscode.git");
     if (!builtin) {
+      this.log?.("builtin git prompt: skipped, vscode.git not installed");
       return;
     }
     const enabled = vscode.workspace
       .getConfiguration("git")
       .get<boolean>("enabled", true);
     if (!enabled) {
+      this.log?.("builtin git prompt: skipped, git.enabled is already false");
       // Already off — nothing to migrate, but remember so we never check again.
       await this.globalState.update(PROMPT_STATE_KEY, true);
       return;
     }
+    this.log?.("builtin git prompt: asking");
 
     if (this.asking) {
       return;
