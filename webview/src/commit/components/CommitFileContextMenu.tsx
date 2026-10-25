@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
 import { t } from "../../shared/i18n";
+import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
 import type { WorkingTreeFile } from "../../shared/store/commit-store";
 import { useCommitStore } from "../../shared/store/commit-store";
 

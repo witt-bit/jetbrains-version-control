@@ -7,8 +7,8 @@ import { PanelApp } from "./panel/App";
 import { PushApp } from "./push/App";
 import { RollbackApp } from "./rollback/App";
 import "./shared/theme/variables.css";
-import { WorktreeApp } from "./worktree/WorktreeApp";
 import { setLocale } from "./shared/i18n";
+import { WorktreeApp } from "./worktree/WorktreeApp";
 
 // Fix Cmd+A/Ctrl+A not working in webview inputs (VS Code intercepts it)
 document.addEventListener("keydown", (e) => {

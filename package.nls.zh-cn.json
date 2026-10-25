@@ -17,25 +17,8 @@
   "contrib.cmd.shelve": "搁置更改",
   "contrib.cmd.unshelve": "取消搁置更改",
   "contrib.cmd.push": "推送...",
-<<<<<<< HEAD
   "contrib.cmd.editSource": "编辑源文件",
   "contrib.cmd.annotate": "切换 Git Blame 标注",
-  "contrib.config.title": "JetBrains 版本控制",
-  "contrib.view.worktrees": "工作树",
-  "contrib.view.commitBadge": "提交",
-  "contrib.cmd.worktreesNew": "新建工作树...",
-  "contrib.cmd.worktreesRefresh": "刷新工作树"
-||||||| parent of 8144b06 (feat(i18n): localize configuration property descriptions + enumDescriptions)
-  "contrib.cmd.editSource": "(JGC) 编辑源",
-  "contrib.cmd.annotate": "使用 Git Blame 标注",
-  "contrib.cmd.clearAnnotation": "关闭标注",
-  "contrib.cmd.worktreeNew": "新建工作树...",
-  "contrib.cmd.worktreeRefresh": "刷新工作树",
-  "contrib.config.title": "JetBrains Git 控制"
-=======
-  "contrib.cmd.editSource": "(JGC) 编辑源",
-  "contrib.cmd.annotate": "使用 Git Blame 标注",
-  "contrib.cmd.clearAnnotation": "关闭标注",
   "contrib.cmd.worktreeNew": "新建工作树...",
   "contrib.cmd.worktreeRefresh": "刷新工作树",
   "contrib.config.title": "JetBrains Git Control",
@@ -67,6 +50,9 @@
   "contrib.config.worktree.openBehavior.desc": "控制如何从 Git 工作树打开项目。",
   "contrib.config.worktree.ask": "总是询问在哪个窗口中打开",
   "contrib.config.worktree.thisWindow": "总是在当前窗口打开",
-  "contrib.config.worktree.newWindow": "总是在新窗口打开"
->>>>>>> 8144b06 (feat(i18n): localize configuration property descriptions + enumDescriptions)
+  "contrib.config.worktree.newWindow": "总是在新窗口打开",
+  "contrib.view.worktrees": "工作树",
+  "contrib.view.commitBadge": "提交",
+  "contrib.cmd.worktreesNew": "新建工作树...",
+  "contrib.cmd.worktreesRefresh": "刷新工作树"
 }

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
-import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
 import { t } from "../../shared/i18n";
+import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { DiffFile } from "../../shared/types/git";
 
@@ -326,7 +326,10 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
       icon: <IconEdit />,
       shortcut: jumpToSourceLabel || undefined,
     },
-    { label: t("panel.filesMenu.openRepoVersion"), action: handleOpenRepoVersion },
+    {
+      label: t("panel.filesMenu.openRepoVersion"),
+      action: handleOpenRepoVersion,
+    },
     { label: "", action: () => {}, separator: true },
     {
       label: t("panel.filesMenu.editSource"),

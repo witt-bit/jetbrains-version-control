@@ -5,8 +5,8 @@ import {
   type SelectionMode,
   useModifierClickSelection,
 } from "../../shared/hooks/useModifierClickSelection";
-import { isPlainArrowKey } from "../../shared/keyboard";
 import { t, tpl } from "../../shared/i18n";
+import { isPlainArrowKey } from "../../shared/keyboard";
 import {
   useCommitStore,
   type WorkingTreeFile,

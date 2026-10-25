@@ -17,25 +17,8 @@
   "contrib.cmd.shelve": "Shelve Changes",
   "contrib.cmd.unshelve": "Unshelve Changes",
   "contrib.cmd.push": "Push...",
-<<<<<<< HEAD
   "contrib.cmd.editSource": "Edit Source",
   "contrib.cmd.annotate": "Toggle Git Blame Annotations",
-  "contrib.config.title": "JetBrains Version Control",
-  "contrib.view.worktrees": "Worktrees",
-  "contrib.view.commitBadge": "Commit",
-  "contrib.cmd.worktreesNew": "New Worktree...",
-  "contrib.cmd.worktreesRefresh": "Refresh Worktrees"
-||||||| parent of 8144b06 (feat(i18n): localize configuration property descriptions + enumDescriptions)
-  "contrib.cmd.editSource": "(JGC) Edit Source",
-  "contrib.cmd.annotate": "Annotate with Git Blame",
-  "contrib.cmd.clearAnnotation": "Close Annotations",
-  "contrib.cmd.worktreeNew": "New Worktree...",
-  "contrib.cmd.worktreeRefresh": "Refresh Worktrees",
-  "contrib.config.title": "JetBrains Git Control"
-=======
-  "contrib.cmd.editSource": "(JGC) Edit Source",
-  "contrib.cmd.annotate": "Annotate with Git Blame",
-  "contrib.cmd.clearAnnotation": "Close Annotations",
   "contrib.cmd.worktreeNew": "New Worktree...",
   "contrib.cmd.worktreeRefresh": "Refresh Worktrees",
   "contrib.config.title": "JetBrains Git Control",
@@ -67,6 +50,9 @@
   "contrib.config.worktree.openBehavior.desc": "Controls how projects are opened from Git worktrees.",
   "contrib.config.worktree.ask": "Always ask which window to open in",
   "contrib.config.worktree.thisWindow": "Always open in the current window",
-  "contrib.config.worktree.newWindow": "Always open in a new window"
->>>>>>> 8144b06 (feat(i18n): localize configuration property descriptions + enumDescriptions)
+  "contrib.config.worktree.newWindow": "Always open in a new window",
+  "contrib.view.worktrees": "Worktrees",
+  "contrib.view.commitBadge": "Commit",
+  "contrib.cmd.worktreesNew": "New Worktree...",
+  "contrib.cmd.worktreesRefresh": "Refresh Worktrees"
 }
