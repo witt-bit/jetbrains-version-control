@@ -4,6 +4,7 @@ import { blameBoxStyle, blankBlameBox } from "../decorations/box";
 import type { GitService } from "../git/gitService";
 import type { BlameLine } from "../git/types";
 import type { MessageRouter } from "../messages/messageRouter";
+import { GIT_BRAINS_SCHEME } from "../views/gitContentProvider";
 
 interface BlameState {
   decorationType: vscode.TextEditorDecorationType;
@@ -51,7 +52,18 @@ interface GitServiceEntry {
   service: GitService;
 }
 
-const CONTEXT_BLAME_ACTIVE = "jgc.blameActive";
+/**
+ * Virtual-document `ref` values that name content no git revision holds, so
+ * `git blame` cannot run against them: the empty placeholder for added /
+ * deleted diff sides, the index (`:0`), and the shelf-side content keys.
+ */
+const NON_BLAMABLE_REFS = new Set([
+  "empty",
+  ":0",
+  "base",
+  "modified",
+  "external",
+]);
 
 // Heat-map gradient stops by commit age (t: 0 = newest, 1 = oldest),
 // IDEA-annotate style: recent commits pop out, old ones fade away.
@@ -253,6 +265,8 @@ export class BlameManager implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   /** hash → commit number (1 = newest); rebuilt per annotate() */
   private commitNumberByHash = new Map<string, number>();
+  /** The editor of the most recent selection event, across all editors. */
+  private lastSelectionEditor: vscode.TextEditor | undefined;
 
   constructor(
     private readonly services: GitServiceEntry[],
@@ -272,7 +286,7 @@ export class BlameManager implements vscode.Disposable {
       vscode.window.onDidChangeTextEditorSelection((e) => {
         this.handleSelectionChange(e);
       }),
-      // Update blameActive context and re-render when switching between editors
+      // Re-render when switching between editors
       vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) {
           const state = this.states.get(editor.document.uri.toString());
@@ -280,18 +294,6 @@ export class BlameManager implements vscode.Disposable {
             // Re-render decorations when switching to a blamed file
             this.renderDecorations(editor, state, true);
           }
-          const hasBlame = !!state;
-          void vscode.commands.executeCommand(
-            "setContext",
-            CONTEXT_BLAME_ACTIVE,
-            hasBlame,
-          );
-        } else {
-          void vscode.commands.executeCommand(
-            "setContext",
-            CONTEXT_BLAME_ACTIVE,
-            false,
-          );
         }
       }),
       // blame of the working tree changes on save; refresh labels
@@ -315,7 +317,13 @@ export class BlameManager implements vscode.Disposable {
   }
 
   async annotate(editor?: vscode.TextEditor): Promise<void> {
-    const target = editor ?? vscode.window.activeTextEditor;
+    // In a diff editor `activeTextEditor` does not reliably follow the pane
+    // the user interacted with (right-clicking the original side's line
+    // numbers often leaves the modified side active), which made both
+    // columns' menu entries drive the same side. The editor of the last
+    // selection event is the one the user is actually looking at.
+    const target =
+      editor ?? this.lastSelectionEditor ?? vscode.window.activeTextEditor;
     if (!target || !this.isSupported(target.document.uri)) {
       return;
     }
@@ -327,18 +335,28 @@ export class BlameManager implements vscode.Disposable {
       return;
     }
 
-    const relativePath = path.relative(entry.root, target.document.uri.fsPath);
+    const revision = this.revisionOf(target.document.uri);
+    if (revision === null) {
+      void vscode.window.showInformationMessage(
+        "JGC: This side of the diff has no git revision to blame.",
+      );
+      return;
+    }
+
+    const relativePath =
+      target.document.uri.scheme === "file"
+        ? path.relative(entry.root, target.document.uri.fsPath)
+        : target.document.uri.path.replace(/^\//, "");
+
     let blameLines: BlameLine[];
     try {
-      blameLines = await entry.service.blame(relativePath);
+      blameLines =
+        revision === undefined
+          ? await entry.service.blame(relativePath)
+          : await entry.service.blameAt(revision, relativePath);
     } catch {
-      await vscode.commands.executeCommand(
-        "setContext",
-        CONTEXT_BLAME_ACTIVE,
-        false,
-      );
       void vscode.window.showInformationMessage(
-        "JGC: File has no Git blame history (untracked or ignored).",
+        "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
       );
       return;
     }
@@ -408,6 +426,14 @@ export class BlameManager implements vscode.Disposable {
         }
       }
     }
+    // 1-based line number → index in `blameLines`, so the per-document loop
+    // below stays linear instead of re-scanning the blame array per line.
+    const labelIndexByLine = new Map<number, number>();
+    for (const [index, line] of blameLines.entries()) {
+      if (!labelIndexByLine.has(line.lineNumber)) {
+        labelIndexByLine.set(line.lineNumber, index);
+      }
+    }
 
     // Generate decorations for ALL lines in the document
     const annotatedLines: string[] = [];
@@ -427,9 +453,7 @@ export class BlameManager implements vscode.Disposable {
 
       if (blameLine && blameMap.has(lineNum)) {
         // Line has blame info - show blame text
-        const labelIndex = blameLines.findIndex(
-          (l) => l.lineNumber === lineNum,
-        );
+        const labelIndex = labelIndexByLine.get(lineNum) ?? -1;
         if (labelIndex >= 0) {
           const hover = blameLine.uncommitted
             ? undefined
@@ -497,16 +521,12 @@ export class BlameManager implements vscode.Disposable {
     };
     this.states.set(target.document.uri.toString(), state);
     this.renderDecorations(target, state);
-    await vscode.commands.executeCommand(
-      "setContext",
-      CONTEXT_BLAME_ACTIVE,
-      true,
-    );
     this.onDecorationsChanged?.();
   }
 
   clear(editor?: vscode.TextEditor): void {
-    const target = editor ?? vscode.window.activeTextEditor;
+    const target =
+      editor ?? this.lastSelectionEditor ?? vscode.window.activeTextEditor;
     if (!target) {
       if (this.states.size === 0) {
         void vscode.window.showInformationMessage(
@@ -516,17 +536,31 @@ export class BlameManager implements vscode.Disposable {
       return;
     }
     if (this.removeState(target.document.uri)) {
-      void vscode.commands.executeCommand(
-        "setContext",
-        CONTEXT_BLAME_ACTIVE,
-        false,
-      );
       this.onDecorationsChanged?.();
     } else {
       void vscode.window.showInformationMessage(
         "JGC: No active annotation to clear.",
       );
     }
+  }
+
+  /**
+   * Annotate the given editor if it has no blame yet, clear it if it does.
+   * State is per document URI, so the two sides of a diff editor — and every
+   * other editor — toggle independently; annotating one side never touches
+   * another.
+   */
+  async toggle(editor?: vscode.TextEditor): Promise<void> {
+    const target =
+      editor ?? this.lastSelectionEditor ?? vscode.window.activeTextEditor;
+    if (!target) {
+      return;
+    }
+    if (this.states.has(target.document.uri.toString())) {
+      this.clear(target);
+      return;
+    }
+    await this.annotate(target);
   }
 
   /**
@@ -612,6 +646,10 @@ export class BlameManager implements vscode.Disposable {
   }
 
   handleSelectionChange(e: vscode.TextEditorSelectionChangeEvent): void {
+    // The editor the user last interacted with drives the annotate/clear
+    // commands, so the line-number menu acts on the column it was opened
+    // from — including both sides of a diff editor.
+    this.lastSelectionEditor = e.textEditor;
     const state = this.states.get(e.textEditor.document.uri.toString());
     if (state) {
       // Cursor/around modes follow the caret on any selection change
@@ -748,7 +786,32 @@ export class BlameManager implements vscode.Disposable {
   }
 
   private isSupported(uri: vscode.Uri): boolean {
-    return uri.scheme === "file";
+    return uri.scheme === "file" || uri.scheme === GIT_BRAINS_SCHEME;
+  }
+
+  /**
+   * The git revision whose content a document shows.
+   *
+   * - `undefined` — the working tree (`file:` scheme): blame runs against the
+   *   on-disk file so line numbers match editor lines.
+   * - a revision string — a virtual `git-brains` document fetched from
+   *   `git show <ref>:<path>`: blame runs against that revision, whose line
+   *   numbers are the ones this side displays.
+   * - `null` — a virtual document with no git revision behind it (the empty
+   *   placeholder, the index, shelf-side content): nothing to blame.
+   */
+  private revisionOf(uri: vscode.Uri): string | null | undefined {
+    if (uri.scheme === "file") {
+      return undefined;
+    }
+    if (uri.scheme !== GIT_BRAINS_SCHEME) {
+      return null;
+    }
+    const ref = new URLSearchParams(uri.query).get("ref") ?? "";
+    if (!ref || NON_BLAMABLE_REFS.has(ref)) {
+      return null;
+    }
+    return ref;
   }
 
   private resolveService(uri: vscode.Uri): GitServiceEntry | null {

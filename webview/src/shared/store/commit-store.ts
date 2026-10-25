@@ -184,13 +184,14 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
   setAmend(amend: boolean) {
     set({ amend });
     if (amend) {
-      // Load last commit message
+      // Load last commit message, but only into an empty box: overwriting a
+      // message the user already typed would discard it.
       void (async () => {
         try {
           const result = (await bridge.request("getAmendMessage")) as {
             message: string;
           };
-          if (result?.message) {
+          if (result?.message && !get().commitMessage.trim()) {
             set({ commitMessage: result.message });
           }
         } catch {
@@ -306,10 +307,19 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     const { commitMessage, amend, changes, selectedFiles } = get();
     if (!commitMessage.trim()) return false;
 
-    // Get selected file paths (only unstaged ones need to be staged)
+    // Get selected file paths (only unstaged ones need to be staged). A rename
+    // is two index changes — old path deleted, new path added — so both sides
+    // must be staged together for the rename to land whole.
     const filesToStage = changes
       .filter((f) => !f.staged && selectedFiles.has(`${f.path}:${f.staged}`))
-      .map((f) => f.path);
+      .flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]));
+    // Staged files the user UNchecked must stay out of the commit: a plain
+    // `git commit` would sweep the whole index in, so the extension host
+    // unstages them first and re-stages them after. Renames again need both
+    // sides, or the old path's staged deletion would still be committed.
+    const keepStagedPaths = changes
+      .filter((f) => f.staged && !selectedFiles.has(`${f.path}:${f.staged}`))
+      .flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]));
 
     try {
       set({ loading: true });
@@ -317,6 +327,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         message: commitMessage,
         amend,
         filePaths: filesToStage,
+        keepStagedPaths,
       });
       set({ commitMessage: "", amend: false });
       await get().fetchChanges();
@@ -335,7 +346,10 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
 
     const filesToStage = changes
       .filter((f) => !f.staged && selectedFiles.has(`${f.path}:${f.staged}`))
-      .map((f) => f.path);
+      .flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]));
+    const keepStagedPaths = changes
+      .filter((f) => f.staged && !selectedFiles.has(`${f.path}:${f.staged}`))
+      .flatMap((f) => (f.oldPath ? [f.path, f.oldPath] : [f.path]));
 
     try {
       set({ loading: true });
@@ -343,6 +357,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         message: commitMessage,
         amend,
         filePaths: filesToStage,
+        keepStagedPaths,
       });
       set({ commitMessage: "", amend: false });
       await get().fetchChanges();
@@ -540,10 +555,22 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
 }));
 
 // Listen for commit state changes
-bridge.onEvent((event) => {
-  if (event === "commitStateChanged" || event === "gitStateChanged") {
+bridge.onEvent((event, data) => {
+  if (event === "commitStateChanged") {
     useCommitStore.getState().fetchChanges();
     useCommitStore.getState().fetchIdeaShelves();
     useCommitStore.getState().fetchShelves();
+    return;
+  }
+  if (event === "gitStateChanged") {
+    // Working-tree changes are cheap and always relevant; the shelf lists
+    // only change with real Git-state operations (scope "all"), so saving a
+    // file (scope "status") no longer spawns a `stash show` per entry.
+    useCommitStore.getState().fetchChanges();
+    const { scope } = (data ?? {}) as { scope?: string };
+    if (!scope || scope === "all") {
+      useCommitStore.getState().fetchIdeaShelves();
+      useCommitStore.getState().fetchShelves();
+    }
   }
 });

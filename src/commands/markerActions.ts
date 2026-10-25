@@ -167,6 +167,11 @@ export function registerMarkerActions(deps: {
       async (line?: unknown, uri?: unknown) =>
         withBlock(line, uri, async ({ editor, block, peek }) => {
           if (peek.base === undefined && block.curCount === 0) return;
+          // Saving publishes the WHOLE buffer: when the user had unrelated
+          // unsaved edits, silently saving them along with the rollback would
+          // lose their unsaved state. Only a previously clean document —
+          // dirtied by this rollback itself — is written through.
+          const wasDirty = editor.document.isDirty;
           const edit = rollbackEdit(block, peek.base ?? []);
           const workspaceEdit = new vscode.WorkspaceEdit();
           // Position (lineCount, 0) does not exist; the end of the document is
@@ -187,7 +192,9 @@ export function registerMarkerActions(deps: {
             );
             return;
           }
-          await editor.document.save();
+          if (!wasDirty) {
+            await editor.document.save();
+          }
           deps.popup?.()?.close();
           log(
             `marker rollback: ${editor.document.uri.fsPath} lines ${edit.start + 1}-${edit.end}`,

@@ -33,6 +33,16 @@ const NOT_GIT_REPO = { status: "not_git_repo" as const, data: null };
 /** Temporary storage for shelf diff content (base/modified) */
 const shelfDiffContent = new Map<string, string>();
 
+/** Remember virtual-diff content, evicting the oldest entries past a cap. */
+function rememberShelfContent(key: string, content: string): void {
+  while (shelfDiffContent.size >= 100) {
+    const oldest = shelfDiffContent.keys().next().value;
+    if (oldest === undefined) break;
+    shelfDiffContent.delete(oldest);
+  }
+  shelfDiffContent.set(key, content);
+}
+
 /** Wrap a git operation with progress events */
 function withProgress(
   messageRouter: MessageRouter,
@@ -112,11 +122,21 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   // 2c. CommitViewProvider (always registered)
+  // Carrier for the Commit activity-bar badge (see CommitViewProvider). The
+  // view never renders — it exists only so `TreeView.badge` can push the
+  // pending-changes count to the container icon before the Commit panel is
+  // ever opened, which a lazily-resolved WebviewView cannot do.
+  const commitBadgeView = vscode.window.createTreeView<never>(
+    "git-brains.commitBadge",
+    { treeDataProvider: new CommitBadgeTreeDataProvider() },
+  );
+  context.subscriptions.push(commitBadgeView);
   const commitProvider = new CommitViewProvider(
     context.extensionUri,
     messageRouter,
     allGitServices.map((s) => s.cache),
     allGitServices,
+    commitBadgeView,
   );
   context.subscriptions.push(commitProvider);
   context.subscriptions.push(
@@ -170,14 +190,30 @@ export function activate(context: vscode.ExtensionContext) {
   blameManager.register();
   context.subscriptions.push(blameManager);
 
+  /**
+   * The editor a gutter menu entry was opened on. VS Code forwards
+   * `{ lineNumber, uri }` from the line-number context menu, which names the
+   * exact editor — in a diff, both columns then act on their own side
+   * independently instead of whichever one happens to be "active".
+   */
+  const editorFromMenuArg = (arg?: unknown): vscode.TextEditor | undefined => {
+    const uri =
+      arg instanceof vscode.Uri
+        ? arg
+        : arg && typeof arg === "object" && "uri" in arg
+          ? (arg as { uri?: vscode.Uri }).uri
+          : undefined;
+    if (!uri) return undefined;
+    return vscode.window.visibleTextEditors.find(
+      (candidate) => candidate.document.uri.toString() === uri.toString(),
+    );
+  };
+
   context.subscriptions.push(
-    vscode.commands.registerCommand("git-brains.annotateWithGitBlame", () => {
-      void blameManager.annotate();
-    }),
     vscode.commands.registerCommand(
-      "git-brains.clearGitBlameAnnotation",
-      () => {
-        blameManager.clear();
+      "git-brains.annotateWithGitBlame",
+      (arg?: unknown) => {
+        void blameManager.toggle(editorFromMenuArg(arg));
       },
     ),
     // Jump to Source. Two sources of intent: a diff editor (resolved here, at
@@ -342,7 +378,9 @@ export function activate(context: vscode.ExtensionContext) {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand("git-brains.worktrees.refresh", () => {
-      vscode.commands.executeCommand("git-brains.worktrees.refresh");
+      // The Worktree webview refetches on gitStateChanged; invoking this
+      // command's own id here would recurse forever.
+      messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
     }),
   );
 
@@ -826,28 +864,27 @@ export function activate(context: vscode.ExtensionContext) {
     const deleteLocalCopies = params.deleteLocalCopies as boolean;
 
     try {
-      // Get current working tree status to determine each file's state
-      const workingTreeChanges = await gitService.getWorkingTreeChanges();
-      const statusMap = new Map<string, string>();
-      for (const file of workingTreeChanges) {
-        statusMap.set(file.path, file.status);
-      }
-
+      // Classify by whether the path exists in HEAD, not by the working-tree
+      // status list: a file with both a staged add and unstaged edits yields
+      // two status entries and the unstaged "modified" one used to win the
+      // map, sending new files down the tracked-file path where rollback
+      // deleted them from disk regardless of `deleteLocalCopies`.
       for (const filePath of filePaths) {
-        const status = statusMap.get(filePath) ?? "modified";
-        if (status === "added" || status === "untracked") {
-          if (deleteLocalCopies && workspaceRoot) {
-            // Delete untracked/added file from filesystem
-            const absPath = vscode.Uri.joinPath(
-              vscode.Uri.file(workspaceRoot),
-              filePath,
-            );
-            await vscode.workspace.fs.delete(absPath);
-          }
-          // If deleteLocalCopies is false, skip untracked/added files
-        } else {
-          // Revert tracked file changes via git checkout
+        const existsInHead = await gitService
+          .fileExistsInHead(filePath)
+          .catch(() => true);
+        if (existsInHead) {
+          // Tracked file: restore the HEAD version (index and working tree).
           await gitService.rollbackFile(filePath);
+        } else if (deleteLocalCopies && workspaceRoot) {
+          // New file: drop it from index and disk entirely.
+          await gitService.rollbackFile(filePath);
+        } else {
+          // New file kept on disk: still take it out of the commit by
+          // unstaging, leaving it as a plain untracked file.
+          await gitService.unstageFile(filePath).catch(() => {
+            // Untracked file — nothing in the index to remove.
+          });
         }
       }
 
@@ -987,16 +1024,24 @@ export function activate(context: vscode.ExtensionContext) {
       };
     }
 
-    // Proceed with progress and 30-second timeout
+    // Only a commit the current branch contains can be rebased out; dropping
+    // a foreign commit would otherwise fail mid-rebase.
+    const isAncestor = await gitService
+      .isAncestorOfHead(hash)
+      .catch(() => false);
+    if (!isAncestor) {
+      return {
+        success: false,
+        error: {
+          code: ErrorCode.GIT_COMMAND_FAILED,
+          message:
+            "This commit is not on the current branch, so it cannot be dropped",
+        },
+      };
+    }
+
     return withProgress(messageRouter, async () => {
-      const timeoutMs = 30_000;
-      const dropPromise = gitService.dropCommit(hash);
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Operation timed out")), timeoutMs),
-      );
-
-      await Promise.race([dropPromise, timeoutPromise]);
-
+      await gitService.dropCommit(hash);
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
       messageRouter.broadcastEvent("commitStateChanged", {});
       return { success: true };
@@ -1108,18 +1153,57 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
+  /**
+   * Commit exactly the files the webview checked. `filePaths` are selected
+   * unstaged files to stage; `keepStagedPaths` are staged files the user
+   * UNchecked — a plain `git commit` would sweep them in, so they are
+   * unstaged first and re-staged afterwards (best effort: re-adding stages
+   * the working-tree content, which equals the previously staged content
+   * unless the file was edited again after staging).
+   */
+  const commitWithSelection = async (
+    service: GitService,
+    filePaths: string[] | undefined,
+    keepStagedPaths: string[] | undefined,
+    commitFn: () => Promise<void>,
+  ): Promise<void> => {
+    if (filePaths && filePaths.length > 0) {
+      await service.stageFiles(filePaths);
+    }
+    const excluded = keepStagedPaths ?? [];
+    for (const filePath of excluded) {
+      try {
+        await service.unstageFile(filePath);
+      } catch {
+        // Not in the index (e.g. raced with another process) — nothing to skip.
+      }
+    }
+    try {
+      await commitFn();
+    } catch (err) {
+      // Restore the user's staged grouping before surfacing the failure.
+      if (excluded.length > 0) {
+        await service.stageFiles(excluded).catch(() => {});
+      }
+      throw err;
+    }
+    if (excluded.length > 0) {
+      await service.stageFiles(excluded).catch(() => {
+        // Files may have been deleted by the commit flow; leave them unstaged.
+      });
+    }
+  };
+
   messageRouter.handle("commitChanges", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const message = params.message as string;
     const amend = params.amend as boolean | undefined;
     const filePaths = params.filePaths as string[] | undefined;
+    const keepStagedPaths = params.keepStagedPaths as string[] | undefined;
 
-    // Stage specified files if provided
-    if (filePaths && filePaths.length > 0) {
-      await gitService.stageFiles(filePaths);
-    }
-
-    await gitService.commit(message, amend ?? false);
+    await commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
+      gitService.commit(message, amend ?? false),
+    );
     messageRouter.broadcastEvent("commitStateChanged", {});
     messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
     return { success: true };
@@ -1130,13 +1214,12 @@ export function activate(context: vscode.ExtensionContext) {
     const message = params.message as string;
     const amend = params.amend as boolean | undefined;
     const filePaths = params.filePaths as string[] | undefined;
-
-    if (filePaths && filePaths.length > 0) {
-      await gitService.stageFiles(filePaths);
-    }
+    const keepStagedPaths = params.keepStagedPaths as string[] | undefined;
 
     return withProgress(messageRouter, async () => {
-      await gitService.commitAndPush(message, amend ?? false);
+      await commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
+        gitService.commitAndPush(message, amend ?? false),
+      );
       messageRouter.broadcastEvent("commitStateChanged", {});
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
       return { success: true };
@@ -1430,8 +1513,8 @@ export function activate(context: vscode.ExtensionContext) {
       );
 
       // Register temporary content for these URIs
-      shelfDiffContent.set(baseUri.toString(), baseContent);
-      shelfDiffContent.set(modifiedUri.toString(), modifiedContent);
+      rememberShelfContent(baseUri.toString(), baseContent);
+      rememberShelfContent(modifiedUri.toString(), modifiedContent);
 
       await vscode.commands.executeCommand(
         "vscode.diff",
@@ -1608,13 +1691,37 @@ export function activate(context: vscode.ExtensionContext) {
     if (!gitService) return NOT_GIT_REPO;
     const branchName = params.branchName as string;
     if (!branchName) return { success: false };
-    // Use VS Code's built-in git diff between current branch and selected
     const currentBranch = await gitService.getCurrentBranch();
-    void vscode.commands.executeCommand(
+    if (!currentBranch) return { success: false };
+
+    // A branch has no single file to diff, so show the merge-base patch:
+    // everything `branchName` carries that the current branch does not. The
+    // patch rides the external content map (the same mechanism as shelf
+    // diffs); a plain `git-brains:/x` URI without a `ref` would render empty.
+    const patch = await gitService.getDiffBetweenBranches(
+      currentBranch,
+      branchName,
+    );
+    if (!patch.trim()) {
+      void vscode.window.showInformationMessage(
+        `No differences between ${currentBranch} and ${branchName}.`,
+      );
+      return { success: true };
+    }
+    const stamp = Date.now();
+    const emptyUri = vscode.Uri.parse(
+      `${GIT_BRAINS_SCHEME}:/empty-${stamp}.patch?ref=external`,
+    );
+    const patchUri = vscode.Uri.parse(
+      `${GIT_BRAINS_SCHEME}:/compare-${stamp}.patch?ref=external`,
+    );
+    rememberShelfContent(emptyUri.toString(), "");
+    rememberShelfContent(patchUri.toString(), patch);
+    await vscode.commands.executeCommand(
       "vscode.diff",
-      vscode.Uri.parse(`${GIT_BRAINS_SCHEME}:/${currentBranch}`),
-      vscode.Uri.parse(`${GIT_BRAINS_SCHEME}:/${branchName}`),
-      `${currentBranch} ↔ ${branchName}`,
+      emptyUri,
+      patchUri,
+      `${currentBranch} ↔ ${branchName} (patch)`,
     );
     return { success: true };
   });
@@ -1940,6 +2047,19 @@ export function activate(context: vscode.ExtensionContext) {
   log.appendLine(`decorations wired: ${repos.length} repo(s)`);
 }
 
+/**
+ * Empty data provider for the hidden Commit badge view: it has no rows and is
+ * never rendered; only its `TreeView.badge` matters.
+ */
+class CommitBadgeTreeDataProvider implements vscode.TreeDataProvider<never> {
+  getTreeItem(): vscode.TreeItem {
+    throw new Error("Commit badge view is never rendered");
+  }
+  getChildren(): never[] {
+    return [];
+  }
+}
+
 function extToLanguage(ext: string): string {
   const map: Record<string, string> = {
     ts: "typescript",
@@ -2097,11 +2217,30 @@ function parseIdeaPatchForFile(
     }
   }
 
-  // Unescape base content (IDEA uses \n for newlines, \t for tabs in the <+> section)
-  const baseContent = baseContentEscaped
-    .replace(/\\n/g, "\n")
-    .replace(/\\t/g, "\t")
-    .replace(/\\\\/g, "\\");
+  // Unescape base content in ONE pass (IDEA escapes \n, \t, \r and backslash
+  // in the <+> section). Sequential replaces corrupt text containing literal
+  // `\n`-style sequences — e.g. `\\n` in a JS string literal becomes a real
+  // newline — because the first pass rewrites bytes the later passes then
+  // reinterpret. A single-pass callback consumes each escape pair left to
+  // right, so `\\n` correctly decodes to `\n` text.
+  const baseContent = baseContentEscaped.replace(
+    /\\(.)/g,
+    (_, char: string) => {
+      switch (char) {
+        case "n":
+          return "\n";
+        case "t":
+          return "\t";
+        case "r":
+          return "\r";
+        case "\\":
+          return "\\";
+        default:
+          // Unknown escape: keep both characters as-is.
+          return `\\${char}`;
+      }
+    },
+  );
 
   // Apply unified diff to base content to get modified content
   const modifiedContent = applyUnifiedDiff(baseContent, diffLines);

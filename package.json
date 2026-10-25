@@ -13,6 +13,9 @@
   "engines": {
     "vscode": "^1.85.0"
   },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "categories": [
     "SCM Providers",
     "Other"
@@ -76,6 +79,12 @@
           "type": "webview",
           "id": "git-brains.commitPanel",
           "name": "Commit"
+        },
+        {
+          "type": "tree",
+          "id": "git-brains.commitBadge",
+          "name": "Commit",
+          "visibility": "hidden"
         }
       ]
     },
@@ -217,12 +226,7 @@
       },
       {
         "command": "git-brains.annotateWithGitBlame",
-        "title": "Annotate with Git Blame",
-        "category": "JGC"
-      },
-      {
-        "command": "git-brains.clearGitBlameAnnotation",
-        "title": "Close Annotations",
+        "title": "Toggle Git Blame Annotations",
         "category": "JGC"
       },
       {
@@ -293,12 +297,6 @@
       "editor/lineNumber/context": [
         {
           "command": "git-brains.annotateWithGitBlame",
-          "when": "!jgc.blameActive",
-          "group": "git@1"
-        },
-        {
-          "command": "git-brains.clearGitBlameAnnotation",
-          "when": "jgc.blameActive",
           "group": "git@1"
         },
         {
