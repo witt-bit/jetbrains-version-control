@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { AiCommitMessageController, type PromptFile } from "./ai/commitMessage";
 import { BlameManager } from "./blame/blameManager";
 import { CaretBlameController } from "./blame/caretBlame";
+import { BuiltinGitPrompt } from "./builtinGitPrompt";
 import { jumpToSourceFromDiffEditor } from "./commands/jumpToSource";
 import { registerMarkerActions } from "./commands/markerActions";
 import { FileDecorationController } from "./decorations/fileDecorations";
@@ -61,6 +62,11 @@ export function activate(context: vscode.ExtensionContext) {
   const log = vscode.window.createOutputChannel("JGC", { log: true });
   context.subscriptions.push(log);
   log.info("activating");
+
+  // One-time offer to disable VS Code's built-in Git extension — JGC
+  // replaces it, and running both duplicates the status bar, SCM decorations
+  // and file watching. The user decides; the answer is remembered.
+  context.subscriptions.push(new BuiltinGitPrompt(context.globalState));
 
   /**
    * Per-decoration tracing, off unless the user raises the channel to Debug
