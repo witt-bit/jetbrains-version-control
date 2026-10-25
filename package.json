@@ -275,11 +275,6 @@
         "title": "Refresh Worktrees",
         "icon": "$(refresh)",
         "category": "JGC"
-      },
-      {
-        "command": "git-brains.resetBuiltinGitPrompt",
-        "title": "Reset Built-in Git Prompt (Show Again)",
-        "category": "JGC"
       }
     ],
     "submenus": [
@@ -609,6 +604,19 @@
           ],
           "default": "ask",
           "description": "Controls how projects are opened from Git worktrees."
+        },
+        "jgc.onboarding.builtinGitPrompt": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "never"
+          ],
+          "default": "ask",
+          "enumDescriptions": [
+            "Show the dialog offering to disable VS Code's built-in Git extension",
+            "Never show the built-in Git dialog"
+          ],
+          "description": "Whether JGC may offer, via one dialog, to disable VS Code's built-in Git extension (git.enabled = false). Answering the dialog sets this to \"never\"; change it back to \"ask\" to see the dialog again."
         }
       }
     }

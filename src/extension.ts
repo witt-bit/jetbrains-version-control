@@ -66,10 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
   // One-time offer to disable VS Code's built-in Git extension — JGC
   // replaces it, and running both duplicates the status bar, SCM decorations
   // and file watching. The user decides; the answer is remembered.
-  const builtinGitPrompt = new BuiltinGitPrompt(context.globalState, (m) =>
-    log.info(m),
-  );
-  context.subscriptions.push(builtinGitPrompt);
+  context.subscriptions.push(new BuiltinGitPrompt((m) => log.info(m)));
 
   /**
    * Per-decoration tracing, off unless the user raises the channel to Debug

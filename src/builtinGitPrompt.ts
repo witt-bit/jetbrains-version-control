@@ -1,38 +1,40 @@
 import * as vscode from "vscode";
 
 /**
- * One-time prompt to disable VS Code's built-in Git extension.
+ * One-time prompt to disable VS Code's built-in Git extension, driven by a
+ * user-visible setting so the behaviour can be inspected and flipped:
  *
- * JGC replaces the native Git UI, and running both means duplicate status
- * bar items, duplicate SCM decorations and double file watching. The plugin
- * cannot make that call for the user, so it asks once: on consent it flips
- * `git.enabled` to false at the **global** scope; on dismissal or decline it
- * remembers the decision and never asks again.
+ *   jgc.onboarding.builtinGitPrompt = "ask" | "never"   (default: "ask")
+ *
+ * While the setting reads "ask" and the built-in Git is enabled, JGC shows
+ * the dialog once per session start (and immediately when the user flips the
+ * setting back to "ask"). Any explicit answer — disable or keep — writes
+ * "never" back into the setting, which the user can always change again.
  */
 
-/** globalState key remembering that the user already answered the prompt. */
-const PROMPT_STATE_KEY = "jgc.builtinGitPrompt.answered";
+const CONFIG_SECTION = "jgc.onboarding";
+const CONFIG_KEY = "builtinGitPrompt";
+
+type PromptMode = "ask" | "never";
 
 export class BuiltinGitPrompt implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
   private asking = false;
 
-  constructor(
-    private readonly globalState: vscode.Memento,
-    private readonly log?: (message: string) => void,
-  ) {
+  constructor(private readonly log?: (message: string) => void) {
     // A workspace usually settles (folders, git repos) a beat after startup;
     // asking too early can surface before the window is even interactive.
     const timer = setTimeout(() => void this.maybePrompt(), 1_500);
-    this.disposables.push({
-      dispose: () => clearTimeout(timer),
-    });
-  }
-
-  /** Forget the stored answer so the prompt shows again (troubleshooting). */
-  reset(): void {
-    void this.globalState.update(PROMPT_STATE_KEY, undefined);
-    this.log?.("builtin git prompt: stored answer cleared");
+    this.disposables.push(
+      { dispose: () => clearTimeout(timer) },
+      // Flipping the setting back to "ask" re-triggers the dialog at once —
+      // no window reload needed.
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration(`${CONFIG_SECTION}.${CONFIG_KEY}`)) {
+          void this.maybePrompt();
+        }
+      }),
+    );
   }
 
   dispose(): void {
@@ -42,9 +44,21 @@ export class BuiltinGitPrompt implements vscode.Disposable {
     this.disposables.length = 0;
   }
 
+  private mode(): PromptMode {
+    return vscode.workspace
+      .getConfiguration(CONFIG_SECTION)
+      .get<PromptMode>(CONFIG_KEY, "ask");
+  }
+
+  private async settle(): Promise<void> {
+    await vscode.workspace
+      .getConfiguration(CONFIG_SECTION)
+      .update(CONFIG_KEY, "never", vscode.ConfigurationTarget.Global);
+  }
+
   private async maybePrompt(): Promise<void> {
-    if (this.globalState.get<boolean>(PROMPT_STATE_KEY)) {
-      this.log?.("builtin git prompt: skipped, already answered");
+    if (this.mode() !== "ask") {
+      this.log?.("builtin git prompt: skipped, setting is 'never'");
       return;
     }
     const builtin = vscode.extensions.getExtension("vscode.git");
@@ -57,16 +71,13 @@ export class BuiltinGitPrompt implements vscode.Disposable {
       .get<boolean>("enabled", true);
     if (!enabled) {
       this.log?.("builtin git prompt: skipped, git.enabled is already false");
-      // Already off — nothing to migrate, but remember so we never check again.
-      await this.globalState.update(PROMPT_STATE_KEY, true);
       return;
     }
-    this.log?.("builtin git prompt: asking");
-
     if (this.asking) {
       return;
     }
     this.asking = true;
+    this.log?.("builtin git prompt: asking");
     try {
       const choice = await vscode.window.showInformationMessage(
         "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
@@ -74,20 +85,16 @@ export class BuiltinGitPrompt implements vscode.Disposable {
         "Keep both",
       );
       if (choice === undefined) {
-        // Dismissed without deciding — ask again on the next session.
+        // Dismissed without deciding — the setting stays "ask" and the
+        // dialog returns with the next session (or the next flip).
         return;
       }
+      // Either explicit answer settles the prompt.
+      await this.settle();
       if (choice === "Disable built-in Git") {
         await vscode.workspace
           .getConfiguration("git")
           .update("enabled", false, vscode.ConfigurationTarget.Global);
-        // Settle the prompt before offering the reload, so dismissing the
-        // reload question does not resurrect this one.
-        await this.globalState.update(PROMPT_STATE_KEY, true);
-        // git.enabled only takes effect after a reload. Once it does, no SCM
-        // provider remains registered (unless another SCM extension is
-        // installed) and VS Code itself hides the Source Control icon — its
-        // view container is declared `hideIfEmpty`.
         const reload = await vscode.window.showInformationMessage(
           "Built-in Git is now disabled. Reload the window to apply it — the Source Control icon disappears from the activity bar once no other source control extension is active.",
           "Reload Now",
@@ -95,10 +102,7 @@ export class BuiltinGitPrompt implements vscode.Disposable {
         if (reload === "Reload Now") {
           await vscode.commands.executeCommand("workbench.action.reloadWindow");
         }
-        return;
       }
-      // Either explicit answer settles the prompt for good.
-      await this.globalState.update(PROMPT_STATE_KEY, true);
     } finally {
       this.asking = false;
     }
