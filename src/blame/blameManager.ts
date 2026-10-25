@@ -338,7 +338,9 @@ export class BlameManager implements vscode.Disposable {
     const revision = this.revisionOf(target.document.uri);
     if (revision === null) {
       void vscode.window.showInformationMessage(
-        "JGC: This side of the diff has no git revision to blame.",
+        vscode.l10n.t(
+          "JGC: This side of the diff has no git revision to blame.",
+        ),
       );
       return;
     }
@@ -541,7 +543,7 @@ export class BlameManager implements vscode.Disposable {
       this.onDecorationsChanged?.();
     } else {
       void vscode.window.showInformationMessage(
-        "JGC: No active annotation to clear.",
+        vscode.l10n.t("JGC: No active annotation to clear."),
       );
     }
   }

@@ -11,7 +11,7 @@ describe("i18n dictionary loading", () => {
     // A plain dict must resolve known keys directly (fails if wrapped in {default})
     const en = dicts["en"];
     expect(en["worktree.colBranch"]).toBe("Branch");
-    expect(en["panel.searchPlaceholder"]).toBe("Search commits...");
+    expect(en["panel.searchPlaceholder"]).toBe("Text or hash");
     const zh = dicts["zh-cn"];
     expect(zh["worktree.colBranch"]).toBe("分支");
   });

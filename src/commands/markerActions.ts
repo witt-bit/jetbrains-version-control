@@ -94,7 +94,7 @@ export function registerMarkerActions(deps: {
     const peek = await markers.peek(editor);
     if (!peek) {
       void vscode.window.showInformationMessage(
-        "This file is not in a Git repository.",
+        vscode.l10n.t("This file is not in a Git repository."),
       );
       return;
     }
@@ -102,7 +102,7 @@ export function registerMarkerActions(deps: {
     if (!block) {
       log(`marker action: no change block at line ${line + 1}`);
       void vscode.window.showInformationMessage(
-        "No change block at the cursor.",
+        vscode.l10n.t("No change block at the cursor."),
       );
       return;
     }
@@ -188,7 +188,7 @@ export function registerMarkerActions(deps: {
           );
           if (!(await vscode.workspace.applyEdit(workspaceEdit))) {
             void vscode.window.showErrorMessage(
-              "Rollback failed: the document was modified.",
+              vscode.l10n.t("Rollback failed: the document was modified."),
             );
             return;
           }
@@ -259,7 +259,9 @@ export function registerMarkerActions(deps: {
         const message = reply.text.trim();
         if (!message) {
           void vscode.window.showWarningMessage(
-            "Type a commit message before committing this change.",
+            vscode.l10n.t(
+              "Type a commit message before committing this change.",
+            ),
           );
           return;
         }
@@ -295,11 +297,18 @@ export function registerMarkerActions(deps: {
           deps.popup?.()?.close();
           deps.onMutated?.();
           void vscode.window.showInformationMessage(
-            `Committed this change: ${commit.slice(0, 7)} — ${basename}`,
+            vscode.l10n.t(
+              "Committed this change: {0} — {1}",
+              commit.slice(0, 7),
+              basename,
+            ),
           );
         } catch (error) {
           void vscode.window.showErrorMessage(
-            `Committing this change failed: ${error instanceof Error ? error.message : String(error)}`,
+            vscode.l10n.t(
+              "Committing this change failed: {0}",
+              error instanceof Error ? error.message : String(error),
+            ),
           );
         }
       },

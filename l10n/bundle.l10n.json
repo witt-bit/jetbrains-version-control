@@ -1,44 +1,298 @@
 [
-  ["JGC: No diff file list. Double-click a file in Changed Files first.", "JGC: No diff file list. Double-click a file in Changed Files first."],
-  ["JGC: No workspace open.", "JGC: No workspace open."],
-  ["Unable to locate conflict file from SCM item.", "Unable to locate conflict file from SCM item."],
-  ["Source file does not exist in the working directory.", "Source file does not exist in the working directory."],
-  ["Discard", "Discard"],
-  ["You have unsaved merge changes. Discard them?", "You have unsaved merge changes. Discard them?"],
-  ["Rollback", "Rollback"],
-  ["Rollback changes to \"{0}\"? This cannot be undone.", "Rollback changes to \"{0}\"? This cannot be undone."],
-  ["Rollback changes to {0} file(s)? This cannot be undone.", "Rollback changes to {0} file(s)? This cannot be undone."],
-  ["Delete \"{0}\"? This cannot be undone.", "Delete \"{0}\"? This cannot be undone."],
-  ["Delete {0} files? This cannot be undone.", "Delete {0} files? This cannot be undone."],
-  ["Delete", "Delete"],
-  ["Delete shelved changes \"{0}\"? This cannot be undone.", "Delete shelved changes \"{0}\"? This cannot be undone."],
-  ["Failed to unshelve file: {0}", "Failed to unshelve file: {0}"],
-  ["Delete shelf \"{0}\"? This cannot be undone.", "Delete shelf \"{0}\"? This cannot be undone."],
-  ["Could not show diff for \"{0}\": {1}", "Could not show diff for \"{0}\": {1}"],
-  ["Patch files", "Patch files"],
-  ["All files", "All files"],
-  ["Save Patch File", "Save Patch File"],
-  ["Patch saved to {0}", "Patch saved to {0}"],
-  ["Failed to create patch: {0}", "Failed to create patch: {0}"],
-  ["Patch copied to clipboard", "Patch copied to clipboard"],
-  ["Failed to copy patch: {0}", "Failed to copy patch: {0}"],
-  ["Import Patch Files", "Import Patch Files"],
-  ["Imported 1 patch", "Imported 1 patch"],
-  ["Imported {0} patches", "Imported {0} patches"],
-  ["Failed to import patches: {0}", "Failed to import patches: {0}"],
-  ["Clipboard is empty or does not contain patch content.", "Clipboard is empty or does not contain patch content."],
-  ["Clipboard content does not appear to be a valid patch.", "Clipboard content does not appear to be a valid patch."],
-  ["Imported patch from clipboard as shelf entry.", "Imported patch from clipboard as shelf entry."],
-  ["Failed to import patch from clipboard: {0}", "Failed to import patch from clipboard: {0}"],
-  ["Delete branch \"{0}\"?", "Delete branch \"{0}\"?"],
-  ["Show My Branches: filter applied in branch tree", "Show My Branches: filter applied in branch tree"],
-  ["Toggled favorite: {0}", "Toggled favorite: {0}"],
-  ["Where would you like to open the project '{0}'?", "Where would you like to open the project '{0}'?"],
-  ["New Window", "New Window"],
-  ["This Window", "This Window"],
-  ["Select", "Select"],
-  ["OK", "OK"],
-  ["JGC: File is outside any workspace folder.", "JGC: File is outside any workspace folder."],
-  ["JGC: File has no Git blame history (untracked or ignored).", "JGC: File has no Git blame history (untracked or ignored)."],
-  ["JGC: No active annotation to clear.", "JGC: No active annotation to clear."]
+  [
+    "JGC: No diff file list. Double-click a file in Changed Files first.",
+    "JGC: No diff file list. Double-click a file in Changed Files first."
+  ],
+  [
+    "JGC: No workspace open.",
+    "JGC: No workspace open."
+  ],
+  [
+    "Unable to locate conflict file from SCM item.",
+    "Unable to locate conflict file from SCM item."
+  ],
+  [
+    "Source file does not exist in the working directory.",
+    "Source file does not exist in the working directory."
+  ],
+  [
+    "Discard",
+    "Discard"
+  ],
+  [
+    "You have unsaved merge changes. Discard them?",
+    "You have unsaved merge changes. Discard them?"
+  ],
+  [
+    "Rollback",
+    "Rollback"
+  ],
+  [
+    "Rollback changes to \"{0}\"? This cannot be undone.",
+    "Rollback changes to \"{0}\"? This cannot be undone."
+  ],
+  [
+    "Rollback changes to {0} file(s)? This cannot be undone.",
+    "Rollback changes to {0} file(s)? This cannot be undone."
+  ],
+  [
+    "Delete \"{0}\"? This cannot be undone.",
+    "Delete \"{0}\"? This cannot be undone."
+  ],
+  [
+    "Delete {0} files? This cannot be undone.",
+    "Delete {0} files? This cannot be undone."
+  ],
+  [
+    "Delete",
+    "Delete"
+  ],
+  [
+    "Delete shelved changes \"{0}\"? This cannot be undone.",
+    "Delete shelved changes \"{0}\"? This cannot be undone."
+  ],
+  [
+    "Failed to unshelve file: {0}",
+    "Failed to unshelve file: {0}"
+  ],
+  [
+    "Delete shelf \"{0}\"? This cannot be undone.",
+    "Delete shelf \"{0}\"? This cannot be undone."
+  ],
+  [
+    "Could not show diff for \"{0}\": {1}",
+    "Could not show diff for \"{0}\": {1}"
+  ],
+  [
+    "Patch files",
+    "Patch files"
+  ],
+  [
+    "All files",
+    "All files"
+  ],
+  [
+    "Save Patch File",
+    "Save Patch File"
+  ],
+  [
+    "Patch saved to {0}",
+    "Patch saved to {0}"
+  ],
+  [
+    "Failed to create patch: {0}",
+    "Failed to create patch: {0}"
+  ],
+  [
+    "Patch copied to clipboard",
+    "Patch copied to clipboard"
+  ],
+  [
+    "Failed to copy patch: {0}",
+    "Failed to copy patch: {0}"
+  ],
+  [
+    "Import Patch Files",
+    "Import Patch Files"
+  ],
+  [
+    "Imported 1 patch",
+    "Imported 1 patch"
+  ],
+  [
+    "Imported {0} patches",
+    "Imported {0} patches"
+  ],
+  [
+    "Failed to import patches: {0}",
+    "Failed to import patches: {0}"
+  ],
+  [
+    "Clipboard is empty or does not contain patch content.",
+    "Clipboard is empty or does not contain patch content."
+  ],
+  [
+    "Clipboard content does not appear to be a valid patch.",
+    "Clipboard content does not appear to be a valid patch."
+  ],
+  [
+    "Imported patch from clipboard as shelf entry.",
+    "Imported patch from clipboard as shelf entry."
+  ],
+  [
+    "Failed to import patch from clipboard: {0}",
+    "Failed to import patch from clipboard: {0}"
+  ],
+  [
+    "Delete branch \"{0}\"?",
+    "Delete branch \"{0}\"?"
+  ],
+  [
+    "Show My Branches: filter applied in branch tree",
+    "Show My Branches: filter applied in branch tree"
+  ],
+  [
+    "Toggled favorite: {0}",
+    "Toggled favorite: {0}"
+  ],
+  [
+    "Where would you like to open the project '{0}'?",
+    "Where would you like to open the project '{0}'?"
+  ],
+  [
+    "New Window",
+    "New Window"
+  ],
+  [
+    "This Window",
+    "This Window"
+  ],
+  [
+    "Select",
+    "Select"
+  ],
+  [
+    "OK",
+    "OK"
+  ],
+  [
+    "JGC: File is outside any workspace folder.",
+    "JGC: File is outside any workspace folder."
+  ],
+  [
+    "JGC: File has no Git blame history (untracked or ignored).",
+    "JGC: File has no Git blame history (untracked or ignored)."
+  ],
+  [
+    "JGC: No active annotation to clear.",
+    "JGC: No active annotation to clear."
+  ],
+  [
+    "Branch name cannot be empty",
+    "Branch name cannot be empty"
+  ],
+  [
+    "Cancel",
+    "Cancel"
+  ],
+  [
+    "Checking out {0} leaves you on a detached HEAD.",
+    "Checking out {0} leaves you on a detached HEAD."
+  ],
+  [
+    "Checkout",
+    "Checkout"
+  ],
+  [
+    "Committed this change: {0} — {1}",
+    "Committed this change: {0} — {1}"
+  ],
+  [
+    "Committing this change failed: {0}",
+    "Committing this change failed: {0}"
+  ],
+  [
+    "Commit…",
+    "Commit…"
+  ],
+  [
+    "Could not create branch: {0}",
+    "Could not create branch: {0}"
+  ],
+  [
+    "Could not list branches: {0}",
+    "Could not list branches: {0}"
+  ],
+  [
+    "Could not switch branch: {0}",
+    "Could not switch branch: {0}"
+  ],
+  [
+    "Git Log",
+    "Git Log"
+  ],
+  [
+    "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
+    "JGC: File has no Git blame history (untracked, ignored, or not in this revision)."
+  ],
+  [
+    "JGC: This side of the diff has no git revision to blame.",
+    "JGC: This side of the diff has no git revision to blame."
+  ],
+  [
+    "JGC: {0} failed. Another Git process may hold .git/index.lock, or the lock is stale — remove it and retry.",
+    "JGC: {0} failed. Another Git process may hold .git/index.lock, or the lock is stale — remove it and retry."
+  ],
+  [
+    "JGC: {0} failed: {1}",
+    "JGC: {0} failed: {1}"
+  ],
+  [
+    "New Branch…",
+    "New Branch…"
+  ],
+  [
+    "No change block at the cursor.",
+    "No change block at the cursor."
+  ],
+  [
+    "No differences between {0} and {1}.",
+    "No differences between {0} and {1}."
+  ],
+  [
+    "Open the Commit panel",
+    "Open the Commit panel"
+  ],
+  [
+    "Open the Git Log view",
+    "Open the Git Log view"
+  ],
+  [
+    "Push…",
+    "Push…"
+  ],
+  [
+    "Retry",
+    "Retry"
+  ],
+  [
+    "Rollback failed: the document was modified.",
+    "Rollback failed: the document was modified."
+  ],
+  [
+    "Select a Git action",
+    "Select a Git action"
+  ],
+  [
+    "Switch Branch",
+    "Switch Branch"
+  ],
+  [
+    "Switch Branch…",
+    "Switch Branch…"
+  ],
+  [
+    "This file is not in a Git repository.",
+    "This file is not in a Git repository."
+  ],
+  [
+    "Type a commit message before committing this change.",
+    "Type a commit message before committing this change."
+  ],
+  [
+    "Type to filter branches",
+    "Type to filter branches"
+  ],
+  [
+    "Updating project…",
+    "Updating project…"
+  ],
+  [
+    "fetch + pull",
+    "fetch + pull"
+  ],
+  [
+    "remote — checking out detaches HEAD",
+    "remote — checking out detaches HEAD"
+  ]
 ]

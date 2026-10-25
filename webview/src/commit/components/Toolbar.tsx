@@ -64,7 +64,7 @@ export function Toolbar({
           <RollbackIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Shelve Changes">
+      <Tooltip text={t("commit.toolbar.shelve")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -74,7 +74,7 @@ export function Toolbar({
           <ShelveIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Show Diff">
+      <Tooltip text={t("commit.toolbar.showDiff")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -83,7 +83,7 @@ export function Toolbar({
           <DiffIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Pull">
+      <Tooltip text={t("commit.toolbar.pull")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -93,7 +93,7 @@ export function Toolbar({
           <PullIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Push...">
+      <Tooltip text={t("commit.toolbar.push")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -107,7 +107,7 @@ export function Toolbar({
       <div className="commit-toolbar-spacer" />
 
       <div style={{ position: "relative" }}>
-        <Tooltip text="View Options">
+        <Tooltip text={t("commit.toolbar.viewOptions")}>
           <button
             type="button"
             className="commit-toolbar-btn"
@@ -120,7 +120,7 @@ export function Toolbar({
           <ViewOptionsMenu onClose={() => setShowViewMenu(false)} />
         )}
       </div>
-      <Tooltip text="Expand All">
+      <Tooltip text={t("commit.toolbar.expandAll")}>
         <button
           type="button"
           className="commit-toolbar-btn"
@@ -129,7 +129,7 @@ export function Toolbar({
           <ExpandAllIcon />
         </button>
       </Tooltip>
-      <Tooltip text="Collapse All">
+      <Tooltip text={t("commit.toolbar.collapseAll")}>
         <button
           type="button"
           className="commit-toolbar-btn"

@@ -10,12 +10,17 @@ function logFailure(label: string, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   if (/index\.lock/.test(message)) {
     void vscode.window.showErrorMessage(
-      `JGC: ${label} failed. Another Git process may hold .git/index.lock, or the lock is stale — remove it and retry.`,
-      "Retry",
+      vscode.l10n.t(
+        "JGC: {0} failed. Another Git process may hold .git/index.lock, or the lock is stale — remove it and retry.",
+        label,
+      ),
+      vscode.l10n.t("Retry"),
     );
     return;
   }
-  void vscode.window.showErrorMessage(`JGC: ${label} failed: ${message}`);
+  void vscode.window.showErrorMessage(
+    vscode.l10n.t("JGC: {0} failed: {1}", label, message),
+  );
 }
 
 const COMMIT_ITEM = "commit";
@@ -140,31 +145,34 @@ export class StatusBarController implements vscode.Disposable {
     const branch = (await repo.service.getCurrentBranch()) ?? "detached HEAD";
     const pick = vscode.window.createQuickPick();
     pick.title = `JetBrains Git Control — ${branch}`;
-    pick.placeholder = "Select a Git action";
+    pick.placeholder = vscode.l10n.t("Select a Git action");
 
     type Item = vscode.QuickPickItem & { id: string };
     const items: Item[] = [
       {
         id: UPDATE_ITEM,
         label: "$(sync) Update Project",
-        description: "fetch + pull",
+        description: vscode.l10n.t("fetch + pull"),
       },
       {
         id: COMMIT_ITEM,
-        label: "$(check) Commit…",
-        description: "Open the Commit panel",
+        label: `$(check) ${vscode.l10n.t("Commit…")}`,
+        description: vscode.l10n.t("Open the Commit panel"),
       },
       {
         id: PUSH_ITEM,
-        label: "$(cloud-upload) Push…",
+        label: `$(cloud-upload) ${vscode.l10n.t("Push…")}`,
         description: "Open the Push panel",
       },
-      { id: NEW_BRANCH_ITEM, label: "$(add) New Branch…" },
-      { id: SWITCH_ITEM, label: "$(git-branch) Switch Branch…" },
+      { id: NEW_BRANCH_ITEM, label: `$(add) ${vscode.l10n.t("New Branch…")}` },
+      {
+        id: SWITCH_ITEM,
+        label: `$(git-branch) ${vscode.l10n.t("Switch Branch…")}`,
+      },
       {
         id: LOG_ITEM,
-        label: "$(git-commit) Git Log",
-        description: "Open the Git Log view",
+        label: `$(git-commit) ${vscode.l10n.t("Git Log")}`,
+        description: vscode.l10n.t("Open the Git Log view"),
       },
     ];
     pick.items = items;
@@ -192,7 +200,7 @@ export class StatusBarController implements vscode.Disposable {
         await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Window,
-            title: "Updating project…",
+            title: vscode.l10n.t("Updating project…"),
           },
           async () => {
             await service.fetch();
@@ -224,7 +232,7 @@ export class StatusBarController implements vscode.Disposable {
       prompt: "New branch name",
       ignoreFocusOut: true,
       validateInput: (value) =>
-        value.trim() ? undefined : "Branch name cannot be empty",
+        value.trim() ? undefined : vscode.l10n.t("Branch name cannot be empty"),
     });
     if (!name) return;
     const trimmed = name.trim();
@@ -233,7 +241,7 @@ export class StatusBarController implements vscode.Disposable {
       await service.checkout(trimmed);
     } catch (error) {
       void vscode.window.showErrorMessage(
-        `Could not create branch: ${(error as Error).message}`,
+        vscode.l10n.t("Could not create branch: {0}", (error as Error).message),
       );
     }
   }
@@ -244,7 +252,7 @@ export class StatusBarController implements vscode.Disposable {
       branches = await service.getBranches();
     } catch (error) {
       void vscode.window.showErrorMessage(
-        `Could not list branches: ${(error as Error).message}`,
+        vscode.l10n.t("Could not list branches: {0}", (error as Error).message),
       );
       return;
     }
@@ -254,15 +262,15 @@ export class StatusBarController implements vscode.Disposable {
 
     type BranchItem = vscode.QuickPickItem & { id: string };
     const pick = vscode.window.createQuickPick<BranchItem>();
-    pick.title = "Switch Branch";
-    pick.placeholder = "Type to filter branches";
+    pick.title = vscode.l10n.t("Switch Branch");
+    pick.placeholder = vscode.l10n.t("Type to filter branches");
     pick.matchOnDescription = true;
     pick.items = [...local, ...remote].map((branch) => ({
       label: branch.isCurrent ? `$(check) ${branch.name}` : branch.name,
       description: branch.isCurrent
         ? "current"
         : branch.isRemote
-          ? "remote — checking out detaches HEAD"
+          ? vscode.l10n.t("remote — checking out detaches HEAD")
           : branch.ahead > 0
             ? `↑${branch.ahead}`
             : "",
@@ -277,9 +285,12 @@ export class StatusBarController implements vscode.Disposable {
       if (!selected || selected.id === currentName) return;
       if (selected.description?.startsWith("remote")) {
         const answer = await vscode.window.showWarningMessage(
-          `Checking out ${selected.id} leaves you on a detached HEAD.`,
-          "Checkout",
-          "Cancel",
+          vscode.l10n.t(
+            "Checking out {0} leaves you on a detached HEAD.",
+            selected.id,
+          ),
+          vscode.l10n.t("Checkout"),
+          vscode.l10n.t("Cancel"),
         );
         if (answer !== "Checkout") return;
       }
@@ -287,7 +298,10 @@ export class StatusBarController implements vscode.Disposable {
         await service.checkout(selected.id);
       } catch (error) {
         void vscode.window.showErrorMessage(
-          `Could not switch branch: ${(error as Error).message}`,
+          vscode.l10n.t(
+            "Could not switch branch: {0}",
+            (error as Error).message,
+          ),
         );
       }
     });

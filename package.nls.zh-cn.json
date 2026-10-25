@@ -3,12 +3,13 @@
   "contrib.app.activity": "提交",
   "contrib.view.gitLog": "Git Log",
   "contrib.view.commitPanel": "提交",
+  "contrib.view.worktrees": "工作树",
   "contrib.cmd.category": "JGC",
   "contrib.cmd.refreshLog": "刷新 Git Log",
   "contrib.cmd.openMergeEditor": "打开合并编辑器",
   "contrib.cmd.openConflicts": "冲突",
   "contrib.cmd.openMergeEditorFromSCM": "在 JGC 合并编辑器中打开",
-  "contrib.cmd.showFileHistory": "显示文件历史",
+  "contrib.cmd.showFileHistory": "(JetBrains Git Control) 显示文件历史",
   "contrib.cmd.nextDiff": "下一个文件差异",
   "contrib.cmd.prevDiff": "上一个文件差异",
   "contrib.cmd.refreshChanges": "刷新更改",
@@ -50,9 +51,5 @@
   "contrib.config.worktree.openBehavior.desc": "控制如何从 Git 工作树打开项目。",
   "contrib.config.worktree.ask": "总是询问在哪个窗口中打开",
   "contrib.config.worktree.thisWindow": "总是在当前窗口打开",
-  "contrib.config.worktree.newWindow": "总是在新窗口打开",
-  "contrib.view.worktrees": "工作树",
-  "contrib.view.commitBadge": "提交",
-  "contrib.cmd.worktreesNew": "新建工作树...",
-  "contrib.cmd.worktreesRefresh": "刷新工作树"
+  "contrib.config.worktree.newWindow": "总是在新窗口打开"
 }

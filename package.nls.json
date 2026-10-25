@@ -3,12 +3,13 @@
   "contrib.app.activity": "Commit",
   "contrib.view.gitLog": "Git Log",
   "contrib.view.commitPanel": "Commit",
+  "contrib.view.worktrees": "Worktrees",
   "contrib.cmd.category": "JGC",
   "contrib.cmd.refreshLog": "Refresh Git Log",
   "contrib.cmd.openMergeEditor": "Open Merge Editor",
   "contrib.cmd.openConflicts": "Conflicts",
   "contrib.cmd.openMergeEditorFromSCM": "Open in JGC Merge Editor",
-  "contrib.cmd.showFileHistory": "Show File History",
+  "contrib.cmd.showFileHistory": "(JetBrains Git Control) Show File History",
   "contrib.cmd.nextDiff": "Next File Diff",
   "contrib.cmd.prevDiff": "Previous File Diff",
   "contrib.cmd.refreshChanges": "Refresh Changes",
@@ -50,9 +51,5 @@
   "contrib.config.worktree.openBehavior.desc": "Controls how projects are opened from Git worktrees.",
   "contrib.config.worktree.ask": "Always ask which window to open in",
   "contrib.config.worktree.thisWindow": "Always open in the current window",
-  "contrib.config.worktree.newWindow": "Always open in a new window",
-  "contrib.view.worktrees": "Worktrees",
-  "contrib.view.commitBadge": "Commit",
-  "contrib.cmd.worktreesNew": "New Worktree...",
-  "contrib.cmd.worktreesRefresh": "Refresh Worktrees"
+  "contrib.config.worktree.newWindow": "Always open in a new window"
 }

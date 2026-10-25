@@ -1,44 +1,298 @@
 [
-  ["JGC: No diff file list. Double-click a file in Changed Files first.", "JGC: 没有差异文件列表。请先在“更改的文件”中双击一个文件。"],
-  ["JGC: No workspace open.", "JGC: 未打开工作区。"],
-  ["Unable to locate conflict file from SCM item.", "无法从 SCM 项中找到冲突文件。"],
-  ["Source file does not exist in the working directory.", "源文件在工作目录中不存在。"],
-  ["Discard", "放弃"],
-  ["You have unsaved merge changes. Discard them?", "您有未保存的合并更改。要放弃它们吗?"],
-  ["Rollback", "回滚"],
-  ["Rollback changes to \"{0}\"? This cannot be undone.", "要回滚 \"{0}\" 的更改吗?此操作无法撤销。"],
-  ["Rollback changes to {0} file(s)? This cannot be undone.", "要回滚 {0} 个文件的更改吗?此操作无法撤销。"],
-  ["Delete \"{0}\"? This cannot be undone.", "要删除 \"{0}\" 吗?此操作无法撤销。"],
-  ["Delete {0} files? This cannot be undone.", "要删除 {0} 个文件吗?此操作无法撤销。"],
-  ["Delete", "删除"],
-  ["Delete shelved changes \"{0}\"? This cannot be undone.", "要删除搁置的更改 \"{0}\" 吗?此操作无法撤销。"],
-  ["Failed to unshelve file: {0}", "取消搁置文件失败:{0}"],
-  ["Delete shelf \"{0}\"? This cannot be undone.", "要删除搁置 \"{0}\" 吗?此操作无法撤销。"],
-  ["Could not show diff for \"{0}\": {1}", "无法显示 \"{0}\" 的差异:{1}"],
-  ["Patch files", "补丁文件"],
-  ["All files", "所有文件"],
-  ["Save Patch File", "保存补丁文件"],
-  ["Patch saved to {0}", "补丁已保存到 {0}"],
-  ["Failed to create patch: {0}", "创建补丁失败:{0}"],
-  ["Patch copied to clipboard", "补丁已复制到剪贴板"],
-  ["Failed to copy patch: {0}", "复制补丁失败:{0}"],
-  ["Import Patch Files", "导入补丁文件"],
-  ["Imported 1 patch", "已导入 1 个补丁"],
-  ["Imported {0} patches", "已导入 {0} 个补丁"],
-  ["Failed to import patches: {0}", "导入补丁失败:{0}"],
-  ["Clipboard is empty or does not contain patch content.", "剪贴板为空或不包含补丁内容。"],
-  ["Clipboard content does not appear to be a valid patch.", "剪贴板内容看起来不是有效的补丁。"],
-  ["Imported patch from clipboard as shelf entry.", "已从剪贴板导入补丁作为搁置条目。"],
-  ["Failed to import patch from clipboard: {0}", "从剪贴板导入补丁失败:{0}"],
-  ["Delete branch \"{0}\"?", "要删除分支 \"{0}\" 吗?"],
-  ["Show My Branches: filter applied in branch tree", "显示我的分支:已在分支树中应用筛选"],
-  ["Toggled favorite: {0}", "已切换收藏:{0}"],
-  ["Where would you like to open the project '{0}'?", "您希望在哪个窗口中打开项目 '{0}'?"],
-  ["New Window", "新窗口"],
-  ["This Window", "当前窗口"],
-  ["Select", "选择"],
-  ["OK", "确定"],
-  ["JGC: File is outside any workspace folder.", "JGC: 文件位于任何工作区文件夹之外。"],
-  ["JGC: File has no Git blame history (untracked or ignored).", "JGC: 文件没有 Git blame 历史(未跟踪或被忽略)。"],
-  ["JGC: No active annotation to clear.", "JGC: 没有可清除的注释。"]
+  [
+    "JGC: No diff file list. Double-click a file in Changed Files first.",
+    "JGC: 没有差异文件列表。请先在“更改的文件”中双击一个文件。"
+  ],
+  [
+    "JGC: No workspace open.",
+    "JGC: 未打开工作区。"
+  ],
+  [
+    "Unable to locate conflict file from SCM item.",
+    "无法从 SCM 项中找到冲突文件。"
+  ],
+  [
+    "Source file does not exist in the working directory.",
+    "源文件在工作目录中不存在。"
+  ],
+  [
+    "Discard",
+    "放弃"
+  ],
+  [
+    "You have unsaved merge changes. Discard them?",
+    "您有未保存的合并更改。要放弃它们吗?"
+  ],
+  [
+    "Rollback",
+    "回滚"
+  ],
+  [
+    "Rollback changes to \"{0}\"? This cannot be undone.",
+    "要回滚 \"{0}\" 的更改吗?此操作无法撤销。"
+  ],
+  [
+    "Rollback changes to {0} file(s)? This cannot be undone.",
+    "要回滚 {0} 个文件的更改吗?此操作无法撤销。"
+  ],
+  [
+    "Delete \"{0}\"? This cannot be undone.",
+    "要删除 \"{0}\" 吗?此操作无法撤销。"
+  ],
+  [
+    "Delete {0} files? This cannot be undone.",
+    "要删除 {0} 个文件吗?此操作无法撤销。"
+  ],
+  [
+    "Delete",
+    "删除"
+  ],
+  [
+    "Delete shelved changes \"{0}\"? This cannot be undone.",
+    "要删除搁置的更改 \"{0}\" 吗?此操作无法撤销。"
+  ],
+  [
+    "Failed to unshelve file: {0}",
+    "取消搁置文件失败:{0}"
+  ],
+  [
+    "Delete shelf \"{0}\"? This cannot be undone.",
+    "要删除搁置 \"{0}\" 吗?此操作无法撤销。"
+  ],
+  [
+    "Could not show diff for \"{0}\": {1}",
+    "无法显示 \"{0}\" 的差异:{1}"
+  ],
+  [
+    "Patch files",
+    "补丁文件"
+  ],
+  [
+    "All files",
+    "所有文件"
+  ],
+  [
+    "Save Patch File",
+    "保存补丁文件"
+  ],
+  [
+    "Patch saved to {0}",
+    "补丁已保存到 {0}"
+  ],
+  [
+    "Failed to create patch: {0}",
+    "创建补丁失败:{0}"
+  ],
+  [
+    "Patch copied to clipboard",
+    "补丁已复制到剪贴板"
+  ],
+  [
+    "Failed to copy patch: {0}",
+    "复制补丁失败:{0}"
+  ],
+  [
+    "Import Patch Files",
+    "导入补丁文件"
+  ],
+  [
+    "Imported 1 patch",
+    "已导入 1 个补丁"
+  ],
+  [
+    "Imported {0} patches",
+    "已导入 {0} 个补丁"
+  ],
+  [
+    "Failed to import patches: {0}",
+    "导入补丁失败:{0}"
+  ],
+  [
+    "Clipboard is empty or does not contain patch content.",
+    "剪贴板为空或不包含补丁内容。"
+  ],
+  [
+    "Clipboard content does not appear to be a valid patch.",
+    "剪贴板内容看起来不是有效的补丁。"
+  ],
+  [
+    "Imported patch from clipboard as shelf entry.",
+    "已从剪贴板导入补丁作为搁置条目。"
+  ],
+  [
+    "Failed to import patch from clipboard: {0}",
+    "从剪贴板导入补丁失败:{0}"
+  ],
+  [
+    "Delete branch \"{0}\"?",
+    "要删除分支 \"{0}\" 吗?"
+  ],
+  [
+    "Show My Branches: filter applied in branch tree",
+    "显示我的分支:已在分支树中应用筛选"
+  ],
+  [
+    "Toggled favorite: {0}",
+    "已切换收藏:{0}"
+  ],
+  [
+    "Where would you like to open the project '{0}'?",
+    "您希望在哪个窗口中打开项目 '{0}'?"
+  ],
+  [
+    "New Window",
+    "新窗口"
+  ],
+  [
+    "This Window",
+    "当前窗口"
+  ],
+  [
+    "Select",
+    "选择"
+  ],
+  [
+    "OK",
+    "确定"
+  ],
+  [
+    "JGC: File is outside any workspace folder.",
+    "JGC: 文件位于任何工作区文件夹之外。"
+  ],
+  [
+    "JGC: File has no Git blame history (untracked or ignored).",
+    "JGC: 文件没有 Git blame 历史(未跟踪或被忽略)。"
+  ],
+  [
+    "JGC: No active annotation to clear.",
+    "JGC: 没有可清除的注释。"
+  ],
+  [
+    "Branch name cannot be empty",
+    "分支名不能为空"
+  ],
+  [
+    "Cancel",
+    "取消"
+  ],
+  [
+    "Checking out {0} leaves you on a detached HEAD.",
+    "检出 {0} 将使你处于 detached HEAD 状态。"
+  ],
+  [
+    "Checkout",
+    "检出"
+  ],
+  [
+    "Committed this change: {0} — {1}",
+    "已提交此更改:{0} — {1}"
+  ],
+  [
+    "Committing this change failed: {0}",
+    "提交此更改失败:{0}"
+  ],
+  [
+    "Commit…",
+    "提交…"
+  ],
+  [
+    "Could not create branch: {0}",
+    "无法创建分支:{0}"
+  ],
+  [
+    "Could not list branches: {0}",
+    "无法列出分支:{0}"
+  ],
+  [
+    "Could not switch branch: {0}",
+    "无法切换分支:{0}"
+  ],
+  [
+    "Git Log",
+    "Git Log"
+  ],
+  [
+    "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
+    "JGC: File has no Git blame history (untracked, ignored, or not in this revision)."
+  ],
+  [
+    "JGC: This side of the diff has no git revision to blame.",
+    "JGC: diff 的这一侧没有可标注的 Git 版本。"
+  ],
+  [
+    "JGC: {0} failed. Another Git process may hold .git/index.lock, or the lock is stale — remove it and retry.",
+    "JGC: {0} 失败。可能有另一个 Git 进程持有 .git/index.lock,或锁已失效——删除后重试。"
+  ],
+  [
+    "JGC: {0} failed: {1}",
+    "JGC: {0} 失败:{1}"
+  ],
+  [
+    "New Branch…",
+    "新建分支…"
+  ],
+  [
+    "No change block at the cursor.",
+    "光标处没有变更块。"
+  ],
+  [
+    "No differences between {0} and {1}.",
+    "{0} 与 {1} 之间没有差异。"
+  ],
+  [
+    "Open the Commit panel",
+    "打开提交面板"
+  ],
+  [
+    "Open the Git Log view",
+    "打开 Git Log 视图"
+  ],
+  [
+    "Push…",
+    "推送…"
+  ],
+  [
+    "Retry",
+    "重试"
+  ],
+  [
+    "Rollback failed: the document was modified.",
+    "回滚失败:文档已被修改。"
+  ],
+  [
+    "Select a Git action",
+    "选择一个 Git 操作"
+  ],
+  [
+    "Switch Branch",
+    "切换分支"
+  ],
+  [
+    "Switch Branch…",
+    "切换分支…"
+  ],
+  [
+    "This file is not in a Git repository.",
+    "此文件不在 Git 仓库中。"
+  ],
+  [
+    "Type a commit message before committing this change.",
+    "提交此更改前请输入提交信息。"
+  ],
+  [
+    "Type to filter branches",
+    "输入以筛选分支"
+  ],
+  [
+    "Updating project…",
+    "正在更新项目…"
+  ],
+  [
+    "fetch + pull",
+    "fetch + pull"
+  ],
+  [
+    "remote — checking out detaches HEAD",
+    "远程——检出将进入 detached HEAD"
+  ]
 ]

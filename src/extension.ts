@@ -1880,7 +1880,11 @@ export function activate(context: vscode.ExtensionContext) {
     );
     if (!patch.trim()) {
       void vscode.window.showInformationMessage(
-        `No differences between ${currentBranch} and ${branchName}.`,
+        vscode.l10n.t(
+          "No differences between {0} and {1}.",
+          currentBranch,
+          branchName,
+        ),
       );
       return { success: true };
     }
