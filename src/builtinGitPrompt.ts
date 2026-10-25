@@ -68,6 +68,21 @@ export class BuiltinGitPrompt implements vscode.Disposable {
         await vscode.workspace
           .getConfiguration("git")
           .update("enabled", false, vscode.ConfigurationTarget.Global);
+        // Settle the prompt before offering the reload, so dismissing the
+        // reload question does not resurrect this one.
+        await this.globalState.update(PROMPT_STATE_KEY, true);
+        // git.enabled only takes effect after a reload. Once it does, no SCM
+        // provider remains registered (unless another SCM extension is
+        // installed) and VS Code itself hides the Source Control icon — its
+        // view container is declared `hideIfEmpty`.
+        const reload = await vscode.window.showInformationMessage(
+          "Built-in Git is now disabled. Reload the window to apply it — the Source Control icon disappears from the activity bar once no other source control extension is active.",
+          "Reload Now",
+        );
+        if (reload === "Reload Now") {
+          await vscode.commands.executeCommand("workbench.action.reloadWindow");
+        }
+        return;
       }
       // Either explicit answer settles the prompt for good.
       await this.globalState.update(PROMPT_STATE_KEY, true);
