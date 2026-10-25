@@ -10,6 +10,9 @@
   - Generating again mid-flight cancels the request; clicking with no model configured shows where to add one / 生成中再次点击即取消；未配置任何模型时点击会提示添加模型的入口
   - Requires VS Code 1.91+ (engine raised from 1.85) — the Language Model API's stable floor / 引擎要求提升至 VS Code 1.91+（语言模型 API 的稳定下限）
 
+### Fixed / 修复
+- **No stray context menu on blank areas** — right-clicking empty space in the Commit, Git Log and Git Worktree panels no longer pops the raw webview menu; rows and items keep their own custom menus, and editable text fields keep copy/paste / Commit、Git Log、Git Worktree 面板的空白处右键不再弹出 webview 原生菜单；列表行仍使用各自的自定义菜单，文本输入框保留复制/粘贴
+
 ## [1.1.3] - 2026-10-25
 
 ### Changed / 变更

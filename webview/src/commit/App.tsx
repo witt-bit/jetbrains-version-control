@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { bridge } from "../shared/bridge";
 import { Tooltip } from "../shared/components/Tooltip";
 import "../shared/components/Tooltip.css";
+import { useSuppressContextMenu } from "../shared/hooks/useSuppressContextMenu";
 import { useCommitStore } from "../shared/store/commit-store";
 import { CommitTab } from "./components/CommitTab";
 import { IdeaShelfTab } from "./components/IdeaShelfTab";
@@ -526,6 +527,8 @@ export function CommitApp() {
     fetchShelves();
     fetchIdeaShelves();
   }, [fetchChanges, fetchShelves, fetchIdeaShelves]);
+
+  useSuppressContextMenu();
 
   return (
     <div className="commit-app">

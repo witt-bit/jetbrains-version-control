@@ -4,6 +4,7 @@ import "allotment/dist/style.css";
 import { Tooltip } from "../shared/components/Tooltip";
 import "../shared/components/Tooltip.css";
 import { usePreventSelect } from "../shared/hooks/usePreventSelect";
+import { useSuppressContextMenu } from "../shared/hooks/useSuppressContextMenu";
 import { usePanelStore } from "../shared/store/panel-store";
 import { BranchTree } from "./components/BranchTree";
 import { DetailPanel } from "./components/DetailPanel";
@@ -45,6 +46,7 @@ function ProgressBar({ visible }: { visible: boolean }) {
 }
 
 export function PanelApp() {
+  useSuppressContextMenu();
   const loading = usePanelStore((s) => s.loading);
   const commits = usePanelStore((s) => s.commits);
   const operationInProgress = usePanelStore((s) => s.operationInProgress);

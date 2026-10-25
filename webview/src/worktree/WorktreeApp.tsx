@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { bridge } from "../shared/bridge";
+import { useSuppressContextMenu } from "../shared/hooks/useSuppressContextMenu";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import { WorktreeList } from "./WorktreeList";
 import "./worktree.css";
 
 export function WorktreeApp() {
+  useSuppressContextMenu();
   const { fetchWorktrees } = useWorktreeStore();
 
   useEffect(() => {
