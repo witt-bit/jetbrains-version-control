@@ -63,7 +63,10 @@ export function CommitMessageArea() {
 
   const hasSelectedFiles = selectedFiles.size > 0;
   const canCommit =
-    commitMessage.trim().length > 0 && hasSelectedFiles && !loading;
+    commitMessage.trim().length > 0 &&
+    hasSelectedFiles &&
+    !loading &&
+    !aiGenerating;
   const canGenerate = hasSelectedFiles && !loading;
 
   const handleGenerate = useCallback(() => {

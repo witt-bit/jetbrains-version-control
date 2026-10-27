@@ -122,7 +122,9 @@ export type CommandType =
   | "openWorktree"
   | "pickFolder"
   | "setContext"
-  | "getConfig";
+  | "getConfig"
+  | "showWarningMessage"
+  | "getWorkspaceRoot";
 
 export interface Bridge {
   request(

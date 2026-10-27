@@ -740,6 +740,12 @@ export function activate(context: vscode.ExtensionContext) {
     return { confirmed: result === confirmLabel };
   });
 
+  messageRouter.handle("showWarningMessage", async (params) => {
+    const message = params.message as string;
+    void vscode.window.showWarningMessage(message);
+    return { success: true };
+  });
+
   messageRouter.handle("showErrorNotification", async (params) => {
     const message = params.message as string;
     void vscode.window.showErrorMessage(message);

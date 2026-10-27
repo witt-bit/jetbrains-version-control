@@ -123,7 +123,11 @@ export type CommandType =
   | "getWorkspaceRoot"
   | "pickFolder"
   | "setContext"
-  | "getConfig";
+  | "getConfig"
+  | "showWarningMessage"
+  | "showErrorNotification"
+  | "showInfoNotification"
+  | "createBranchFromCommit";
 
 export type EventType =
   | "gitStateChanged"
