@@ -9,10 +9,10 @@ describe("i18n dictionary loading", () => {
     expect(locales).toContain("en");
     expect(locales).toContain("zh-cn");
     // A plain dict must resolve known keys directly (fails if wrapped in {default})
-    const en = dicts["en"];
+    const en = dicts.en;
     expect(en["worktree.colBranch"]).toBe("Branch");
     expect(en["panel.searchPlaceholder"]).toBe("Text or hash");
-    const zh = dicts["zh-cn"];
+    const zh = dicts["zh-cn"] as Record<string, string>;
     expect(zh["worktree.colBranch"]).toBe("分支");
   });
 });
