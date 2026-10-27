@@ -162,7 +162,7 @@ export class StatusBarController implements vscode.Disposable {
       {
         id: PUSH_ITEM,
         label: `$(cloud-upload) ${vscode.l10n.t("Push…")}`,
-        description: "Open the Push panel",
+        description: vscode.l10n.t("Open the Push panel"),
       },
       { id: NEW_BRANCH_ITEM, label: `$(add) ${vscode.l10n.t("New Branch…")}` },
       {
@@ -229,7 +229,7 @@ export class StatusBarController implements vscode.Disposable {
 
   private async newBranch(service: GitService): Promise<void> {
     const name = await vscode.window.showInputBox({
-      prompt: "New branch name",
+      prompt: vscode.l10n.t("New branch name"),
       ignoreFocusOut: true,
       validateInput: (value) =>
         value.trim() ? undefined : vscode.l10n.t("Branch name cannot be empty"),

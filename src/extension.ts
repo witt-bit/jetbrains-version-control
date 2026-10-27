@@ -1044,7 +1044,10 @@ export function activate(context: vscode.ExtensionContext) {
     if (!hash || !/^[0-9a-f]{40}$/i.test(hash)) {
       return {
         success: false,
-        error: { code: ErrorCode.INVALID_REF, message: "Invalid commit hash" },
+        error: {
+          code: ErrorCode.INVALID_REF,
+          message: vscode.l10n.t("Invalid commit hash"),
+        },
       };
     }
 
@@ -1055,7 +1058,7 @@ export function activate(context: vscode.ExtensionContext) {
         success: false,
         error: {
           code: ErrorCode.GIT_COMMAND_FAILED,
-          message: "Merge commits cannot be dropped",
+          message: vscode.l10n.t("Merge commits cannot be dropped"),
         },
       };
     }
@@ -1070,8 +1073,9 @@ export function activate(context: vscode.ExtensionContext) {
         success: false,
         error: {
           code: ErrorCode.GIT_COMMAND_FAILED,
-          message:
+          message: vscode.l10n.t(
             "This commit is not on the current branch, so it cannot be dropped",
+          ),
         },
       };
     }
@@ -1358,7 +1362,7 @@ export function activate(context: vscode.ExtensionContext) {
       // Surface failures (consent denied, quota, model gone) visibly — the
       // webview only resets its spinner.
       void vscode.window.showErrorMessage(
-        `JGC: AI commit message failed: ${text}`,
+        vscode.l10n.t("JGC: AI commit message failed: {0}", text),
       );
       return { success: false, error: text };
     }

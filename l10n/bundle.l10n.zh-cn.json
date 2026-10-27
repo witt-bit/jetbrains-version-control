@@ -213,7 +213,7 @@
   ],
   [
     "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",
-    "JGC: File has no Git blame history (untracked, ignored, or not in this revision)."
+    "JGC：文件没有 Git blame 历史（未跟踪、被忽略或不存在于此版本）。"
   ],
   [
     "JGC: This side of the diff has no git revision to blame.",
@@ -314,5 +314,45 @@
   [
     "Reload Now",
     "立即重载"
+  ],
+  [
+    "JGC: AI commit message failed: {0}",
+    "JGC：AI 提交信息生成失败：{0}"
+  ],
+  [
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot (the model appears after the first consent).",
+    "JGC：没有可用的语言模型。在“Chat: Manage Language Models”里添加，或安装并登录 GitHub Copilot（首次授权后模型才会出现）。"
+  ],
+  [
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot.",
+    "JGC：没有可用的语言模型。在“Chat: Manage Language Models”里添加，或安装并登录 GitHub Copilot。"
+  ],
+  [
+    "Choose the model for commit message generation",
+    "选择用于生成提交信息的模型"
+  ],
+  [
+    "current",
+    "当前"
+  ],
+  [
+    "Open the Push panel",
+    "打开推送面板"
+  ],
+  [
+    "New branch name",
+    "新分支名称"
+  ],
+  [
+    "Invalid commit hash",
+    "无效的提交哈希"
+  ],
+  [
+    "Merge commits cannot be dropped",
+    "无法丢弃合并提交"
+  ],
+  [
+    "This commit is not on the current branch, so it cannot be dropped",
+    "该提交不在当前分支上，因此无法丢弃"
   ]
 ]

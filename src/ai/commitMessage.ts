@@ -75,7 +75,9 @@ export class AiCommitMessageController implements vscode.Disposable {
     const models = await this.listModels();
     if (models.length === 0) {
       void vscode.window.showInformationMessage(
-        "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot.",
+        vscode.l10n.t(
+          "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot.",
+        ),
       );
       return null;
     }
@@ -85,11 +87,15 @@ export class AiCommitMessageController implements vscode.Disposable {
         label: `${m.vendor} · ${m.name || m.id}`,
         description:
           current && current.vendor === m.vendor && current.id === m.id
-            ? "current"
+            ? vscode.l10n.t("current")
             : undefined,
         model: m,
       })),
-      { placeHolder: "Choose the model for commit message generation" },
+      {
+        placeHolder: vscode.l10n.t(
+          "Choose the model for commit message generation",
+        ),
+      },
     );
     if (!picked) {
       return null;
@@ -156,7 +162,9 @@ export class AiCommitMessageController implements vscode.Disposable {
       // are hidden until the per-extension consent is granted, and consent can
       // only be granted from a request — so guide instead of staying silent.
       void vscode.window.showInformationMessage(
-        "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot (the model appears after the first consent).",
+        vscode.l10n.t(
+          "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot (the model appears after the first consent).",
+        ),
       );
       return undefined;
     }
@@ -181,7 +189,11 @@ export class AiCommitMessageController implements vscode.Disposable {
         label: `${m.vendor} · ${m.name || m.id}`,
         model: m,
       })),
-      { placeHolder: "Choose the model for commit message generation" },
+      {
+        placeHolder: vscode.l10n.t(
+          "Choose the model for commit message generation",
+        ),
+      },
     );
     if (!picked) {
       return undefined;

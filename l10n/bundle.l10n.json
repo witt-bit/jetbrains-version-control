@@ -314,5 +314,45 @@
   [
     "Reload Now",
     "Reload Now"
+  ],
+  [
+    "JGC: AI commit message failed: {0}",
+    "JGC: AI commit message failed: {0}"
+  ],
+  [
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot (the model appears after the first consent).",
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot (the model appears after the first consent)."
+  ],
+  [
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot.",
+    "JGC: No language model available. Add one via 'Chat: Manage Language Models', or install and sign into GitHub Copilot."
+  ],
+  [
+    "Choose the model for commit message generation",
+    "Choose the model for commit message generation"
+  ],
+  [
+    "current",
+    "current"
+  ],
+  [
+    "Open the Push panel",
+    "Open the Push panel"
+  ],
+  [
+    "New branch name",
+    "New branch name"
+  ],
+  [
+    "Invalid commit hash",
+    "Invalid commit hash"
+  ],
+  [
+    "Merge commits cannot be dropped",
+    "Merge commits cannot be dropped"
+  ],
+  [
+    "This commit is not on the current branch, so it cannot be dropped",
+    "This commit is not on the current branch, so it cannot be dropped"
   ]
 ]
