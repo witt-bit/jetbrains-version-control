@@ -168,6 +168,7 @@ export class CaretBlameController implements vscode.Disposable {
                     self,
                     format: this.format,
                     messageMaxLength: this.messageMaxLength,
+                    youLabel: vscode.l10n.t("You"),
                   }),
                 },
               },

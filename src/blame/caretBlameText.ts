@@ -19,8 +19,10 @@ export interface CaretBlameRenderOptions {
   format?: string;
   /** Cap on the ${message} part; other parts are never truncated. */
   messageMaxLength?: number;
-  /** The line is authored by the current committer — ${who} resolves to "You". */
+  /** The line is authored by the current committer — ${who} resolves to `youLabel`. */
   self?: boolean;
+  /** Localized word for the committer's own commits (e.g. "You" / "你"). */
+  youLabel?: string;
 }
 
 /**
@@ -36,9 +38,10 @@ export function caretBlameText(
     format = CARET_BLAME_DEFAULT_FORMAT,
     messageMaxLength = CARET_BLAME_MAX_MESSAGE_CHARS,
     self = false,
+    youLabel = "You",
   } = options;
 
-  const who = line.uncommitted || self ? "You" : line.authorName || "unknown";
+  const who = self ? youLabel : line.authorName || "unknown";
   const date = line.uncommitted ? "now" : line.authorDate;
   const rawMessage = line.uncommitted
     ? "uncommitted changes"

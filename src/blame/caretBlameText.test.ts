@@ -48,6 +48,11 @@ describe("caretBlameText", () => {
     assert.equal(text, "You, 2026/10/25 * fix: guard against null user");
   });
 
+  it("renders the localized you label", () => {
+    const text = caretBlameText(line(), { self: true, youLabel: "你" });
+    assert.equal(text, "你, 2026/10/25 * fix: guard against null user");
+  });
+
   it("caps the message at 50 characters with an ellipsis, prefix untouched", () => {
     const text = caretBlameText(line({ summary: "x".repeat(120) }), {
       self: true,

@@ -354,5 +354,9 @@
   [
     "This commit is not on the current branch, so it cannot be dropped",
     "该提交不在当前分支上，因此无法丢弃"
+  ],
+  [
+    "You",
+    "你"
   ]
 ]
