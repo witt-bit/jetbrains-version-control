@@ -603,17 +603,33 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     mode: "single" | "toggle" | "range",
     allVisibleBranches: string[],
   ) {
+    // Mutually exclusive with commits and tags.
+    const clearOthers = {
+      selectedCommitHashes: [],
+      selectedTags: [],
+      lastSelectedCommitHash: null,
+      lastSelectedTag: null,
+    };
     if (mode === "single") {
-      set({ selectedBranches: [name], lastSelectedBranch: name });
+      set({
+        ...clearOthers,
+        selectedBranches: [name],
+        lastSelectedBranch: name,
+      });
     } else if (mode === "toggle") {
       const current = get().selectedBranches;
       if (current.includes(name)) {
         set({
+          ...clearOthers,
           selectedBranches: current.filter((b) => b !== name),
           lastSelectedBranch: name,
         });
       } else {
-        set({ selectedBranches: [...current, name], lastSelectedBranch: name });
+        set({
+          ...clearOthers,
+          selectedBranches: [...current, name],
+          lastSelectedBranch: name,
+        });
       }
     } else {
       // range - keep the original anchor (lastSelectedBranch) so
@@ -631,7 +647,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({ selectedBranches: allVisibleBranches.slice(start, end + 1) });
+      set({
+        ...clearOthers,
+        selectedBranches: allVisibleBranches.slice(start, end + 1),
+      });
     }
   },
 
@@ -640,17 +659,33 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     mode: "single" | "toggle" | "range",
     allVisibleTags: string[],
   ) {
+    // Mutually exclusive with commits and branches.
+    const clearOthers = {
+      selectedCommitHashes: [],
+      selectedBranches: [],
+      lastSelectedCommitHash: null,
+      lastSelectedBranch: null,
+    };
     if (mode === "single") {
-      set({ selectedTags: [name], lastSelectedTag: name });
+      set({
+        ...clearOthers,
+        selectedTags: [name],
+        lastSelectedTag: name,
+      });
     } else if (mode === "toggle") {
       const current = get().selectedTags;
       if (current.includes(name)) {
         set({
+          ...clearOthers,
           selectedTags: current.filter((t) => t !== name),
           lastSelectedTag: name,
         });
       } else {
-        set({ selectedTags: [...current, name], lastSelectedTag: name });
+        set({
+          ...clearOthers,
+          selectedTags: [...current, name],
+          lastSelectedTag: name,
+        });
       }
     } else {
       const anchor = get().lastSelectedTag;
@@ -666,7 +701,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({ selectedTags: allVisibleTags.slice(start, end + 1) });
+      set({
+        ...clearOthers,
+        selectedTags: allVisibleTags.slice(start, end + 1),
+      });
     }
   },
 
