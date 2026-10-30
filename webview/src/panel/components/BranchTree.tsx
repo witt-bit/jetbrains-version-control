@@ -276,8 +276,8 @@ function collectVisibleLeaves(
 ): string[] {
   const result: string[] = [];
   for (const node of nodes) {
-    if (node.isLeaf && node.branch) {
-      result.push(node.branch.name);
+    if (node.isLeaf && (node.branch || node.tag)) {
+      result.push(node.branch ? node.branch.name : node.tag!.name);
     } else {
       const collapseKey = `${groupPrefix}:${node.fullPath}`;
       if (!collapsed[collapseKey]) {
