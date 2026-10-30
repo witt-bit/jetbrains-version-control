@@ -9,6 +9,7 @@ import type { BranchInfo, TagInfo } from "../../shared/types/git";
 import { BranchSidebar as BranchSidebarComponent } from "./BranchSidebar";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { PushDialog } from "./PushDialog";
+import { TagContextMenu } from "./TagContextMenu";
 
 // ---------------------------------------------------------------------------
 // Inline SVG Icons (stroke-based, IDEA style)
@@ -324,6 +325,13 @@ export function BranchTree({
     branch: BranchInfo;
   } | null>(null);
 
+  // Tag context menu state
+  const [tagContextMenu, setTagContextMenu] = useState<{
+    x: number;
+    y: number;
+    tag: TagInfo;
+  } | null>(null);
+
   // Create branch dialog state
   const [createBranchDialog, setCreateBranchDialog] = useState<{
     startPoint: string;
@@ -346,6 +354,19 @@ export function BranchTree({
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null);
+  }, []);
+
+  const handleTagContextMenu = useCallback(
+    (e: React.MouseEvent, tag: TagInfo) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setTagContextMenu({ x: e.clientX, y: e.clientY, tag });
+    },
+    [],
+  );
+
+  const closeTagContextMenu = useCallback(() => {
+    setTagContextMenu(null);
   }, []);
 
   // Listen for expand-all / collapse-all events from sidebar
@@ -660,9 +681,23 @@ export function BranchTree({
               onToggle={toggle}
               selectedTags={selectedTags}
               onTagClick={handleTagClick}
+              onTagContextMenu={handleTagContextMenu}
             />
           ))}
         </GroupSection>
+
+        {/* Tag Context Menu */}
+        {tagContextMenu &&
+          createPortal(
+            <TagContextMenu
+              x={tagContextMenu.x}
+              y={tagContextMenu.y}
+              tag={tagContextMenu.tag}
+              selectedTags={selectedTags}
+              onClose={closeTagContextMenu}
+            />,
+            document.body,
+          )}
 
         {/* Context Menu */}
         {contextMenu &&
@@ -856,6 +891,7 @@ function TagTreeNodeView({
   onToggle,
   selectedTags,
   onTagClick,
+  onTagContextMenu,
 }: {
   node: TreeNode;
   depth: number;
@@ -864,6 +900,7 @@ function TagTreeNodeView({
   onToggle: (key: string) => void;
   selectedTags: string[];
   onTagClick: (e: React.MouseEvent, name: string) => void;
+  onTagContextMenu: (e: React.MouseEvent, tag: TagInfo) => void;
 }) {
   const collapseKey = `${groupPrefix}:${node.fullPath}`;
 
@@ -873,6 +910,15 @@ function TagTreeNodeView({
       <div
         className={`selectable-row${isSelected ? " row-selected" : ""}`}
         onClick={(e) => onTagClick(e, node.name)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onTagContextMenu(e, {
+            name: node.name,
+            hash: "",
+            isAnnotated: false,
+          });
+        }}
         style={{
           padding: `4px 8px 4px ${20 + depth * 12}px`,
           cursor: "pointer",
@@ -923,6 +969,7 @@ function TagTreeNodeView({
             onToggle={onToggle}
             selectedTags={selectedTags}
             onTagClick={onTagClick}
+            onTagContextMenu={onTagContextMenu}
           />
         ))}
     </div>

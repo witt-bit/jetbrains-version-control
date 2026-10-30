@@ -1058,6 +1058,31 @@ export class GitService {
     this.invalidateCache();
   }
 
+  async checkoutTag(tagName: string): Promise<void> {
+    await this.execGit(["checkout", tagName]);
+    this.invalidateCache();
+  }
+
+  async deleteTag(tagName: string): Promise<void> {
+    await this.execGit(["tag", "-d", tagName]);
+    this.invalidateCache();
+  }
+
+  async pushTag(tagName: string, remote = "origin"): Promise<string> {
+    const output = await this.execGit(["push", remote, tagName]);
+    this.invalidateCache();
+    return output;
+  }
+
+  async mergeTag(tagName: string): Promise<void> {
+    await this.execGit(["merge", tagName]);
+    this.invalidateCache();
+  }
+
+  async showTagDiff(tagName: string): Promise<string> {
+    return this.execGit(["diff", tagName]);
+  }
+
   // ─── Commit Panel Operations ───────────────────────────────────────
 
   async getWorkingTreeChanges(): Promise<import("./types").WorkingTreeFile[]> {
