@@ -478,6 +478,45 @@ export function BranchTree({
     () => setCurrentBranchRowSelected(false),
   );
 
+  // Keyboard navigation for tag multi-select.
+  // Arrow Down/Up (no modifier): move highlight, single-select.
+  // Shift+Arrow Down/Up: extend selection from anchor (range select).
+  const handleTagKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+
+      if (allVisibleTags.length === 0) return;
+
+      // Find the anchor (last selected tag).
+      const { lastSelectedTag } = usePanelStore.getState();
+      let anchorIdx = lastSelectedTag
+        ? allVisibleTags.indexOf(lastSelectedTag)
+        : -1;
+      if (anchorIdx === -1 && selectedTags.length > 0) {
+        anchorIdx = allVisibleTags.indexOf(
+          selectedTags[selectedTags.length - 1],
+        );
+      }
+      if (anchorIdx === -1) {
+        anchorIdx = e.key === "ArrowDown" ? 0 : allVisibleTags.length - 1;
+      }
+
+      const nextIdx =
+        e.key === "ArrowDown"
+          ? Math.min(anchorIdx + 1, allVisibleTags.length - 1)
+          : Math.max(anchorIdx - 1, 0);
+
+      const targetTag = allVisibleTags[nextIdx];
+      if (e.shiftKey) {
+        selectTag(targetTag, "range", allVisibleTags);
+      } else {
+        selectTag(targetTag, "single", allVisibleTags);
+      }
+    },
+    [allVisibleTags, selectedTags, selectTag],
+  );
+
   return (
     <div
       style={{
@@ -677,19 +716,21 @@ export function BranchTree({
           collapsed={collapsed.tags}
           onToggle={() => toggle("tags")}
         >
-          {tagTree.map((node) => (
-            <TagTreeNodeView
-              key={node.fullPath}
-              node={node}
-              depth={0}
-              groupPrefix="tags"
-              collapsed={collapsed}
-              onToggle={toggle}
-              selectedTags={selectedTags}
-              onTagClick={handleTagClick}
-              onTagContextMenu={handleTagContextMenu}
-            />
-          ))}
+          <div className="tag-list" tabIndex={0} onKeyDown={handleTagKeyDown}>
+            {tagTree.map((node) => (
+              <TagTreeNodeView
+                key={node.fullPath}
+                node={node}
+                depth={0}
+                groupPrefix="tags"
+                collapsed={collapsed}
+                onToggle={toggle}
+                selectedTags={selectedTags}
+                onTagClick={handleTagClick}
+                onTagContextMenu={handleTagContextMenu}
+              />
+            ))}
+          </div>
         </GroupSection>
 
         {/* Tag Context Menu */}
