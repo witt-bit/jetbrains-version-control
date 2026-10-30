@@ -9,6 +9,7 @@ import { usePanelStore } from "../../shared/store/panel-store";
 import type { BranchInfo, TagInfo } from "../../shared/types/git";
 import { BranchSidebar as BranchSidebarComponent } from "./BranchSidebar";
 import { CreateBranchDialog } from "./CreateBranchDialog";
+import { HeadContextMenu } from "./HeadContextMenu";
 import { PushDialog } from "./PushDialog";
 import { TagContextMenu } from "./TagContextMenu";
 
@@ -308,6 +309,7 @@ export function BranchTree({
   const setFilter = usePanelStore((s) => s.setFilter);
   const selectedBranches = usePanelStore((s) => s.selectedBranches);
   const selectBranch = usePanelStore((s) => s.selectBranch);
+  const clearAllSelections = usePanelStore((s) => s.clearAllSelections);
   const selectedTags = usePanelStore((s) => s.selectedTags);
   const selectTag = usePanelStore((s) => s.selectTag);
   const branchGroupByDirectory = usePanelStore((s) => s.branchGroupByDirectory);
@@ -331,6 +333,12 @@ export function BranchTree({
     x: number;
     y: number;
     tag: TagInfo;
+  } | null>(null);
+
+  // HEAD context menu state
+  const [headContextMenu, setHeadContextMenu] = useState<{
+    x: number;
+    y: number;
   } | null>(null);
 
   // Create branch dialog state
@@ -374,6 +382,16 @@ export function BranchTree({
 
   const closeTagContextMenu = useCallback(() => {
     setTagContextMenu(null);
+  }, []);
+
+  const handleHeadContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHeadContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const closeHeadContextMenu = useCallback(() => {
+    setHeadContextMenu(null);
   }, []);
 
   // Listen for expand-all / collapse-all events from sidebar
@@ -625,12 +643,14 @@ export function BranchTree({
             className={`selectable-row${currentBranchRowSelected ? " row-selected" : ""}`}
             onClick={() => {
               setCurrentBranchRowSelected(true);
+              clearAllSelections();
             }}
             onDoubleClick={() => {
               if (headBranch) {
                 handleBranchDoubleClick(headBranch.name);
               }
             }}
+            onContextMenu={handleHeadContextMenu}
             style={{
               padding: "4px 8px 4px 20px",
               cursor: "pointer",
@@ -726,6 +746,27 @@ export function BranchTree({
             ))}
           </div>
         </GroupSection>
+
+        {/* HEAD Context Menu */}
+        {headContextMenu &&
+          headBranch &&
+          createPortal(
+            <HeadContextMenu
+              x={headContextMenu.x}
+              y={headContextMenu.y}
+              branch={headBranch}
+              onClose={closeHeadContextMenu}
+              onCreateBranch={(startPoint, defaultName) => {
+                closeHeadContextMenu();
+                setCreateBranchDialog({ startPoint, defaultName });
+              }}
+              onPush={(branchName) => {
+                closeHeadContextMenu();
+                setPushDialog({ branchName });
+              }}
+            />,
+            document.body,
+          )}
 
         {/* Tag Context Menu */}
         {tagContextMenu &&

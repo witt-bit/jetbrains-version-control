@@ -91,6 +91,7 @@ export type CommandType =
   | "pushTag"
   | "mergeTag"
   | "showTagDiff"
+  | "showHeadDiff"
   | "deleteFiles"
   | "revealInSystemExplorer"
   | "getRecentCommitMessages"

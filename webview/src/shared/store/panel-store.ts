@@ -82,6 +82,7 @@ interface PanelStore {
     mode: "single" | "toggle" | "range",
     allVisibleTags: string[],
   ) => void;
+  clearAllSelections: () => void;
   setHoveredColumn: (column: number | null) => void;
   toggleColumnVisibility: (column: "author" | "date" | "hash") => void;
   toggleSequenceCollapse: (sequenceId: string, intermediates: string[]) => void;
@@ -706,6 +707,22 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         selectedTags: allVisibleTags.slice(start, end + 1),
       });
     }
+  },
+
+  clearAllSelections() {
+    set({
+      selectedBranches: [],
+      selectedTags: [],
+      selectedCommitHashes: [],
+      selectedCommitHash: null,
+      lastSelectedBranch: null,
+      lastSelectedTag: null,
+      lastSelectedCommitHash: null,
+      commitFiles: [],
+      selectedFilePath: null,
+      rangeOldest: null,
+      rangeNewest: null,
+    });
   },
 
   setHoveredColumn(column: number | null) {

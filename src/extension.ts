@@ -1174,6 +1174,17 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
+  messageRouter.handle("showHeadDiff", async () => {
+    if (!gitService || !workspaceRoot) return NOT_GIT_REPO;
+    const diff = await gitService.showTagDiff("HEAD");
+    const doc = await vscode.workspace.openTextDocument({
+      content: diff,
+      language: "diff",
+    });
+    await vscode.window.showTextDocument(doc);
+    return { success: true };
+  });
+
   messageRouter.handle("copyToClipboard", async (params) => {
     const text = params.text as string;
     await vscode.env.clipboard.writeText(text);
