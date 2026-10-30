@@ -69,7 +69,7 @@ export class CaretBlameController implements vscode.Disposable {
       after: {
         fontStyle: "italic",
         color: new vscode.ThemeColor("descriptionForeground"),
-        margin: "0 0 0 1.5em",
+        margin: "0 0 0 3em",
       },
     });
 
