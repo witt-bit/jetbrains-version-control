@@ -360,9 +360,15 @@ export function BranchTree({
     (e: React.MouseEvent, tag: TagInfo) => {
       e.preventDefault();
       e.stopPropagation();
+      // If the right-clicked tag is not in the current selection,
+      // select just this tag so the menu shows the full option set.
+      // If it's already in a multi-selection, the menu shows Delete only.
+      if (!selectedTags.includes(tag.name)) {
+        selectTag(tag.name, "single", []);
+      }
       setTagContextMenu({ x: e.clientX, y: e.clientY, tag });
     },
-    [],
+    [selectedTags, selectTag],
   );
 
   const closeTagContextMenu = useCallback(() => {
