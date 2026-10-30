@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge } from "../../shared/bridge";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
-import { isPlainArrowKey } from "../../shared/keyboard";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
 import { CommitContextMenu } from "./CommitContextMenu";
@@ -177,12 +176,12 @@ export function CommitList({
     void selectCommit(hash, mode, allVisibleCommitHashes);
   });
 
-  // Keyboard navigation (Arrow Up/Down)
+  // Keyboard navigation (Arrow Up/Down, with Shift for range)
   const selectedCommitHashes = usePanelStore((s) => s.selectedCommitHashes);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isPlainArrowKey(e)) return;
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
       if (!visibleCommits.length) return;
 
       // Only handle when no input is focused
@@ -218,23 +217,25 @@ export function CommitList({
       void selectCommit(nextHash, mode, allVisibleCommitHashes);
 
       // Scroll the selected row into view with some padding
-      // Show 3 rows ahead so user can see upcoming items
       const scrollIdx =
         e.key === "ArrowDown"
           ? Math.min(nextIdx + 3, visibleCommits.length - 1)
           : Math.max(nextIdx - 3, 0);
       virtualizer.scrollToIndex(scrollIdx, { align: "auto" });
-    };
+    },
+    [
+      visibleCommits,
+      selectedCommitHashes,
+      selectCommit,
+      allVisibleCommitHashes,
+      virtualizer,
+    ],
+  );
 
+  useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [
-    visibleCommits,
-    selectedCommitHashes,
-    selectCommit,
-    allVisibleCommitHashes,
-    virtualizer,
-  ]);
+  }, [handleKeyDown]);
 
   // Scroll an externally-requested commit (e.g. blame annotation click) into view
   const pendingScrollToHash = usePanelStore((s) => s.pendingScrollToHash);

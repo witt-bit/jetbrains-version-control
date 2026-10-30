@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
+import { useListKeyboardNavigation } from "../../shared/hooks/useListKeyboardNavigation";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
 import { usePreventSelect } from "../../shared/hooks/usePreventSelect";
 import { usePanelStore } from "../../shared/store/panel-store";
@@ -454,9 +455,11 @@ export function BranchTree({
     [collapsed, localTree, remoteTree],
   );
 
-  const allVisibleTags: string[] = !collapsed.tags
-    ? collectVisibleLeaves(tagTree, collapsed, "tags")
-    : [];
+  const allVisibleTags = useMemo(
+    () =>
+      !collapsed.tags ? collectVisibleLeaves(tagTree, collapsed, "tags") : [],
+    [collapsed, tagTree],
+  );
 
   const handleClick = useModifierClickSelection<string>(
     (branchName, mode) => {
@@ -481,79 +484,19 @@ export function BranchTree({
     () => setCurrentBranchRowSelected(false),
   );
 
-  // Keyboard navigation for branch multi-select.
-  // Arrow Down/Up (no modifier): move highlight, single-select.
-  // Shift+Arrow Down/Up: extend selection from anchor (range select).
-  const handleBranchKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-      e.preventDefault();
-
-      if (allVisibleBranches.length === 0) return;
-
-      // Find the anchor (last selected branch).
-      const { lastSelectedBranch } = usePanelStore.getState();
-      let anchorIdx = lastSelectedBranch
-        ? allVisibleBranches.indexOf(lastSelectedBranch)
-        : -1;
-      if (anchorIdx === -1 && selectedBranches.length > 0) {
-        anchorIdx = allVisibleBranches.indexOf(
-          selectedBranches[selectedBranches.length - 1],
-        );
-      }
-      if (anchorIdx === -1) {
-        anchorIdx = e.key === "ArrowDown" ? 0 : allVisibleBranches.length - 1;
-      }
-
-      const nextIdx =
-        e.key === "ArrowDown"
-          ? Math.min(anchorIdx + 1, allVisibleBranches.length - 1)
-          : Math.max(anchorIdx - 1, 0);
-
-      const targetBranch = allVisibleBranches[nextIdx];
-      const mode = e.shiftKey ? "range" : "single";
-      selectBranch(targetBranch, mode, allVisibleBranches);
-    },
-    [allVisibleBranches, selectedBranches, selectBranch],
+  // Shared keyboard navigation — same hook used by files and commits.
+  const handleBranchKeyDown = useListKeyboardNavigation<string>(
+    allVisibleBranches,
+    () => selectedBranches,
+    () => usePanelStore.getState().lastSelectedBranch,
+    (branch, mode) => selectBranch(branch, mode, allVisibleBranches),
   );
 
-  // Keyboard navigation for tag multi-select.
-  // Arrow Down/Up (no modifier): move highlight, single-select.
-  // Shift+Arrow Down/Up: extend selection from anchor (range select).
-  const handleTagKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-      e.preventDefault();
-
-      if (allVisibleTags.length === 0) return;
-
-      // Find the anchor (last selected tag).
-      const { lastSelectedTag } = usePanelStore.getState();
-      let anchorIdx = lastSelectedTag
-        ? allVisibleTags.indexOf(lastSelectedTag)
-        : -1;
-      if (anchorIdx === -1 && selectedTags.length > 0) {
-        anchorIdx = allVisibleTags.indexOf(
-          selectedTags[selectedTags.length - 1],
-        );
-      }
-      if (anchorIdx === -1) {
-        anchorIdx = e.key === "ArrowDown" ? 0 : allVisibleTags.length - 1;
-      }
-
-      const nextIdx =
-        e.key === "ArrowDown"
-          ? Math.min(anchorIdx + 1, allVisibleTags.length - 1)
-          : Math.max(anchorIdx - 1, 0);
-
-      const targetTag = allVisibleTags[nextIdx];
-      if (e.shiftKey) {
-        selectTag(targetTag, "range", allVisibleTags);
-      } else {
-        selectTag(targetTag, "single", allVisibleTags);
-      }
-    },
-    [allVisibleTags, selectedTags, selectTag],
+  const handleTagKeyDown = useListKeyboardNavigation<string>(
+    allVisibleTags,
+    () => selectedTags,
+    () => usePanelStore.getState().lastSelectedTag,
+    (tag, mode) => selectTag(tag, mode, allVisibleTags),
   );
 
   return (
