@@ -481,27 +481,6 @@
           "default": true,
           "markdownDescription": "Draw a colored marker in the line-number gutter for every added, modified or deleted line."
         },
-        "jgc.blame.displayMode": {
-          "type": "string",
-          "enum": [
-            "all",
-            "cursor",
-            "around"
-          ],
-          "enumDescriptions": [
-            "Annotate every line of the file",
-            "Only the line under the cursor",
-            "The cursor line plus N lines of context (see #jgc.blame.aroundLines#)"
-          ],
-          "default": "all",
-          "description": "Controls which lines show inline Git blame annotations."
-        },
-        "jgc.blame.aroundLines": {
-          "type": "number",
-          "default": 3,
-          "minimum": 0,
-          "description": "Lines of context above/below the cursor when jgc.blame.displayMode is 'around'."
-        },
         "jgc.blame.columns": {
           "type": "array",
           "items": {

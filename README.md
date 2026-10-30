@@ -24,7 +24,7 @@ The **IntelliJ IDEA / JetBrains Git** experience for **VS Code** and **Cursor**:
 
 WebStorm-style inline blame annotations for every line, with click-to-jump to the Git Log commit graph.
 
-- **Display modes**: whole file / cursor line only / N lines around cursor
+- **Every line annotated**: the blame column shows on all lines of the file, while the caret line-end blame (below) follows the cursor
 - **Configurable columns**: revision, date, author, commitNumber (select what you need)
 - **Name styles**: initials, last name, first name, full name, email
 - **Age-based coloring**: gradient colors based on commit age (new→blue, mid→green, old→gray)
@@ -153,8 +153,6 @@ Configure in VS Code Settings under `JGC`:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `jgc.blame.displayMode` | Display scope | `all` |
-| `jgc.blame.aroundLines` | Context lines (around mode) | `3` |
 | `jgc.blame.columns` | Columns to display | `["date", "author"]` |
 | `jgc.blame.colorMode` | Coloring mode | `order` |
 | `jgc.blame.nameStyle` | Name display style | `fullName` |

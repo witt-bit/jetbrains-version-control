@@ -111,12 +111,6 @@ export class GutterMarkers implements vscode.Disposable {
         );
         if (visible) this.schedule();
       }),
-      vscode.window.onDidChangeTextEditorSelection(() => {
-        // In `cursor` / `around` blame mode the annotated window follows the
-        // caret, so which lines carry a label — and which need a pad —
-        // changes without any edit to the document.
-        if (blameFollowsCursor()) this.schedule();
-      }),
     );
   }
 
@@ -585,17 +579,6 @@ function gutterIcon(
   const bottom = ends === "both" || ends === "bottom" ? 3 : 0;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="6" height="20" viewBox="0 0 6 20"><path fill="${color}" d="M${top} 0H${6 - top}Q6 0 6 ${top}V${20 - bottom}Q6 20 ${6 - bottom} 20H${bottom}Q0 20 0 ${20 - bottom}V${top}Q0 0 ${top} 0Z"/></svg>`;
   return vscode.Uri.parse(`data:image/svg+xml,${encodeURIComponent(svg)}`);
-}
-
-/**
- * Whether the blame annotation paints only a window around the caret, in which
- * case moving the caret changes which lines the marker layer has to pad.
- */
-function blameFollowsCursor(): boolean {
-  const mode = vscode.workspace
-    .getConfiguration("jgc.blame")
-    .get<string>("displayMode", "all");
-  return mode === "cursor" || mode === "around";
 }
 
 /** When two buckets claim a line, the full-height bar wins over the short one. */

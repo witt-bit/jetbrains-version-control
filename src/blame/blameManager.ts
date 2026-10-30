@@ -19,11 +19,10 @@ interface BlameState {
    * only decorates non-empty lines, and lines added since carry nothing.
    */
   annotatedLines: string[];
-  /** Last line around which decorations were rendered (skip redundant renders) */
+  /** Whether the full-line annotation is currently applied (skip redundant renders) */
   lastRenderedLine: number;
 }
 
-type DisplayMode = "all" | "cursor" | "around";
 /** author = color per author; order = by commit age (IDEA-like); hide = fixed fg */
 type ColorMode = "author" | "order" | "hide";
 type NameStyle = "initials" | "lastName" | "firstName" | "fullName" | "email";
@@ -37,8 +36,6 @@ const COLUMN_ORDER: readonly ColumnId[] = [
 ];
 
 interface BlameConfig {
-  displayMode: DisplayMode;
-  aroundLines: number;
   columns: ColumnId[];
   colorMode: ColorMode;
   nameStyle: NameStyle;
@@ -225,8 +222,6 @@ function readConfig(): BlameConfig {
   const rawColumns = cfg.get<ColumnId[]>("columns", ["date", "author"]);
   const columns = COLUMN_ORDER.filter((c) => rawColumns.includes(c));
   return {
-    displayMode: cfg.get<DisplayMode>("displayMode", "all"),
-    aroundLines: Math.max(0, cfg.get<number>("aroundLines", 3)),
     columns: columns.length > 0 ? columns : ["date", "author"],
     colorMode: cfg.get<ColorMode>("colorMode", "order"),
     nameStyle: cfg.get<NameStyle>("nameStyle", "fullName"),
@@ -591,23 +586,10 @@ export class BlameManager implements vscode.Disposable {
       current.push(doc.lineAt(i).text);
     }
 
-    // Which snapshot lines carry an attachment right now. This mirrors
-    // `renderDecorations` rather than assuming every line is labelled: in
-    // `cursor` and `around` mode only a window around the caret is painted, so
-    // treating the rest as labelled would leave their markers unreserved.
-    const { displayMode, aroundLines } = readConfig();
-    const activeLine =
-      vscode.window.visibleTextEditors.find(
-        (editor) => editor.document.uri.toString() === uri.toString(),
-      )?.selection.active.line ?? 0;
-    const isPainted = (snapshotLine: number): boolean => {
-      if (state.annotatedLines[snapshotLine].length === 0) return false;
-      if (displayMode === "all") return true;
-      const line = snapshotLine + 1;
-      return displayMode === "cursor"
-        ? line === activeLine
-        : Math.abs(line - activeLine) <= aroundLines;
-    };
+    // Which snapshot lines carry an attachment right now. The annotation
+    // paints every non-empty line of its snapshot.
+    const isPainted = (snapshotLine: number): boolean =>
+      state.annotatedLines[snapshotLine].length > 0;
 
     // The annotation attached a box to every non-empty line of its snapshot;
     // lines it skipped and lines created since carry nothing. Matching the live
@@ -651,10 +633,6 @@ export class BlameManager implements vscode.Disposable {
     // from — including both sides of a diff editor.
     this.lastSelectionEditor = e.textEditor;
     const state = this.states.get(e.textEditor.document.uri.toString());
-    if (state) {
-      // Cursor/around modes follow the caret on any selection change
-      this.renderDecorations(e.textEditor, state);
-    }
 
     // Only real mouse clicks landing at character 0 count as "annotation click"
     if (e.kind !== vscode.TextEditorSelectionChangeKind.Mouse) return;
@@ -677,39 +655,16 @@ export class BlameManager implements vscode.Disposable {
     this.disposables.length = 0;
   }
 
-  /** Re-apply decorations according to the current display mode & cursor */
+  /** Re-apply the full-line annotation; no longer cursor-dependent. */
   private renderDecorations(
     editor: vscode.TextEditor,
     state: BlameState,
     forceRender = false,
   ): void {
-    const { displayMode, aroundLines } = readConfig();
-
-    // For "all" mode, apply all options once
-    if (displayMode === "all") {
-      if (forceRender || state.lastRenderedLine === -1) {
-        state.lastRenderedLine = -2; // mark as fully rendered
-        editor.setDecorations(state.decorationType, state.allOptions);
-      }
-      return;
+    if (forceRender || state.lastRenderedLine === -1) {
+      state.lastRenderedLine = -2; // mark as fully rendered
+      editor.setDecorations(state.decorationType, state.allOptions);
     }
-
-    const activeLine = editor.selection.active.line + 1; // 1-based
-    if (!forceRender && activeLine === state.lastRenderedLine) return;
-    state.lastRenderedLine = activeLine;
-
-    let options: vscode.DecorationOptions[];
-    if (displayMode === "cursor") {
-      options = state.allOptions.filter(
-        (o) => o.range.start.line + 1 === activeLine,
-      );
-    } else {
-      options = state.allOptions.filter((o) => {
-        const lineNo = o.range.start.line + 1;
-        return Math.abs(lineNo - activeLine) <= aroundLines;
-      });
-    }
-    editor.setDecorations(state.decorationType, options);
   }
 
   private async jumpToGraph(hash: string): Promise<void> {

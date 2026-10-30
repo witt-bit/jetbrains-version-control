@@ -28,7 +28,7 @@
 
 WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图。
 
-- **显示模式**：全文件 / 仅光标行 / 光标前后 N 行
+- **全行标注**：blame 列在文件所有行显示，光标行尾 blame（见下）跟随光标
 - **可配置列**：revision、date、author、commitNumber（按需选择）
 - **命名风格**：缩写、姓氏、名字、全名、邮箱
 - **年龄着色**：按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
@@ -157,8 +157,6 @@ JetBrains 风格的工作树管理面板，位于 Activity Bar 侧边栏。
 
 | 配置项 | 说明 | 默认值 |
 |--------|------|--------|
-| `jgc.blame.displayMode` | 显示范围 | `all` |
-| `jgc.blame.aroundLines` | 上下文行数（around 模式） | `3` |
 | `jgc.blame.columns` | 显示的列 | `["date", "author"]` |
 | `jgc.blame.colorMode` | 着色模式 | `order` |
 | `jgc.blame.nameStyle` | 名称显示风格 | `fullName` |
