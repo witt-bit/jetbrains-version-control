@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { DiffFile } from "../../shared/types/git";
 
@@ -132,6 +133,7 @@ interface FileContextMenuProps {
 }
 
 export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
+  const jumpToSourceLabel = useJumpToSourceShortcutLabel();
   const menuRef = useRef<HTMLDivElement>(null);
   const selectedCommitHash = usePanelStore((s) => s.selectedCommitHash);
   const openDiffEditor = usePanelStore((s) => s.openDiffEditor);
@@ -313,7 +315,7 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
       label: "Edit Source",
       action: handleEditSource,
       icon: <IconEdit />,
-      shortcut: "F4 · ⌃↓/⌘↓",
+      shortcut: jumpToSourceLabel,
     },
     { label: "Open Repository Version", action: handleOpenRepoVersion },
     { label: "", action: () => {}, separator: true },
