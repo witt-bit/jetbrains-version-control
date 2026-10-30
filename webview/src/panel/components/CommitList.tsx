@@ -192,6 +192,16 @@ export function CommitList({
       )
         return;
 
+      // Only handle when the commit list itself has focus or is hovered
+      const listEl = parentRef.current;
+      if (
+        listEl &&
+        !listEl.contains(document.activeElement) &&
+        !listEl.contains(document.querySelector(":hover"))
+      ) {
+        return;
+      }
+
       e.preventDefault();
 
       const currentHash =
