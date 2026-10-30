@@ -611,7 +611,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         set({ selectedBranches: [...current, name], lastSelectedBranch: name });
       }
     } else {
-      // range
+      // range - keep the original anchor (lastSelectedBranch) so
+      // consecutive Shift+Arrow presses extend from the same start.
       const anchor = get().lastSelectedBranch;
       if (!anchor) {
         set({ selectedBranches: [name], lastSelectedBranch: name });
@@ -625,10 +626,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({
-        selectedBranches: allVisibleBranches.slice(start, end + 1),
-        lastSelectedBranch: name, // update anchor to new target
-      });
+      set({ selectedBranches: allVisibleBranches.slice(start, end + 1) });
     }
   },
 
@@ -663,10 +661,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({
-        selectedTags: allVisibleTags.slice(start, end + 1),
-        lastSelectedTag: name, // update anchor to new target
-      });
+      set({ selectedTags: allVisibleTags.slice(start, end + 1) });
     }
   },
 

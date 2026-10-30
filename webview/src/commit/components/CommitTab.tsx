@@ -426,9 +426,9 @@ function FileGroup({
 
       if (visibleKeys.length === 0) return;
 
-      // Find current highlighted index
+      // Find LAST highlighted index (for correct Shift+Arrow extension)
       let currentIdx = -1;
-      for (let i = 0; i < visibleKeys.length; i++) {
+      for (let i = visibleKeys.length - 1; i >= 0; i--) {
         if (highlightedFiles.has(visibleKeys[i])) {
           currentIdx = i;
           break;

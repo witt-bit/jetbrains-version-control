@@ -267,10 +267,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       if (anchorIdx !== -1 && targetIdx !== -1) {
         const start = Math.min(anchorIdx, targetIdx);
         const end = Math.max(anchorIdx, targetIdx);
-        set({
-          highlightedFiles: new Set(orderedKeys.slice(start, end + 1)),
-          lastHighlightedKey: key,
-        });
+        set({ highlightedFiles: new Set(orderedKeys.slice(start, end + 1)) });
         return;
       }
     }
