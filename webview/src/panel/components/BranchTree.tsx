@@ -964,6 +964,7 @@ function TagTreeNodeView({
         style={{
           padding: `4px 8px 4px ${20 + depth * 12}px`,
           cursor: "pointer",
+          userSelect: "none",
           color: isSelected ? "var(--selected-fg)" : "var(--description-fg)",
           display: "flex",
           alignItems: "center",
@@ -1090,6 +1091,7 @@ function BranchItem({
       style={{
         padding: `4px 8px 4px ${20 + depth * 12 + 16}px`,
         fontWeight: isCurrent || isFiltered ? 600 : 400,
+        userSelect: "none",
         color: isSelected ? "var(--selected-fg)" : "inherit",
         outline: isFiltered ? "1px solid var(--focus-border, #3574f0)" : "none",
         display: "flex",

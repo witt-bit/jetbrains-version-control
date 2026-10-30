@@ -47,6 +47,7 @@ export function FileItem({
         e.stopPropagation();
         onContextMenu(e);
       }}
+      style={{ userSelect: "none" }}
     >
       <input
         type="checkbox"

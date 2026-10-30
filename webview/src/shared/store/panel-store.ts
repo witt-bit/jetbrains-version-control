@@ -438,6 +438,11 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       selectedFilePath: null,
       rangeOldest: orderedHashes[orderedHashes.length - 1],
       rangeNewest: orderedHashes[0],
+      // Clear other list selections so they don't persist visually.
+      selectedBranches: [],
+      selectedTags: [],
+      lastSelectedBranch: null,
+      lastSelectedTag: null,
     });
     const requestSeq = ++commitFilesRequestSeq;
     try {

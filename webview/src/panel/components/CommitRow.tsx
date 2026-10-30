@@ -206,6 +206,7 @@ export function CommitRow({
         display: "flex",
         alignItems: "center",
         height: ROW_HEIGHT,
+        userSelect: "none",
         paddingLeft:
           GRAPH_PADDING + (rowMaxColumn + 1) * COLUMN_WIDTH + NODE_TEXT_GAP,
         paddingRight: 8,
