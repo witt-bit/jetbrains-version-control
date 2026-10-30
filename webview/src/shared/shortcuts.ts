@@ -9,6 +9,6 @@ import { usePlatform } from "./hooks/usePlatform";
  */
 export function useJumpToSourceShortcutLabel(): string {
   const platform = usePlatform();
-  const downKey = platform === "macos" ? "⌘ + ↓" : "Ctrl + ↓";
+  const downKey = platform === "macos" ? "⌘ ↓" : "Ctrl + ↓";
   return `F4 · ${downKey}`;
 }
