@@ -5,7 +5,6 @@ import {
   type SelectionMode,
   useModifierClickSelection,
 } from "../../shared/hooks/useModifierClickSelection";
-import { isPlainArrowKey } from "../../shared/keyboard";
 import { useDeleteShortcutLabel } from "../../shared/shortcuts";
 import {
   useCommitStore,
@@ -422,7 +421,7 @@ function FileGroup({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (!isPlainArrowKey(e)) return;
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
       e.preventDefault();
 
       if (visibleKeys.length === 0) return;
