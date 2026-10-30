@@ -24,6 +24,16 @@ function line(overrides: Partial<BlameLine> = {}): BlameLine {
 }
 
 describe("caretBlameText", () => {
+  it("prefers a pre-formatted dateLabel over the raw authorDate", () => {
+    const text = caretBlameText(line(), {
+      dateLabel: "2026-10-25 14:30",
+    });
+    assert.equal(
+      text,
+      "Alice, 2026-10-25 14:30 * fix: guard against null user",
+    );
+  });
+
   it("formats committed lines as Who, date * summary", () => {
     assert.equal(
       caretBlameText(line()),

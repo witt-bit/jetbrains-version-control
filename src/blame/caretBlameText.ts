@@ -21,6 +21,8 @@ export interface CaretBlameRenderOptions {
   messageMaxLength?: number;
   /** The line is authored by the current committer — ${who} resolves to "You". */
   self?: boolean;
+  /** Pre-formatted date replacing ${date}; defaults to the BlameLine's own. */
+  dateLabel?: string;
 }
 
 /**
@@ -36,10 +38,11 @@ export function caretBlameText(
     format = CARET_BLAME_DEFAULT_FORMAT,
     messageMaxLength = CARET_BLAME_MAX_MESSAGE_CHARS,
     self = false,
+    dateLabel,
   } = options;
 
   const who = line.uncommitted || self ? "You" : line.authorName || "unknown";
-  const date = line.uncommitted ? "now" : line.authorDate;
+  const date = dateLabel ?? (line.uncommitted ? "now" : line.authorDate);
   const rawMessage = line.uncommitted
     ? "uncommitted changes"
     : line.summary || line.shortHash;

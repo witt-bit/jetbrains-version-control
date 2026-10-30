@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import type { GitService } from "../git/gitService";
 import type { BlameLine } from "../git/types";
 import type { MessageRouter } from "../messages/messageRouter";
+import { formatBlameDate } from "./blameManager";
 import {
   CARET_BLAME_DEFAULT_FORMAT,
   CARET_BLAME_MAX_MESSAGE_CHARS,
@@ -24,8 +25,12 @@ interface BlameSnapshot {
 
 /**
  * End-of-line caret blame: while the caret moves through a file, the line it
- * sits on shows `Who, YYYY/MM/DD * summary` after the code — JetBrains' line
+ * sits on shows `Who, date * summary` after the code — JetBrains' line
  * blame, but following the caret instead of annotating every line.
+ *
+ * The `${date}` token renders through the inline-blame `jgc.blame.dateFormat`
+ * setting (default `yyyy-MM-dd HH:mm`), not the raw YYYY/MM/DD string git
+ * blame reports.
  *
  * Blame runs once per document (cached against the document version) and is
  * invalidated on save and on Git state changes; cursor movement then costs
@@ -41,6 +46,7 @@ export class CaretBlameController implements vscode.Disposable {
   private enabled: boolean;
   private format: string;
   private messageMaxLength: number;
+  private dateFormat: string;
 
   constructor(
     private readonly services: GitServiceEntry[],
@@ -53,6 +59,11 @@ export class CaretBlameController implements vscode.Disposable {
       "messageMaxLength",
       CARET_BLAME_MAX_MESSAGE_CHARS,
     );
+    // The ${date} token follows the inline-blame date format, not the raw
+    // YYYY/MM/DD string git blame reports.
+    this.dateFormat = vscode.workspace
+      .getConfiguration("jgc.blame")
+      .get<string>("dateFormat", "yyyy-MM-dd HH:mm");
 
     this.decoration = vscode.window.createTextEditorDecorationType({
       after: {
@@ -84,7 +95,12 @@ export class CaretBlameController implements vscode.Disposable {
         this.cache.delete(doc.uri.toString());
       }),
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("jgc.caretBlame")) {
+        const caretBlameChanged = e.affectsConfiguration("jgc.caretBlame");
+        const blameChanged = e.affectsConfiguration("jgc.blame");
+        if (!caretBlameChanged && !blameChanged) {
+          return;
+        }
+        if (caretBlameChanged) {
           const config = vscode.workspace.getConfiguration("jgc.caretBlame");
           this.enabled = config.get<boolean>("enabled", true);
           this.format = config.get<string>(
@@ -95,13 +111,18 @@ export class CaretBlameController implements vscode.Disposable {
             "messageMaxLength",
             CARET_BLAME_MAX_MESSAGE_CHARS,
           );
-          if (!this.enabled) {
-            this.clear();
-          } else {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-              void this.render(editor);
-            }
+        }
+        if (blameChanged) {
+          this.dateFormat = vscode.workspace
+            .getConfiguration("jgc.blame")
+            .get<string>("dateFormat", "yyyy-MM-dd HH:mm");
+        }
+        if (!this.enabled) {
+          this.clear();
+        } else {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            void this.render(editor);
           }
         }
       }),
@@ -168,6 +189,10 @@ export class CaretBlameController implements vscode.Disposable {
                     self,
                     format: this.format,
                     messageMaxLength: this.messageMaxLength,
+                    dateLabel:
+                      blame.authorTime > 0
+                        ? formatBlameDate(blame.authorTime, this.dateFormat)
+                        : undefined,
                   }),
                 },
               },

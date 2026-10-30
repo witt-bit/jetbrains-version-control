@@ -189,7 +189,7 @@ function createAuthorColorizer(
 }
 
 /** Format unix seconds with yyyy/MM/dd/HH/mm/ss tokens */
-function formatBlameDate(unixSeconds: number, pattern: string): string {
+export function formatBlameDate(unixSeconds: number, pattern: string): string {
   const date = new Date(unixSeconds * 1000);
   if (Number.isNaN(date.getTime())) {
     return "";

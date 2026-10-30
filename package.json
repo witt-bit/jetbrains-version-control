@@ -583,7 +583,7 @@
         "jgc.caretBlame.format": {
           "type": "string",
           "default": "${who}, ${date} * ${message}",
-          "description": "Template for the caret blame text. Tokens: ${who} (author name, or You for your own commits and uncommitted lines), ${date} (YYYY/MM/DD), ${message} (commit summary), ${hash} (short hash)."
+          "description": "Template for the caret blame text. Tokens: ${who} (author name, or You for your own commits and uncommitted lines), ${date} (formatted by jgc.blame.dateFormat, default yyyy-MM-dd HH:mm), ${message} (commit summary), ${hash} (short hash)."
         },
         "jgc.caretBlame.messageMaxLength": {
           "type": "number",

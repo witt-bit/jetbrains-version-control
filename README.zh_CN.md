@@ -40,6 +40,7 @@ WebStorm 风格的行内 blame 注解，支持点击跳转到 Git Log 提交图�
 
 - **本人提交显示 `You`**；未提交（新增）的行不显示
 - **模板**（`jgc.caretBlame.format`）：支持 `${who}`、`${date}`、`${message}`、`${hash}` 令牌
+- **日期格式**：`${date}` 跟随 `jgc.blame.dateFormat` 配置（默认 `yyyy-MM-dd HH:mm`），与行内 blame 标注使用同一设置
 - **长度上限**：message 最多 50 字符（`jgc.caretBlame.messageMaxLength`）、hash 最多 8 位，超出以省略号结尾
 - 开关：`jgc.caretBlame.enabled`
 

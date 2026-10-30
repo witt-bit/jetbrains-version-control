@@ -36,6 +36,7 @@ WebStorm-style inline blame annotations for every line, with click-to-jump to th
 
 - **Own commits read `You`**; uncommitted (new) lines show nothing
 - **Template** (`jgc.caretBlame.format`): `${who}`, `${date}`, `${message}`, `${hash}` tokens
+- **Date format**: `${date}` renders through `jgc.blame.dateFormat` (default `yyyy-MM-dd HH:mm`), the same setting as the inline blame annotations
 - **Caps**: message at 50 characters (`jgc.caretBlame.messageMaxLength`), hash at 8, cut with an ellipsis
 - Toggle with `jgc.caretBlame.enabled`
 
