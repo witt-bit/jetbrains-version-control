@@ -40,6 +40,7 @@ export function FileItem({
   return (
     <div
       className={`commit-file-item ${highlighted ? "highlighted" : ""}`}
+      tabIndex={0}
       onClick={handleClick}
       onContextMenu={(e) => {
         e.preventDefault();

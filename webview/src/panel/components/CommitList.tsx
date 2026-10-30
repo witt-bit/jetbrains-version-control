@@ -196,8 +196,8 @@ export function CommitList({
       const listEl = parentRef.current;
       if (
         listEl &&
-        !listEl.contains(document.activeElement) &&
-        !listEl.contains(document.querySelector(":hover"))
+        !listEl.contains(e.target as Node) &&
+        !listEl.contains(document.activeElement)
       ) {
         return;
       }

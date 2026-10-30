@@ -950,6 +950,7 @@ function TagTreeNodeView({
     return (
       <div
         className={`selectable-row${isSelected ? " row-selected" : ""}`}
+        tabIndex={0}
         onClick={(e) => onTagClick(e, node.name)}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -1082,6 +1083,7 @@ function BranchItem({
   return (
     <div
       className={`selectable-row${isSelected ? " row-selected" : ""}${isCurrent && !isSelected ? " row-current" : ""}`}
+      tabIndex={0}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}

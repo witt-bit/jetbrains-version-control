@@ -625,7 +625,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({ selectedBranches: allVisibleBranches.slice(start, end + 1) });
+      set({
+        selectedBranches: allVisibleBranches.slice(start, end + 1),
+        lastSelectedBranch: name, // update anchor to new target
+      });
     }
   },
 
@@ -660,7 +663,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       const start = Math.min(anchorIdx, targetIdx);
       const end = Math.max(anchorIdx, targetIdx);
-      set({ selectedTags: allVisibleTags.slice(start, end + 1) });
+      set({
+        selectedTags: allVisibleTags.slice(start, end + 1),
+        lastSelectedTag: name, // update anchor to new target
+      });
     }
   },
 

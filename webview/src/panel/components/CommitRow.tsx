@@ -186,7 +186,13 @@ export function CommitRow({
     <div
       ref={rowRef}
       className={`selectable-row${isSelected ? " row-selected" : ""}`}
+      tabIndex={0}
       onClick={(event) => onCommitClick(event, commit.hash)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+        }
+      }}
       onContextMenu={(e) => {
         if (onContextMenu) {
           e.preventDefault();
