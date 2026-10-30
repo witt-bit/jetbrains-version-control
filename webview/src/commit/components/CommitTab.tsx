@@ -6,6 +6,7 @@ import {
   useModifierClickSelection,
 } from "../../shared/hooks/useModifierClickSelection";
 import { isPlainArrowKey } from "../../shared/keyboard";
+import { useDeleteShortcutLabel } from "../../shared/shortcuts";
 import {
   useCommitStore,
   type WorkingTreeFile,
@@ -136,8 +137,23 @@ export function CommitTab() {
     return bridge.onEvent((event) => {
       // The broadcast reaches every webview, so only act if this one is the one
       // the shortcut was pressed in.
-      if (event !== "jumpToSourceRequested" || !document.hasFocus()) return;
-      useCommitStore.getState().jumpToHighlightedSource();
+      if (!document.hasFocus()) return;
+      const store = useCommitStore.getState();
+      if (event === "jumpToSourceRequested") {
+        store.jumpToHighlightedSource();
+      } else if (event === "showDiffRequested") {
+        void store.showDiffHighlighted();
+      } else if (event === "stageFileRequested") {
+        void store.stageHighlighted();
+      } else if (event === "rollbackFileRequested") {
+        void store.rollbackHighlighted();
+      } else if (event === "deleteFileRequested") {
+        void store.deleteHighlighted();
+      } else if (event === "unshelveChangesRequested") {
+        void store.unshelveHighlighted();
+      } else if (event === "toggleGroupByDirectoryRequested") {
+        store.toggleGroupByDirectory();
+      }
     });
   }, []);
 
@@ -817,6 +833,7 @@ function DirContextMenu({
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const deleteLabel = useDeleteShortcutLabel();
   const [position, setPosition] = useState<{ top: number; left: number }>({
     top: y,
     left: x,
@@ -938,7 +955,7 @@ function DirContextMenu({
       >
         <DeleteDirIcon />
         <span>Delete "{dirName}"...</span>
-        <span className="commit-context-menu-shortcut">⌫</span>
+        <span className="commit-context-menu-shortcut">{deleteLabel}</span>
       </button>
     </div>
   );

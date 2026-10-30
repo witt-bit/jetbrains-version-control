@@ -394,6 +394,42 @@
         "key": "ctrl+down",
         "mac": "cmd+down",
         "when": "jgc.commitPanelFocused || jgc.gitLogPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.showDiff",
+        "key": "ctrl+d",
+        "mac": "cmd+d",
+        "when": "jgc.commitPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.stageFile",
+        "key": "alt+ctrl+a",
+        "mac": "alt+cmd+a",
+        "when": "jgc.commitPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.rollbackFile",
+        "key": "alt+ctrl+z",
+        "mac": "alt+cmd+z",
+        "when": "jgc.commitPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.deleteFile",
+        "key": "ctrl+backspace",
+        "mac": "cmd+backspace",
+        "when": "jgc.commitPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.unshelveChanges",
+        "key": "shift+ctrl+u",
+        "mac": "shift+cmd+u",
+        "when": "jgc.commitPanelFocused"
+      },
+      {
+        "command": "git-brains.commit.toggleGroupByDirectory",
+        "key": "ctrl+p",
+        "mac": "cmd+p",
+        "when": "jgc.commitPanelFocused"
       }
     ],
     "colors": [

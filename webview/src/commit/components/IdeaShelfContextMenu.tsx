@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
+import {
+  useDeleteShortcutLabel,
+  useUnshelveShortcutLabel,
+} from "../../shared/shortcuts";
 import type { IdeaShelfEntry } from "../../shared/store/commit-store";
 import { useCommitStore } from "../../shared/store/commit-store";
 
@@ -16,6 +20,8 @@ export function IdeaShelfContextMenu({
   onClose,
 }: IdeaShelfContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const unshelveLabel = useUnshelveShortcutLabel();
+  const deleteLabel = useDeleteShortcutLabel();
   const { ideaUnshelveChanges, deleteIdeaShelf } = useCommitStore();
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export function IdeaShelfContextMenu({
       >
         <UnshelveIcon />
         <span>Unshelve...</span>
-        <span className="commit-context-menu-shortcut">⇧⌘U</span>
+        <span className="commit-context-menu-shortcut">{unshelveLabel}</span>
       </button>
 
       <button
@@ -153,7 +159,7 @@ export function IdeaShelfContextMenu({
       >
         <DeleteIcon />
         <span>Delete...</span>
-        <span className="commit-context-menu-shortcut">⌫</span>
+        <span className="commit-context-menu-shortcut">{deleteLabel}</span>
       </button>
     </div>
   );

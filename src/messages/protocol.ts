@@ -137,6 +137,18 @@ export type EventType =
   | "focusCommitInGraph"
   /** Open the highlighted Commit-panel file in an editor (host → webview) */
   | "jumpToSourceRequested"
+  /** Show diff for the highlighted Commit-panel file (host → webview) */
+  | "showDiffRequested"
+  /** Stage the highlighted Commit-panel file (host → webview) */
+  | "stageFileRequested"
+  /** Rollback the highlighted Commit-panel file (host → webview) */
+  | "rollbackFileRequested"
+  /** Delete the highlighted Commit-panel file(s) (host → webview) */
+  | "deleteFileRequested"
+  /** Unshelve the highlighted shelf entry (host → webview) */
+  | "unshelveChangesRequested"
+  /** Toggle group-by-directory (host → webview) */
+  | "toggleGroupByDirectoryRequested"
   /** data: { text: string } — a streamed chunk of the AI commit message */
   | "aiCommitMessageDelta";
 

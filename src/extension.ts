@@ -255,6 +255,28 @@ export function activate(context: vscode.ExtensionContext) {
         messageRouter.broadcastEvent("jumpToSourceRequested", {});
       },
     ),
+
+    // Shortcut commands for Commit panel file operations. Each broadcasts
+    // an event so the webview resolves the highlighted file against its store.
+    vscode.commands.registerCommand("git-brains.commit.showDiff", () =>
+      messageRouter.broadcastEvent("showDiffRequested", {}),
+    ),
+    vscode.commands.registerCommand("git-brains.commit.stageFile", () =>
+      messageRouter.broadcastEvent("stageFileRequested", {}),
+    ),
+    vscode.commands.registerCommand("git-brains.commit.rollbackFile", () =>
+      messageRouter.broadcastEvent("rollbackFileRequested", {}),
+    ),
+    vscode.commands.registerCommand("git-brains.commit.deleteFile", () =>
+      messageRouter.broadcastEvent("deleteFileRequested", {}),
+    ),
+    vscode.commands.registerCommand("git-brains.commit.unshelveChanges", () =>
+      messageRouter.broadcastEvent("unshelveChangesRequested", {}),
+    ),
+    vscode.commands.registerCommand(
+      "git-brains.commit.toggleGroupByDirectory",
+      () => messageRouter.broadcastEvent("toggleGroupByDirectoryRequested", {}),
+    ),
   );
 
   // 5. Register VSCode commands (always registered)

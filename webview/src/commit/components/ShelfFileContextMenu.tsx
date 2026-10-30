@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { bridge } from "../../shared/bridge";
+import { useShowDiffShortcutLabel } from "../../shared/shortcuts";
 
 interface ShelfFileContextMenuProps {
   x: number;
@@ -17,6 +18,7 @@ export function ShelfFileContextMenu({
   onClose,
 }: ShelfFileContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const showDiffLabel = useShowDiffShortcutLabel();
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -82,7 +84,7 @@ export function ShelfFileContextMenu({
       >
         <DiffIcon />
         <span>Show Diff</span>
-        <span className="commit-context-menu-shortcut">⌘D</span>
+        <span className="commit-context-menu-shortcut">{showDiffLabel}</span>
       </button>
 
       <button

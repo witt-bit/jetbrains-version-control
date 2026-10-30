@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { bridge } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
+import { useToggleGroupByDirectoryShortcutLabel } from "../../shared/shortcuts";
 import { useCommitStore } from "../../shared/store/commit-store";
 
 interface ToolbarProps {
@@ -144,6 +145,7 @@ export function Toolbar({
 /* ─── View Options Menu ──────────────────────────────────────────── */
 
 function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
+  const dirLabel = useToggleGroupByDirectoryShortcutLabel();
   const {
     groupByDirectory,
     toggleGroupByDirectory,
@@ -184,7 +186,7 @@ function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
             {groupByDirectory && <CheckIcon />}
           </span>
           <span>Directory</span>
-          <span className="commit-context-menu-shortcut">^P</span>
+          <span className="commit-context-menu-shortcut">{dirLabel}</span>
         </button>
         <div className="commit-context-menu-separator" />
         <div className="commit-context-menu-header">Show</div>

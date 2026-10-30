@@ -41,6 +41,10 @@ interface CommitStore {
   highlightedFiles: Set<string>;
   /** Anchor for Shift range selection of `highlightedFiles` */
   lastHighlightedKey: string | null;
+  /** Currently highlighted shelf entry ID (for shelf tab keyboard shortcuts) */
+  highlightedShelfId: string | null;
+  /** Currently highlighted IDEA shelf name (for stash tab keyboard shortcuts) */
+  highlightedIdeaShelfName: string | null;
 
   // Commit state
   commitMessage: string;
@@ -78,6 +82,14 @@ interface CommitStore {
     mode: SelectionMode,
     orderedKeys: string[],
   ) => void;
+  highlightShelf: (id: string) => void;
+  highlightIdeaShelf: (name: string) => void;
+  getHighlightedFiles: () => WorkingTreeFile[];
+  showDiffHighlighted: () => Promise<void>;
+  stageHighlighted: () => Promise<void>;
+  rollbackHighlighted: () => Promise<void>;
+  deleteHighlighted: () => Promise<void>;
+  unshelveHighlighted: () => Promise<void>;
   stageFile: (filePath: string) => Promise<void>;
   unstageFile: (filePath: string) => Promise<void>;
   stageAll: () => Promise<void>;
@@ -113,6 +125,8 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
   selectedFiles: new Set<string>(),
   highlightedFiles: new Set<string>(),
   lastHighlightedKey: null,
+  highlightedShelfId: null,
+  highlightedIdeaShelfName: null,
   commitMessage: "",
   amend: false,
   shelves: [],
@@ -149,6 +163,8 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
             selectedFiles: new Set<string>(),
             highlightedFiles: new Set<string>(),
             lastHighlightedKey: null,
+            highlightedShelfId: null,
+            highlightedIdeaShelfName: null,
           });
         } else {
           // Refresh — preserve user's selection state (only keep existing selections)
@@ -414,6 +430,69 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     const file = changes.find((f) => `${f.path}:${f.staged}` === key);
     if (!file) return;
     void get().openSourceFile(file.path);
+  },
+
+  /** Resolve the highlighted file(s) to a list of WorkingTreeFile objects. */
+  getHighlightedFiles(): WorkingTreeFile[] {
+    const { changes, highlightedFiles, lastHighlightedKey } = get();
+    const key =
+      (lastHighlightedKey && highlightedFiles.has(lastHighlightedKey)
+        ? lastHighlightedKey
+        : undefined) ??
+      (highlightedFiles.size === 1 ? [...highlightedFiles][0] : undefined);
+    if (key) {
+      const file = changes.find((f) => `${f.path}:${f.staged}` === key);
+      return file ? [file] : [];
+    }
+    if (highlightedFiles.size === 0) return [];
+    return changes.filter((f) => highlightedFiles.has(`${f.path}:${f.staged}`));
+  },
+
+  async showDiffHighlighted() {
+    const files = get().getHighlightedFiles();
+    if (files.length === 0) return;
+    await get().showDiff(files[0].path, files[0].staged);
+  },
+
+  async stageHighlighted() {
+    const files = get().getHighlightedFiles();
+    if (files.length === 0) return;
+    await get().stageFile(files[0].path);
+  },
+
+  async rollbackHighlighted() {
+    const files = get().getHighlightedFiles();
+    if (files.length === 0) return;
+    await get().rollbackFile(files[0].path);
+  },
+
+  async deleteHighlighted() {
+    const files = get().getHighlightedFiles();
+    if (files.length === 0) return;
+    try {
+      await bridge.request("deleteFiles", {
+        filePaths: [...new Set(files.map((f) => f.path))],
+      });
+    } catch (err) {
+      console.error("deleteHighlighted failed:", err);
+    }
+  },
+
+  async unshelveHighlighted() {
+    const { highlightedShelfId, highlightedIdeaShelfName } = get();
+    if (highlightedShelfId) {
+      await get().unshelveChanges(highlightedShelfId, true);
+    } else if (highlightedIdeaShelfName) {
+      await get().ideaUnshelveChanges(highlightedIdeaShelfName, true);
+    }
+  },
+
+  highlightShelf(id: string) {
+    set({ highlightedShelfId: id });
+  },
+
+  highlightIdeaShelf(name: string) {
+    set({ highlightedIdeaShelfName: name });
   },
 
   async shelveChanges(message?: string, filePaths?: string[]) {

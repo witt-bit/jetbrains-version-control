@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useJumpToSourceShortcutLabel } from "../../shared/shortcuts";
+import {
+  useDeleteShortcutLabel,
+  useJumpToSourceShortcutLabel,
+  useRollbackShortcutLabel,
+  useShowDiffShortcutLabel,
+  useStageFileShortcutLabel,
+} from "../../shared/shortcuts";
 import type { WorkingTreeFile } from "../../shared/store/commit-store";
 import { useCommitStore } from "../../shared/store/commit-store";
 
@@ -17,6 +23,10 @@ export function CommitFileContextMenu({
   onClose,
 }: CommitFileContextMenuProps) {
   const jumpToSourceLabel = useJumpToSourceShortcutLabel();
+  const showDiffLabel = useShowDiffShortcutLabel();
+  const stageFileLabel = useStageFileShortcutLabel();
+  const rollbackLabel = useRollbackShortcutLabel();
+  const deleteLabel = useDeleteShortcutLabel();
   const menuRef = useRef<HTMLDivElement>(null);
   const {
     stageFile,
@@ -172,7 +182,7 @@ export function CommitFileContextMenu({
       >
         <DiffIcon />
         <span>Show Diff</span>
-        <span className="commit-context-menu-shortcut">⌘D</span>
+        <span className="commit-context-menu-shortcut">{showDiffLabel}</span>
       </button>
 
       {/* Jump to Source */}
@@ -218,7 +228,7 @@ export function CommitFileContextMenu({
         >
           <AddIcon />
           <span>Add to VCS</span>
-          <span className="commit-context-menu-shortcut">⌥⌘A</span>
+          <span className="commit-context-menu-shortcut">{stageFileLabel}</span>
         </button>
       )}
 
@@ -230,7 +240,7 @@ export function CommitFileContextMenu({
       >
         <RollbackIcon />
         <span>Rollback...</span>
-        <span className="commit-context-menu-shortcut">⌥⌘Z</span>
+        <span className="commit-context-menu-shortcut">{rollbackLabel}</span>
       </button>
 
       <div className="commit-context-menu-separator" />
@@ -255,7 +265,7 @@ export function CommitFileContextMenu({
       >
         <DeleteIcon />
         <span>Delete...</span>
-        <span className="commit-context-menu-shortcut">⌫</span>
+        <span className="commit-context-menu-shortcut">{deleteLabel}</span>
       </button>
     </div>
   );
