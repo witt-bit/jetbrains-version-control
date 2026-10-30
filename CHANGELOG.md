@@ -12,6 +12,9 @@
   - Generating again mid-flight cancels the request; clicking with no model configured shows where to add one / 生成中再次点击即取消；未配置任何模型时点击会提示添加模型的入口
   - Requires VS Code 1.91+ (raised from 1.85), the version where the Language Model API became stable / 要求 VS Code 1.91+（从 1.85 提升），语言模型 API 自该版本起稳定可用
 
+### Changed / 变更
+- **`jgc.shortcut.jumpToSourceLabel` removed** — the setting that let users customise the Jump to Source / Edit Source label in webview context menus is gone: the label is now hardcoded to show both default bindings (`F4 · ⌃↓/⌘↓`), and the `getConfig` bridge it depended on is removed. The F4 / Ctrl+↓ keybindings themselves are unchanged / 移除 `jgc.shortcut.jumpToSourceLabel` 配置：webview 菜单里 Jump to Source / Edit Source 的快捷键标签改为硬编码显示两个默认绑定（`F4 · ⌃↓/⌘↓`），依赖的 `getConfig` bridge 一并移除。F4 / Ctrl+↓ 快捷键本身不变
+
 ### Fixed / 修复
 - **Blame display mode removed** — the `jgc.blame.displayMode` / `jgc.blame.aroundLines` settings are gone: the inline blame annotations in the line-number column always paint every line of the file, and the caret line-end blame is the only one that follows the cursor. The settings are deprecated and ignored / 移除 `jgc.blame.displayMode` / `jgc.blame.aroundLines` 配置：行号列的行首 blame 标注永远全行显示，只有光标行尾 blame 跟随光标。旧配置项已废弃并忽略
 - **Caret blame follows the blame date format** — the end-of-line `${date}` token rendered the raw `YYYY/MM/DD` string git blame reports, ignoring `jgc.blame.dateFormat`, while the inline annotations on the same screen honored it. The caret blame now formats `authorTime` through the same setting (default `yyyy-MM-dd HH:mm`), and changing it refreshes the caret line live / 行尾 blame 的 `${date}` 令牌此前直接渲染 git blame 返回的 `YYYY/MM/DD` 原始字符串，不跟随 `jgc.blame.dateFormat`，而同一屏幕上的行首标注却遵守该设置。现在行尾 blame 用同一设置格式化 `authorTime`（默认 `yyyy-MM-dd HH:mm`），修改该设置后行尾标注实时刷新

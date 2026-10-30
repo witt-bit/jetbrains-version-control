@@ -1132,17 +1132,6 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
-  // Webviews have no direct access to the configuration service, so expose the
-  // values they need to reflect user customisation (e.g. shortcut labels).
-  messageRouter.handle("getConfig", async (params) => {
-    const key = params.key as string | undefined;
-    if (!key) return undefined;
-    const [section, ...rest] = key.split(".");
-    return vscode.workspace
-      .getConfiguration(section)
-      .get<unknown>(rest.join("."));
-  });
-
   messageRouter.handle("getWorkingTreeChanges", async () => {
     if (allGitServices.length === 0) return NOT_GIT_REPO;
 

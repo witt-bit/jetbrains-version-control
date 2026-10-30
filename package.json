@@ -461,11 +461,6 @@
     "configuration": {
       "title": "JetBrains Git Control",
       "properties": {
-        "jgc.shortcut.jumpToSourceLabel": {
-          "type": "string",
-          "default": "F4",
-          "markdownDescription": "Text shown next to **Jump to Source** / **Edit Source** in context menus. Webview menus are drawn by the extension, so this label cannot be derived from your keybindings automatically — update it (or set it to empty to hide) if you rebind the shortcut under **Preferences: Open Keyboard Shortcuts**."
-        },
         "jgc.decorations.enabled": {
           "type": "boolean",
           "default": true,

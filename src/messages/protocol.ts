@@ -122,8 +122,7 @@ export type CommandType =
   | "openWorktree"
   | "getWorkspaceRoot"
   | "pickFolder"
-  | "setContext"
-  | "getConfig";
+  | "setContext";
 
 export type EventType =
   | "gitStateChanged"
