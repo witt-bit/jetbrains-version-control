@@ -444,7 +444,8 @@ function FileGroup({
         nextIdx = currentIdx > 0 ? currentIdx - 1 : 0;
       }
 
-      onHighlightFile(visibleKeys[nextIdx], "single");
+      const mode = e.shiftKey ? "range" : "single";
+      onHighlightFile(visibleKeys[nextIdx], mode);
     },
     [visibleKeys, highlightedFiles, onHighlightFile],
   );

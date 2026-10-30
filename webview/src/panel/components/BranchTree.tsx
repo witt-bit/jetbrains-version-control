@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
 import { Tooltip } from "../../shared/components/Tooltip";
@@ -442,14 +442,17 @@ export function BranchTree({
     ? tagsToTree(filteredTags)
     : tagsToFlatTree(filteredTags);
 
-  const allVisibleBranches: string[] = [
-    ...(!collapsed.local
-      ? collectVisibleLeaves(localTree, collapsed, "local")
-      : []),
-    ...(!collapsed.remote
-      ? collectVisibleLeaves(remoteTree, collapsed, "remote")
-      : []),
-  ];
+  const allVisibleBranches = useMemo(
+    () => [
+      ...(!collapsed.local
+        ? collectVisibleLeaves(localTree, collapsed, "local")
+        : []),
+      ...(!collapsed.remote
+        ? collectVisibleLeaves(remoteTree, collapsed, "remote")
+        : []),
+    ],
+    [collapsed, localTree, remoteTree],
+  );
 
   const allVisibleTags: string[] = !collapsed.tags
     ? collectVisibleLeaves(tagTree, collapsed, "tags")
@@ -476,6 +479,42 @@ export function BranchTree({
       selectTag(tagName, mode, allVisibleTags);
     },
     () => setCurrentBranchRowSelected(false),
+  );
+
+  // Keyboard navigation for branch multi-select.
+  // Arrow Down/Up (no modifier): move highlight, single-select.
+  // Shift+Arrow Down/Up: extend selection from anchor (range select).
+  const handleBranchKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+
+      if (allVisibleBranches.length === 0) return;
+
+      // Find the anchor (last selected branch).
+      const { lastSelectedBranch } = usePanelStore.getState();
+      let anchorIdx = lastSelectedBranch
+        ? allVisibleBranches.indexOf(lastSelectedBranch)
+        : -1;
+      if (anchorIdx === -1 && selectedBranches.length > 0) {
+        anchorIdx = allVisibleBranches.indexOf(
+          selectedBranches[selectedBranches.length - 1],
+        );
+      }
+      if (anchorIdx === -1) {
+        anchorIdx = e.key === "ArrowDown" ? 0 : allVisibleBranches.length - 1;
+      }
+
+      const nextIdx =
+        e.key === "ArrowDown"
+          ? Math.min(anchorIdx + 1, allVisibleBranches.length - 1)
+          : Math.max(anchorIdx - 1, 0);
+
+      const targetBranch = allVisibleBranches[nextIdx];
+      const mode = e.shiftKey ? "range" : "single";
+      selectBranch(targetBranch, mode, allVisibleBranches);
+    },
+    [allVisibleBranches, selectedBranches, selectBranch],
   );
 
   // Keyboard navigation for tag multi-select.
@@ -668,22 +707,28 @@ export function BranchTree({
           collapsed={collapsed.local}
           onToggle={() => toggle("local")}
         >
-          {localTree.map((node) => (
-            <TreeNodeView
-              key={node.fullPath}
-              node={node}
-              depth={0}
-              groupPrefix="local"
-              currentBranch={currentBranch}
-              selectedBranches={selectedBranches}
-              filteredBranch={filter.branch}
-              onBranchClick={handleClick}
-              onBranchDoubleClick={handleBranchDoubleClick}
-              onBranchContextMenu={handleContextMenu}
-              collapsed={collapsed}
-              onToggle={toggle}
-            />
-          ))}
+          <div
+            className="branch-list"
+            tabIndex={0}
+            onKeyDown={handleBranchKeyDown}
+          >
+            {localTree.map((node) => (
+              <TreeNodeView
+                key={node.fullPath}
+                node={node}
+                depth={0}
+                groupPrefix="local"
+                currentBranch={currentBranch}
+                selectedBranches={selectedBranches}
+                filteredBranch={filter.branch}
+                onBranchClick={handleClick}
+                onBranchDoubleClick={handleBranchDoubleClick}
+                onBranchContextMenu={handleContextMenu}
+                collapsed={collapsed}
+                onToggle={toggle}
+              />
+            ))}
+          </div>
         </GroupSection>
 
         {/* Remote */}
@@ -692,22 +737,28 @@ export function BranchTree({
           collapsed={collapsed.remote}
           onToggle={() => toggle("remote")}
         >
-          {remoteTree.map((node) => (
-            <TreeNodeView
-              key={node.fullPath}
-              node={node}
-              depth={0}
-              groupPrefix="remote"
-              currentBranch={currentBranch}
-              selectedBranches={selectedBranches}
-              filteredBranch={filter.branch}
-              onBranchClick={handleClick}
-              onBranchDoubleClick={handleBranchDoubleClick}
-              onBranchContextMenu={handleContextMenu}
-              collapsed={collapsed}
-              onToggle={toggle}
-            />
-          ))}
+          <div
+            className="branch-list"
+            tabIndex={0}
+            onKeyDown={handleBranchKeyDown}
+          >
+            {remoteTree.map((node) => (
+              <TreeNodeView
+                key={node.fullPath}
+                node={node}
+                depth={0}
+                groupPrefix="remote"
+                currentBranch={currentBranch}
+                selectedBranches={selectedBranches}
+                filteredBranch={filter.branch}
+                onBranchClick={handleClick}
+                onBranchDoubleClick={handleBranchDoubleClick}
+                onBranchContextMenu={handleContextMenu}
+                collapsed={collapsed}
+                onToggle={toggle}
+              />
+            ))}
+          </div>
         </GroupSection>
 
         {/* Tags */}

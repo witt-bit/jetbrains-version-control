@@ -214,7 +214,8 @@ export function CommitList({
       }
 
       const nextHash = visibleCommits[nextIdx].hash;
-      void selectCommit(nextHash, "single", allVisibleCommitHashes);
+      const mode = e.shiftKey ? "range" : "single";
+      void selectCommit(nextHash, mode, allVisibleCommitHashes);
 
       // Scroll the selected row into view with some padding
       // Show 3 rows ahead so user can see upcoming items
