@@ -18,6 +18,7 @@ biome.json
 pnpm-lock.yaml
 pnpm-workspace.yaml
 CLAUDE.md
+AGENTS.md
 **/tsconfig.json
 **/eslint.config.mjs
 **/*.map

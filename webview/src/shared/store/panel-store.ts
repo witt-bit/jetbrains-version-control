@@ -43,6 +43,8 @@ interface PanelStore {
   lastSelectedBranch: string | null;
   selectedTags: string[];
   lastSelectedTag: string | null;
+  remoteSectionSelected: boolean;
+  currentBranchRowSelected: boolean;
   branchGroupByDirectory: boolean;
 
   filter: PanelFilter;
@@ -83,6 +85,8 @@ interface PanelStore {
     allVisibleTags: string[],
   ) => void;
   clearAllSelections: () => void;
+  setRemoteSectionSelected: (selected: boolean) => void;
+  setCurrentBranchRowSelected: (selected: boolean) => void;
   setHoveredColumn: (column: number | null) => void;
   toggleColumnVisibility: (column: "author" | "date" | "hash") => void;
   toggleSequenceCollapse: (sequenceId: string, intermediates: string[]) => void;
@@ -228,6 +232,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   lastSelectedBranch: null,
   selectedTags: [],
   lastSelectedTag: null,
+  remoteSectionSelected: false,
+  currentBranchRowSelected: false,
   branchGroupByDirectory: (() => {
     try {
       return localStorage.getItem("branchGroupByDirectory") === "true";
@@ -444,6 +450,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       selectedTags: [],
       lastSelectedBranch: null,
       lastSelectedTag: null,
+      remoteSectionSelected: false,
+      currentBranchRowSelected: false,
     });
     const requestSeq = ++commitFilesRequestSeq;
     try {
@@ -610,6 +618,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       selectedTags: [],
       lastSelectedCommitHash: null,
       lastSelectedTag: null,
+      remoteSectionSelected: false,
+      currentBranchRowSelected: false,
     };
     if (mode === "single") {
       set({
@@ -666,6 +676,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       selectedBranches: [],
       lastSelectedCommitHash: null,
       lastSelectedBranch: null,
+      remoteSectionSelected: false,
+      currentBranchRowSelected: false,
     };
     if (mode === "single") {
       set({
@@ -722,7 +734,52 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       selectedFilePath: null,
       rangeOldest: null,
       rangeNewest: null,
+      remoteSectionSelected: false,
     });
+  },
+
+  setRemoteSectionSelected(selected: boolean) {
+    if (selected) {
+      set({
+        remoteSectionSelected: true,
+        currentBranchRowSelected: false,
+        selectedBranches: [],
+        selectedTags: [],
+        selectedCommitHashes: [],
+        selectedCommitHash: null,
+        lastSelectedBranch: null,
+        lastSelectedTag: null,
+        lastSelectedCommitHash: null,
+        commitFiles: [],
+        selectedFilePath: null,
+        rangeOldest: null,
+        rangeNewest: null,
+      });
+    } else {
+      set({ remoteSectionSelected: false });
+    }
+  },
+
+  setCurrentBranchRowSelected(selected: boolean) {
+    if (selected) {
+      set({
+        currentBranchRowSelected: true,
+        remoteSectionSelected: false,
+        selectedBranches: [],
+        selectedTags: [],
+        selectedCommitHashes: [],
+        selectedCommitHash: null,
+        lastSelectedBranch: null,
+        lastSelectedTag: null,
+        lastSelectedCommitHash: null,
+        commitFiles: [],
+        selectedFilePath: null,
+        rangeOldest: null,
+        rangeNewest: null,
+      });
+    } else {
+      set({ currentBranchRowSelected: false });
+    }
   },
 
   setHoveredColumn(column: number | null) {

@@ -11,6 +11,7 @@ import { BranchSidebar as BranchSidebarComponent } from "./BranchSidebar";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { HeadContextMenu } from "./HeadContextMenu";
 import { PushDialog } from "./PushDialog";
+import { RemoteManagerDialog } from "./RemoteManagerDialog";
 import { TagContextMenu } from "./TagContextMenu";
 
 // ---------------------------------------------------------------------------
@@ -317,8 +318,12 @@ export function BranchTree({
   const containerRef = usePreventSelect();
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [currentBranchRowSelected, setCurrentBranchRowSelected] =
-    useState(false);
+  const currentBranchRowSelected = usePanelStore(
+    (s) => s.currentBranchRowSelected,
+  );
+  const setCurrentBranchRowSelected = usePanelStore(
+    (s) => s.setCurrentBranchRowSelected,
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   // Context menu state
@@ -340,6 +345,20 @@ export function BranchTree({
     x: number;
     y: number;
   } | null>(null);
+
+  // Remote context menu state
+  const [remoteContextMenu, setRemoteContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const remoteMenuRef = useRef<HTMLDivElement>(null);
+
+  // Remote manager dialog state
+  const [remoteManagerDialog, setRemoteManagerDialog] = useState(false);
+  const remoteSectionSelected = usePanelStore((s) => s.remoteSectionSelected);
+  const setRemoteSectionSelected = usePanelStore(
+    (s) => s.setRemoteSectionSelected,
+  );
 
   // Create branch dialog state
   const [createBranchDialog, setCreateBranchDialog] = useState<{
@@ -393,6 +412,29 @@ export function BranchTree({
   const closeHeadContextMenu = useCallback(() => {
     setHeadContextMenu(null);
   }, []);
+
+  const handleRemoteSectionContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setRemoteSectionSelected(true);
+      setRemoteContextMenu({ x: e.clientX, y: e.clientY });
+    },
+    [setRemoteSectionSelected],
+  );
+
+  useEffect(() => {
+    if (!remoteContextMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const menu = remoteMenuRef.current;
+      if (menu && !menu.contains(e.target as Node)) {
+        setRemoteContextMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside, true);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside, true);
+  }, [remoteContextMenu]);
 
   // Listen for expand-all / collapse-all events from sidebar
   useEffect(() => {
@@ -695,34 +737,50 @@ export function BranchTree({
         </GroupSection>
 
         {/* Remote */}
-        <GroupSection
-          title="Remote"
-          collapsed={collapsed.remote}
-          onToggle={() => toggle("remote")}
-        >
+        <div>
           <div
-            className="branch-list"
-            tabIndex={0}
-            onKeyDown={handleBranchKeyDown}
+            className={`selectable-row${remoteSectionSelected ? " row-selected" : ""}`}
+            onClick={() => setRemoteSectionSelected(true)}
+            onDoubleClick={() => toggle("remote")}
+            onContextMenu={handleRemoteSectionContextMenu}
+            style={{
+              padding: "4px 8px",
+              cursor: "pointer",
+              userSelect: "none",
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
           >
-            {remoteTree.map((node) => (
-              <TreeNodeView
-                key={node.fullPath}
-                node={node}
-                depth={0}
-                groupPrefix="remote"
-                currentBranch={currentBranch}
-                selectedBranches={selectedBranches}
-                filteredBranch={filter.branch}
-                onBranchClick={handleClick}
-                onBranchDoubleClick={handleBranchDoubleClick}
-                onBranchContextMenu={handleContextMenu}
-                collapsed={collapsed}
-                onToggle={toggle}
-              />
-            ))}
+            {collapsed.remote ? <IconChevronRight /> : <IconChevronDown />}
+            <span style={{ cursor: "pointer" }}>Remote</span>
           </div>
-        </GroupSection>
+          {!collapsed.remote && (
+            <div
+              className="branch-list"
+              tabIndex={0}
+              onKeyDown={handleBranchKeyDown}
+            >
+              {remoteTree.map((node) => (
+                <TreeNodeView
+                  key={node.fullPath}
+                  node={node}
+                  depth={0}
+                  groupPrefix="remote"
+                  currentBranch={currentBranch}
+                  selectedBranches={selectedBranches}
+                  filteredBranch={filter.branch}
+                  onBranchClick={handleClick}
+                  onBranchDoubleClick={handleBranchDoubleClick}
+                  onBranchContextMenu={handleContextMenu}
+                  collapsed={collapsed}
+                  onToggle={toggle}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Tags */}
         <GroupSection
@@ -829,6 +887,64 @@ export function BranchTree({
                     : `Branch '${branchName}' already exists.\nChange the name or overwrite existing branch.`;
                 }
               }}
+            />,
+            document.body,
+          )}
+
+        {/* Remote Context Menu */}
+        {remoteContextMenu &&
+          createPortal(
+            <div
+              ref={remoteMenuRef}
+              style={{
+                position: "fixed",
+                top: remoteContextMenu.y,
+                left: remoteContextMenu.x,
+                zIndex: 9999,
+                background: "var(--vscode-menu-background, #1e1e1e)",
+                border: "1px solid var(--vscode-menu-border, #454545)",
+                borderRadius: 4,
+                padding: "4px 0",
+                minWidth: 160,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              }}
+            >
+              <div
+                onClick={() => {
+                  setRemoteContextMenu(null);
+                  setRemoteManagerDialog(true);
+                }}
+                style={{
+                  padding: "6px 16px",
+                  cursor: "pointer",
+                  color: "var(--vscode-menu-foreground, #ccc)",
+                  fontSize: "13px",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "var(--vscode-list-hoverBackground, #2a2d2e)";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "var(--vscode-menu-selectionForeground, #fff)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background =
+                    "transparent";
+                  (e.currentTarget as HTMLElement).style.color =
+                    "var(--vscode-menu-foreground, #ccc)";
+                }}
+              >
+                Manage Remotes...
+              </div>
+            </div>,
+            document.body,
+          )}
+
+        {/* Remote Manager Dialog */}
+        {remoteManagerDialog &&
+          createPortal(
+            <RemoteManagerDialog
+              onClose={() => setRemoteManagerDialog(false)}
             />,
             document.body,
           )}
@@ -1069,16 +1185,19 @@ function GroupSection({
   collapsed,
   onToggle,
   children,
+  onContextMenu,
 }: {
   title: string;
   collapsed?: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   return (
     <div>
       <div
         onClick={onToggle}
+        onContextMenu={onContextMenu}
         style={{
           padding: "4px 8px",
           cursor: "pointer",

@@ -789,6 +789,42 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
+  messageRouter.handle("getRemotes", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    return gitService.getRemotes();
+  });
+
+  messageRouter.handle("getRemoteUrls", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    return { remotes: await gitService.getRemoteUrls() };
+  });
+
+  messageRouter.handle("addRemote", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const name = params.name as string;
+    const url = params.url as string;
+    await gitService.addRemote(name, url);
+    messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+    return { success: true };
+  });
+
+  messageRouter.handle("removeRemote", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const name = params.name as string;
+    await gitService.removeRemote(name);
+    messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+    return { success: true };
+  });
+
+  messageRouter.handle("renameRemote", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const oldName = params.oldName as string;
+    const newName = params.newName as string;
+    await gitService.renameRemote(oldName, newName);
+    messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+    return { success: true };
+  });
+
   messageRouter.handle("deleteBranch", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const branchName = params.branchName as string;

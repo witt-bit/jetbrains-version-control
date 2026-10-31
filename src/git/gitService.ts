@@ -767,6 +767,44 @@ export class GitService {
     this.invalidateCache();
   }
 
+  async addRemote(name: string, url: string): Promise<void> {
+    await this.execGit(["remote", "add", name, url]);
+    this.invalidateCache();
+  }
+
+  async removeRemote(name: string): Promise<void> {
+    await this.execGit(["remote", "remove", name]);
+    this.invalidateCache();
+  }
+
+  async renameRemote(oldName: string, newName: string): Promise<void> {
+    await this.execGit(["remote", "rename", oldName, newName]);
+    this.invalidateCache();
+  }
+
+  async getRemotes(): Promise<string[]> {
+    const output = await this.execGit(["remote"]).catch(() => "");
+    return output
+      .trim()
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+  }
+
+  async getRemoteUrls(): Promise<{ name: string; url: string }[]> {
+    const output = await this.execGit(["remote", "-v"]).catch(() => "");
+    const remotes = new Map<string, string>();
+    for (const line of output.trim().split("\n")) {
+      const match = line.match(/^(\S+)\s+(\S+)\s+\(fetch\)$/);
+      if (match) {
+        const [, name, url] = match;
+        if (!remotes.has(name)) {
+          remotes.set(name, url);
+        }
+      }
+    }
+    return Array.from(remotes.entries()).map(([name, url]) => ({ name, url }));
+  }
+
   async renameBranch(oldName: string, newName: string): Promise<void> {
     await this.execGit(["branch", "-m", oldName, newName]);
     this.invalidateCache();
