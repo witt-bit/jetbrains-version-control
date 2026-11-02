@@ -633,7 +633,7 @@
   },
   "scripts": {
     "vscode:prepublish": "pnpm run package",
-    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "compile": "pnpm run check-types && pnpm run verify && pnpm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
@@ -650,7 +650,8 @@
     "test:unit": "node --test --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/*.test.ts\"",
     "build:web": "cd webview && pnpm run build",
     "build": "pnpm run compile && pnpm run build:web",
-    "dev:web": "cd webview && pnpm run dev"
+    "dev:web": "cd webview && pnpm run dev",
+    "verify": "set -e\necho \"=== grep regression checks ===\"\n# 检查空 import\nif grep -rl 'import {} from' src webview/src 2>/dev/null; then\n  echo \"FAIL: empty import found\"\n  exit 1\nfi\n# 检查 <ContextMenu> 是否都传了 onClose\nfor f in $(grep -rl '<ContextMenu ' src webview/src 2>/dev/null); do\n  if grep -q '<ContextMenu[^>]*>' \"$f\" && ! grep -q 'onClose=' \"$f\"; then\n    echo \"FAIL: <ContextMenu> without onClose in $f\"\n    exit 1\n  fi\ndone\n# 检查 useContextMenuDismiss 是否还在父组件里（应该只在 ContextMenu 内部）\nfor f in $(grep -rl 'useContextMenuDismiss' src webview/src 2>/dev/null); do\n  if [[ \"$f\" != \"webview/src/shared/components/ContextMenu.tsx\" ]]; then\n    # 允许 Toolbar.tsx（自定义下拉）\n    if [[ \"$f\" != \"webview/src/commit/components/Toolbar.tsx\" ]]; then\n      echo \"FAIL: useContextMenuDismiss in $f (should only be in ContextMenu.tsx)\"\n      exit 1\n    fi\n  fi\ndone\necho \"PASS: no regression patterns found\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.15",

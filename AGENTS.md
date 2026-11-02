@@ -147,7 +147,7 @@ End-of-line blame showing `Who, date * summary` after the code on the caret line
 
 ## Workflow rules (from repeated feedback)
 
-1. **Run `pnpm run compile` after every change — the FULL command, both builds.** `compile` covers extension + biome (check-types, lint, format, import order); `webview build` alone does NOT. Editing a `.tsx` icon/prop and only running the webview vite build has shipped biome formatting errors twice. Never report "done" on an unverified build — run `pnpm run compile && (cd webview && pnpm run build)` before claiming anything.
+1. **Run `pnpm run compile` after every change — the FULL command, both builds.** `compile` now runs `check-types && verify && lint && esbuild` where `verify` greps for known regression patterns (empty imports, missing `onClose` on `<ContextMenu>`, stray `useContextMenuDismiss` outside the shared component). Biome warnings are non-fatal on this machine (memory-limited), so the grep-based `verify` step catches the specific mistakes that keep recurring. Never report "done" on an unverified build — run `pnpm run compile && (cd webview && pnpm run build)` before claiming anything.
 2. **Don't commit prematurely.** Batch related fixes into one commit; avoid a trail of "fix the fix" commits. Commit only when the user asks or the feature is verifiably complete.
 3. **Verify before claiming done.** Walk through the actual interaction paths (all directions, all orderings) before saying "fixed". The mutual-exclusion bug was reported three times because only Commit→others was checked, not Branch→HEAD or HEAD→Remote.
 4. **When a fix doesn't work, stop and re-diagnose.** Don't apply another plausible-looking patch. Bisect with a minimal reproduction (e.g. hardcoded-color SVG) to isolate the variable.
