@@ -1,4 +1,3 @@
-import {} from "react";
 import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
 import {
   ContextMenu,
