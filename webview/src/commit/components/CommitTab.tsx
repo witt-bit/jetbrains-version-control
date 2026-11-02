@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import CodiconDiscard from "~icons/codicon/discard";
 import CodiconFolderActive from "~icons/codicon/folder-active";
 import CodiconTrash from "~icons/codicon/trash";
@@ -7,7 +7,6 @@ import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
 import { useFocusContextKey } from "../../shared/hooks/useFocusContextKey";
@@ -842,8 +841,6 @@ function DirContextMenu({
   dirName: string;
   onClose: () => void;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const deleteLabel = useDeleteShortcutLabel();
 
   const handleDelete = useCallback(() => {
@@ -867,7 +864,7 @@ function DirContextMenu({
   }, [files, onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleRollback} icon={<CodiconDiscard />}>
         Rollback...
       </ContextMenuItem>

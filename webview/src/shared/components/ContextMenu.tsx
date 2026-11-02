@@ -129,6 +129,8 @@ interface ContextMenuProps {
   y: number;
   /** Container min-width in px (menus without icons: 160–180, with icons: 200). */
   minWidth?: number;
+  /** Close the menu (unmount) — called on outside click / Escape / blur / scroll / resize. */
+  onClose: () => void;
   children: ReactNode;
 }
 
@@ -136,9 +138,11 @@ export function ContextMenu({
   x,
   y,
   minWidth = 200,
+  onClose,
   children,
 }: ContextMenuProps) {
   const { ref, position } = useContextMenuPosition(x, y);
+  useContextMenuDismiss(ref, onClose);
   const style: CSSProperties = {
     position: "fixed",
     top: position ? position.top : -9999,

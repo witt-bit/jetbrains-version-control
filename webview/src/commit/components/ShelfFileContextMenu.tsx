@@ -1,10 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { bridge } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconCopyPath,
@@ -30,8 +29,6 @@ export function ShelfFileContextMenu({
   stashId,
   onClose,
 }: ShelfFileContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const showDiffLabel = useShowDiffShortcutLabel();
 
   const handleShowDiff = useCallback(() => {
@@ -55,7 +52,7 @@ export function ShelfFileContextMenu({
   }, [filePath, onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleUnshelveFile} icon={<IconUnshelve />}>
         Unshelve This File
       </ContextMenuItem>

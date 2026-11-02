@@ -1,10 +1,9 @@
-import { useRef } from "react";
+import {} from "react";
 import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
 import type { BranchInfo } from "../../shared/types/git";
@@ -26,9 +25,6 @@ export function HeadContextMenu({
   onCreateBranch,
   onPush,
 }: HeadContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
-
   const handleNewBranch = () => {
     onCreateBranch(branch.name, `${branch.name}-new`);
     onClose();
@@ -88,7 +84,7 @@ export function HeadContextMenu({
   };
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleNewBranch}>
         New Branch from '{branch.name}'...
       </ContextMenuItem>

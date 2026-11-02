@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import CodiconClippy from "~icons/codicon/clippy";
 import CodiconDesktopDownload from "~icons/codicon/desktop-download";
 import { bridge } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
 import {
@@ -278,16 +277,13 @@ function ShelfBgContextMenu({
   y: number;
   onClose: () => void;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
-
   const handleImport = useCallback(() => {
     bridge.request("importPatches");
     onClose();
   }, [onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={220}>
+    <ContextMenu x={x} y={y} minWidth={220} onClose={onClose}>
       <ContextMenuItem onClick={handleImport} icon={<CodiconDesktopDownload />}>
         Import Patches...
       </ContextMenuItem>

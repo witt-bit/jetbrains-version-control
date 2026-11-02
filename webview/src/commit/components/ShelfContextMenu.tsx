@@ -1,9 +1,8 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconApply,
@@ -31,8 +30,6 @@ export function ShelfContextMenu({
   entry,
   onClose,
 }: ShelfContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const unshelveLabel = useUnshelveShortcutLabel();
   const deleteLabel = useDeleteShortcutLabel();
   const { unshelveChanges, deleteShelve } = useCommitStore();
@@ -53,7 +50,7 @@ export function ShelfContextMenu({
   }, [entry, deleteShelve, onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem
         onClick={handleUnshelve}
         icon={<IconUnshelve />}

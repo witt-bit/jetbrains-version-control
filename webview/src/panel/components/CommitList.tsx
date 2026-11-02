@@ -6,7 +6,6 @@ import {
   ContextMenu,
   ContextMenuHeader,
   ContextMenuItem,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
@@ -584,9 +583,6 @@ function HeaderColumnMenu({
   onToggle: (col: keyof VisibleColumns) => void;
   onClose: () => void;
 }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
-
   const columns: { key: keyof VisibleColumns; label: string }[] = [
     { key: "author", label: "Author" },
     { key: "date", label: "Date" },
@@ -594,7 +590,7 @@ function HeaderColumnMenu({
   ];
 
   return (
-    <ContextMenu x={x} y={y} minWidth={160}>
+    <ContextMenu x={x} y={y} minWidth={160} onClose={onClose}>
       <ContextMenuHeader>Columns</ContextMenuHeader>
       {columns.map((col) => (
         <ContextMenuItem

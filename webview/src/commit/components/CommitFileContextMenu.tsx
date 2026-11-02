@@ -1,10 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { bridge } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconAdd,
@@ -45,8 +44,6 @@ export function CommitFileContextMenu({
   const stageFileLabel = useStageFileShortcutLabel();
   const rollbackLabel = useRollbackShortcutLabel();
   const deleteLabel = useDeleteShortcutLabel();
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const {
     stageFile,
     unstageFile,
@@ -117,7 +114,7 @@ export function CommitFileContextMenu({
   }, [file, onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem
         onClick={handleShowDiff}
         icon={<IconDiff />}

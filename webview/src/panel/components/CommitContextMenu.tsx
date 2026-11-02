@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconBranch,
@@ -31,8 +30,6 @@ export function CommitContextMenu({
   onClose,
   onCreateBranch,
 }: CommitContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const currentBranch = usePanelStore((s) => s.currentBranch);
   const [isRebasing, setIsRebasing] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
@@ -182,7 +179,7 @@ export function CommitContextMenu({
     !currentBranch || isRebasing || isMerging || isCherryPicking;
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleCopyHash} icon={<IconCopy />}>
         Copy Revision Number
       </ContextMenuItem>

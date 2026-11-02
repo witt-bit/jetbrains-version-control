@@ -1,10 +1,9 @@
-import { useRef } from "react";
+import {} from "react";
 import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconCherryPick,
@@ -25,8 +24,6 @@ interface FileContextMenuProps {
 
 export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
   const jumpToSourceLabel = useJumpToSourceShortcutLabel();
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const selectedCommitHash = usePanelStore((s) => s.selectedCommitHash);
   const openDiffEditor = usePanelStore((s) => s.openDiffEditor);
 
@@ -109,7 +106,7 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
   };
 
   return (
-    <ContextMenu x={x} y={y} minWidth={200}>
+    <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleShowDiff} icon={<IconDiff />}>
         Show Diff
       </ContextMenuItem>

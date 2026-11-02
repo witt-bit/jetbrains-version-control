@@ -5,7 +5,6 @@ import {
   ContextMenuHeader,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
 import { Tooltip } from "../../shared/components/Tooltip";
@@ -232,11 +231,13 @@ function SettingsButton() {
 }
 
 function SettingsMenu({ onClose }: { onClose: () => void }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
-
   return (
-    <ContextMenu x={40} y={window.innerHeight / 2} minWidth={200}>
+    <ContextMenu
+      x={40}
+      y={window.innerHeight / 2}
+      minWidth={200}
+      onClose={onClose}
+    >
       <ContextMenuHeader>On Single Click</ContextMenuHeader>
       <ContextMenuItem
         onClick={() => {

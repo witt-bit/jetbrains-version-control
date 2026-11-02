@@ -1,10 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import { bridge } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
-  useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import {
   IconApply,
@@ -36,8 +35,6 @@ export function IdeaShelfContextMenu({
   entry,
   onClose,
 }: IdeaShelfContextMenuProps) {
-  const menuRef = useRef<HTMLDivElement>(null);
-  useContextMenuDismiss(menuRef, onClose);
   const unshelveLabel = useUnshelveShortcutLabel();
   const deleteLabel = useDeleteShortcutLabel();
   const { ideaUnshelveChanges, deleteIdeaShelf } = useCommitStore();
@@ -78,7 +75,7 @@ export function IdeaShelfContextMenu({
   }, [entry, deleteIdeaShelf, onClose]);
 
   return (
-    <ContextMenu x={x} y={y} minWidth={220}>
+    <ContextMenu x={x} y={y} minWidth={220} onClose={onClose}>
       <ContextMenuItem
         onClick={handleUnshelve}
         icon={<IconUnshelve />}
