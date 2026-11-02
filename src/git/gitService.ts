@@ -992,6 +992,59 @@ export class GitService {
     this.invalidateCache();
   }
 
+  async createPatchFromCommit(hash: string): Promise<void> {
+    const patch = await this.execGit(["format-patch", "--stdout", hash]);
+    const { writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const commit = (
+      await this.execGit(["log", "-1", "--format=%s", hash])
+    ).trim();
+    const fileName = join(
+      this.root,
+      `${hash.slice(0, 8)}-${commit.replace(/[^a-zA-Z0-9]+/g, "_")}.patch`,
+    );
+    writeFileSync(fileName, patch);
+  }
+
+  async showRepositoryAtRevision(hash: string): Promise<void> {
+    // Show the repo state at a specific revision via diff editor
+    await this.execGit(["diff", "--stat", hash]);
+  }
+
+  async compareWithLocal(hash: string): Promise<void> {
+    await this.execGit(["diff", hash]);
+  }
+
+  async undoCommit(hash: string): Promise<void> {
+    // Only valid on HEAD commit, not on main branch
+    const headHash = (await this.execGit(["rev-parse", "HEAD"])).trim();
+    if (hash !== headHash) {
+      throw new Error("Can only undo the HEAD commit");
+    }
+    const branch = (
+      await this.execGit(["rev-parse", "--abbrev-ref", "HEAD"])
+    ).trim();
+    const isMainBranch = /^(main|master)$/i.test(branch);
+    if (isMainBranch) {
+      throw new Error("Cannot undo commit on main branch");
+    }
+    // Undo = soft reset to parent
+    const parents = await this.getCommitParents(hash);
+    if (parents.length === 0) {
+      throw new Error("Cannot undo the initial commit");
+    }
+    await this.execGit(["reset", "--soft", "HEAD~1"]);
+    this.invalidateCache();
+  }
+
+  async pushAllUpToHere(hash: string): Promise<void> {
+    const branch = (
+      await this.execGit(["rev-parse", "--abbrev-ref", "HEAD"])
+    ).trim();
+    await this.execGit(["push", "origin", `${branch}:${hash}`]);
+    this.invalidateCache();
+  }
+
   private async dropHeadCommit(hash: string): Promise<void> {
     // Verify commit has a parent
     const parents = await this.getCommitParents(hash);

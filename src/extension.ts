@@ -1149,6 +1149,46 @@ export function activate(context: vscode.ExtensionContext) {
     });
   });
 
+  messageRouter.handle("createPatchFromCommit", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const hash = params.hash as string;
+    await gitService.createPatchFromCommit(hash);
+    return { success: true };
+  });
+
+  messageRouter.handle("showRepositoryAtRevision", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const hash = params.hash as string;
+    await gitService.showRepositoryAtRevision(hash);
+    return { success: true };
+  });
+
+  messageRouter.handle("compareWithLocal", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const hash = params.hash as string;
+    await gitService.compareWithLocal(hash);
+    return { success: true };
+  });
+
+  messageRouter.handle("undoCommit", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const hash = params.hash as string;
+    await gitService.undoCommit(hash);
+    messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true };
+  });
+
+  messageRouter.handle("pushAllUpToHere", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const hash = params.hash as string;
+    return withProgress(messageRouter, async () => {
+      await gitService.pushAllUpToHere(hash);
+      messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+      return { success: true };
+    });
+  });
+
   messageRouter.handle("createBranchFromCommit", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const branchName = params.branchName as string;

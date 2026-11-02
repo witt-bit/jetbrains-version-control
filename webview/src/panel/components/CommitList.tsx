@@ -19,6 +19,7 @@ import {
   type VisibleColumns,
 } from "./CommitRow";
 import { CreateBranchDialog } from "./CreateBranchDialog";
+import { GitResetDialog } from "./GitResetDialog";
 
 const COLUMN_WIDTH = 16;
 const GRAPH_PADDING = 8;
@@ -65,6 +66,10 @@ export function CommitList({
   const [createBranchDialog, setCreateBranchDialog] = useState<{
     hash: string;
     shortHash: string;
+  } | null>(null);
+  const [resetDialog, setResetDialog] = useState<{
+    commit: Commit;
+    branchName: string;
   } | null>(null);
 
   const handleContextMenu = useCallback(
@@ -485,6 +490,9 @@ export function CommitList({
               const shortHash = hash.slice(0, 8);
               setCreateBranchDialog({ hash, shortHash });
             }}
+            onReset={(commit, branchName) => {
+              setResetDialog({ commit, branchName });
+            }}
           />
         )}
         {createBranchDialog &&
@@ -516,6 +524,13 @@ export function CommitList({
             />,
             document.body,
           )}
+        {resetDialog && (
+          <GitResetDialog
+            commit={resetDialog.commit}
+            branchName={resetDialog.branchName}
+            onClose={() => setResetDialog(null)}
+          />
+        )}
       </div>
     </div>
   );

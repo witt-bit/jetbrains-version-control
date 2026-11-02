@@ -30,8 +30,10 @@ import {
   IconFolderOpen,
   IconImport,
   IconJump,
+  IconLeft,
   IconPatch,
   IconRemove,
+  IconRight,
   IconRollback,
   IconShelve,
   IconTag,
@@ -61,7 +63,9 @@ const SHARED = {
   IconFolderOpen,
   IconImport,
   IconJump,
+  IconLeft,
   IconPatch,
+  IconRight,
   IconRemove,
   IconRollback,
   IconShelve,
@@ -97,6 +101,10 @@ function markup(Icon: () => React.ReactElement): string {
 }
 
 const ORIGINALS: Record<string, string> = {
+  IconLeft:
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M6.3464 3.64645C6.54166 3.45118 6.85824 3.45118 7.0535 3.64645C7.24877 3.84171 7.24877 4.15829 7.0535 4.35355L3.90352 7.50354L13.5035 7.50354C13.7797 7.50354 14.0035 7.7274 14.0035 8.00354C14.0035 8.27968 13.7797 8.50354 13.5035 8.50354L3.91059 8.50354L7.05351 11.6464C7.24877 11.8417 7.24877 12.1583 7.05351 12.3536C6.85824 12.5488 6.54166 12.5488 6.3464 12.3536L2.3464 8.35355L1.99284 8L2.3464 7.64645L6.3464 3.64645Z" fill="currentColor"/>',
+  IconRight:
+    '<path fill-rule="evenodd" clip-rule="evenodd" d="M9.65355 12.3536C9.45829 12.5488 9.14171 12.5488 8.94645 12.3536C8.75118 12.1583 8.75118 11.8417 8.94645 11.6464L12.0894 8.50354L2.49646 8.50354C2.22032 8.50354 1.99646 8.27968 1.99646 8.00354C1.99646 7.7274 2.22032 7.50354 2.49646 7.50354L12.0964 7.50354L8.94645 4.35355C8.75118 4.15829 8.75118 3.84171 8.94645 3.64645C9.14171 3.45118 9.45829 3.45118 9.65355 3.64645L13.6536 7.64645L14.0071 8L13.6536 8.35355L9.65355 12.3536Z" fill="currentColor"/>',
   CommitMenuIconCopy:
     '<rect x="2.5" y="3.5" width="9" height="10" rx="1.5" stroke="currentColor" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M11 2h.6C12.37 2 13 2.63 13 3.4v.51c0 .03 0 .06 0 .09v7.55c.6-.44 1-1.15 1-1.95V3.4C14 2.07 12.93 1 11.6 1H6.4c-.8 0-1.51.39-1.95 1H6.4H11z" fill="currentColor" />',
   CommitMenuIconRevert:

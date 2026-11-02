@@ -9,6 +9,9 @@ import {
   IconBranch,
   IconCherryPick,
   IconDelete,
+  IconLeft,
+  IconPatch,
+  IconRight,
   IconTag,
 } from "../../shared/components/icons";
 import "../../shared/components/ContextMenu.css";
@@ -21,6 +24,7 @@ interface CommitContextMenuProps {
   commit: Commit;
   onClose: () => void;
   onCreateBranch?: (hash: string, defaultName: string) => void;
+  onReset?: (commit: Commit, branchName: string) => void;
 }
 
 export function CommitContextMenu({
@@ -29,6 +33,7 @@ export function CommitContextMenu({
   commit,
   onClose,
   onCreateBranch,
+  onReset,
 }: CommitContextMenuProps) {
   const currentBranch = usePanelStore((s) => s.currentBranch);
   const [isRebasing, setIsRebasing] = useState(false);
@@ -68,44 +73,41 @@ export function CommitContextMenu({
       bridgeWithProgress("cherryPick", { hash: commit.hash }),
     );
 
+  const handleCreatePatch = () =>
+    runMenuAction(onClose, "Create patch", () =>
+      bridge.request("createPatchFromCommit", { hash: commit.hash }),
+    );
+
   const handleCheckoutRevision = () =>
     runMenuAction(onClose, "Checkout revision", () =>
       bridgeWithProgress("checkoutCommit", { hash: commit.hash }),
     );
 
-  const handleResetMixed = () =>
-    runMenuAction(onClose, "Reset (mixed)", () =>
-      bridgeWithProgress("resetToCommit", {
-        hash: commit.hash,
-        mode: "mixed",
-      }),
+  const handleShowRepoAtRevision = () =>
+    runMenuAction(onClose, "Show repository at revision", () =>
+      bridge.request("showRepositoryAtRevision", { hash: commit.hash }),
     );
 
-  const handleResetSoft = () =>
-    runMenuAction(onClose, "Reset (soft)", () =>
-      bridgeWithProgress("resetToCommit", { hash: commit.hash, mode: "soft" }),
+  const handleCompareWithLocal = () =>
+    runMenuAction(onClose, "Compare with local", () =>
+      bridge.request("compareWithLocal", { hash: commit.hash }),
     );
 
-  const handleResetHard = async () => {
+  const handleOpenResetDialog = () => {
     onClose();
-    const result = (await bridge.request("showConfirmMessage", {
-      message: `Reset '${currentBranch}' to ${shortHash} (hard)? This will discard all uncommitted changes.`,
-      confirmLabel: "Reset",
-    })) as { confirmed: boolean };
-    if (!result.confirmed) return;
-    try {
-      await bridgeWithProgress("resetToCommit", {
-        hash: commit.hash,
-        mode: "hard",
-      });
-    } catch (err) {
-      console.error("Reset failed:", err);
+    if (onReset) {
+      onReset(commit, currentBranch);
     }
   };
 
   const handleRevert = () =>
     runMenuAction(onClose, "Revert commit", () =>
       bridgeWithProgress("revertCommit", { hash: commit.hash }),
+    );
+
+  const handleUndoCommit = () =>
+    runMenuAction(onClose, "Undo commit", () =>
+      bridgeWithProgress("undoCommit", { hash: commit.hash }),
     );
 
   const handleDropCommit = async () => {
@@ -121,6 +123,11 @@ export function CommitContextMenu({
       console.error("Drop commit failed:", err);
     }
   };
+
+  const handlePushAllUpToHere = () =>
+    runMenuAction(onClose, "Push all up to here", () =>
+      bridgeWithProgress("pushAllUpToHere", { hash: commit.hash }),
+    );
 
   const handleNewBranch = async () => {
     onClose();
@@ -163,6 +170,24 @@ export function CommitContextMenu({
 
   const filter = usePanelStore((s) => s.filter);
   const selectCommit = usePanelStore((s) => s.selectCommit);
+  const allCommits = usePanelStore((s) => s.commits);
+
+  // Go to Parent Commit: select the first parent
+  const handleGoToParent = () => {
+    onClose();
+    if (commit.parents.length > 0) {
+      selectCommit(commit.parents[0]);
+    }
+  };
+
+  // Go to Child Commit: find the first child commit
+  const handleGoToChild = () => {
+    onClose();
+    const child = allCommits.find((c) => c.parents.includes(commit.hash));
+    if (child) {
+      selectCommit(child.hash);
+    }
+  };
 
   const handleShowInGitLog = () => {
     onClose();
@@ -178,6 +203,14 @@ export function CommitContextMenu({
   const isDropCommitDisabled =
     !currentBranch || isRebasing || isMerging || isCherryPicking;
 
+  // Undo Commit: only enabled on HEAD commit, and not on main branch
+  const isUndoCommitDisabled =
+    !currentBranch ||
+    isRebasing ||
+    isMerging ||
+    isCherryPicking ||
+    /^(main|master)$/i.test(currentBranch);
+
   return (
     <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleCopyHash} icon={<IconCopy />}>
@@ -186,23 +219,34 @@ export function CommitContextMenu({
       <ContextMenuItem onClick={handleCherryPick} icon={<IconCherryPick />}>
         Cherry-Pick
       </ContextMenuItem>
+      <ContextMenuItem onClick={handleCreatePatch} icon={<IconPatch />}>
+        Create Patch...
+      </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={handleCheckoutRevision}>
         Checkout Revision
       </ContextMenuItem>
+      <ContextMenuItem onClick={handleShowRepoAtRevision}>
+        Show Repository at Revision
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleCompareWithLocal}>
+        Compare with Local
+      </ContextMenuItem>
       <ContextMenuSeparator />
-      <ContextMenuItem onClick={handleResetMixed} icon={<IconRevert />}>
-        Reset Current Branch to Here (Mixed)...
-      </ContextMenuItem>
-      <ContextMenuItem onClick={handleResetSoft} icon={<IconRevert />}>
-        Reset Current Branch to Here (Soft)...
-      </ContextMenuItem>
-      <ContextMenuItem onClick={handleResetHard} icon={<IconRevert />}>
-        Reset Current Branch to Here (Hard)...
+      <ContextMenuItem onClick={handleOpenResetDialog} icon={<IconRevert />}>
+        Reset Current Branch to Here...
       </ContextMenuItem>
       <ContextMenuItem onClick={handleRevert} icon={<IconRevert />}>
         Revert Commit
       </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleUndoCommit}
+        icon={<IconRevert />}
+        disabled={isUndoCommitDisabled}
+      >
+        Undo Commit...
+      </ContextMenuItem>
+      <ContextMenuSeparator />
       <ContextMenuItem
         onClick={handleDropCommit}
         icon={<IconDelete />}
@@ -210,12 +254,22 @@ export function CommitContextMenu({
       >
         Drop Commit
       </ContextMenuItem>
+      <ContextMenuItem onClick={handlePushAllUpToHere} icon={<IconBranch />}>
+        Push All up to Here...
+      </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem onClick={handleNewBranch} icon={<IconBranch />}>
         New Branch...
       </ContextMenuItem>
       <ContextMenuItem onClick={handleNewTag} icon={<IconTag />}>
         New Tag...
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleGoToChild} icon={<IconLeft />}>
+        Go to Child Commit
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleGoToParent} icon={<IconRight />}>
+        Go to Parent Commit
       </ContextMenuItem>
       {filter.file && (
         <>
