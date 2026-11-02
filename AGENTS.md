@@ -102,6 +102,8 @@ These were iterated on repeatedly; each regression cost a full debugging round.
 
 ### Context Menus
 
+**Icon space is always reserved.** `<ContextMenuItem>` renders the 16px icon span whether or not an icon is provided — items without icons leave the column empty so all entries in the same menu have consistent text left-alignment. Do not conditionally render the icon span.
+
 Every menu renders through the shared primitives in
 `webview/src/shared/components/ContextMenu.tsx` (+ `ContextMenu.css`):
 

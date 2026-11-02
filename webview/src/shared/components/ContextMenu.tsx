@@ -186,7 +186,7 @@ export function ContextMenuItem({
       {checked !== undefined && (
         <span className="jgc-context-menu-check">{checked ? "✓" : ""}</span>
       )}
-      {icon && <span className="jgc-context-menu-icon">{icon}</span>}
+      <span className="jgc-context-menu-icon">{icon ?? null}</span>
       <span>{children}</span>
       {shortcut && (
         <span className="jgc-context-menu-shortcut">{shortcut}</span>

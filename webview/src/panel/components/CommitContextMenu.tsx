@@ -9,6 +9,7 @@ import {
 import {
   IconBranch,
   IconCherryPick,
+  IconDelete,
   IconTag,
 } from "../../shared/components/icons";
 import "../../shared/components/ContextMenu.css";
@@ -207,7 +208,7 @@ export function CommitContextMenu({
       </ContextMenuItem>
       <ContextMenuItem
         onClick={handleDropCommit}
-        icon={<IconRevert />}
+        icon={<IconDelete />}
         disabled={isDropCommitDisabled}
       >
         Drop Commit
