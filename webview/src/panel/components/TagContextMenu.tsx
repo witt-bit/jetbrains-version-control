@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { useCallback, useRef } from "react";
+import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import "../../shared/components/ContextMenu.css";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { TagInfo } from "../../shared/types/git";
 
@@ -20,93 +26,26 @@ export function TagContextMenu({
   onClose,
 }: TagContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
+  useContextMenuDismiss(menuRef, onClose);
   const { currentBranch } = usePanelStore();
-
-  // Adjust position after first render to keep menu within viewport
-  useEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect();
-      const viewportH = window.innerHeight;
-      const viewportW = window.innerWidth;
-      let top = y;
-      let left = x;
-      if (top + rect.height > viewportH) {
-        const above = y - rect.height;
-        top = above >= 4 ? above : Math.max(4, viewportH - rect.height - 4);
-      }
-      if (left + rect.width > viewportW) {
-        left = Math.max(4, viewportW - rect.width - 4);
-      }
-      setPosition({ top, left });
-    });
-  }, [x, y]);
-
-  // Close on outside click, Escape, blur, scroll
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    const handleBlur = () => onClose();
-    const handleScroll = (e: Event) => {
-      if (
-        menuRef.current &&
-        e.target instanceof Node &&
-        !menuRef.current.contains(e.target)
-      ) {
-        onClose();
-      }
-    };
-    const handleContextMenu = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside, true);
-    document.addEventListener("contextmenu", handleContextMenu, true);
-    document.addEventListener("keydown", handleEscape);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleBlur);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("contextmenu", handleContextMenu, true);
-      document.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleBlur);
-    };
-  }, [onClose]);
 
   const isMultiSelect = selectedTags.length > 1;
 
-  const handleCheckout = useCallback(async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("checkoutTag", { tagName: tag.name });
-    } catch (err) {
-      console.error("Checkout tag failed:", err);
-    }
-  }, [tag.name, onClose]);
+  const handleCheckout = useCallback(
+    () =>
+      runMenuAction(onClose, "Checkout tag", () =>
+        bridgeWithProgress("checkoutTag", { tagName: tag.name }),
+      ),
+    [tag.name, onClose],
+  );
 
-  const handleShowDiff = useCallback(async () => {
-    onClose();
-    try {
-      await bridge.request("showTagDiff", { tagName: tag.name });
-    } catch (err) {
-      console.error("Show tag diff failed:", err);
-    }
-  }, [tag.name, onClose]);
+  const handleShowDiff = useCallback(
+    () =>
+      runMenuAction(onClose, "Show tag diff", () =>
+        bridge.request("showTagDiff", { tagName: tag.name }),
+      ),
+    [tag.name, onClose],
+  );
 
   const handleMerge = useCallback(async () => {
     onClose();
@@ -141,10 +80,31 @@ export function TagContextMenu({
 
   const handlePush = useCallback(async () => {
     onClose();
+    // Let the user pick the remote instead of hardcoding origin — repos can
+    // have several remotes, and "origin" may not exist at all.
+    const result = (await bridge.request("getRemoteUrls")) as {
+      remotes: { name: string; url: string }[];
+    };
+    const names = (result.remotes ?? []).map((r) => r.name);
+    if (names.length === 0) {
+      try {
+        await bridge.request("showErrorNotification", {
+          message: "No remotes configured — add one under Manage Remotes.",
+        });
+      } catch {
+        console.error("Push tag failed: no remotes configured");
+      }
+      return;
+    }
+    const pick = (await bridge.request("showQuickPick", {
+      items: names,
+      placeHolder: `Push tag '${tag.name}' to which remote?`,
+    })) as { value: string | null };
+    if (!pick.value) return;
     try {
       await bridgeWithProgress("pushTag", {
         tagName: tag.name,
-        remote: "origin",
+        remote: pick.value,
       });
     } catch (err) {
       console.error("Push tag failed:", err);
@@ -173,124 +133,28 @@ export function TagContextMenu({
 
   // Multi-select: only Delete
   if (isMultiSelect) {
-    return createPortal(
-      <div
-        ref={menuRef}
-        style={{
-          position: "fixed",
-          top: position ? position.top : -9999,
-          left: position ? position.left : -9999,
-          zIndex: 9999,
-          background: "var(--vscode-menu-background, #1e1e1e)",
-          border: "1px solid var(--vscode-menu-border, #454545)",
-          borderRadius: 4,
-          padding: "4px 0",
-          minWidth: 160,
-          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-          visibility: position ? "visible" : "hidden",
-        }}
-      >
-        <div
-          onClick={handleDelete}
-          style={{
-            padding: "6px 16px",
-            cursor: "pointer",
-            color: "var(--vscode-menu-foreground, #ccc)",
-            fontSize: "13px",
-            whiteSpace: "nowrap",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background =
-              "var(--vscode-list-hoverBackground, #2a2d2e)";
-            (e.currentTarget as HTMLElement).style.color =
-              "var(--vscode-menu-selectionForeground, #fff)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-            (e.currentTarget as HTMLElement).style.color =
-              "var(--vscode-menu-foreground, #ccc)";
-          }}
-        >
-          Delete
-        </div>
-      </div>,
-      document.body,
+    return (
+      <ContextMenu x={x} y={y} minWidth={160}>
+        <ContextMenuItem onClick={handleDelete}>Delete</ContextMenuItem>
+      </ContextMenu>
     );
   }
 
-  return createPortal(
-    <div
-      ref={menuRef}
-      style={{
-        position: "fixed",
-        top: position ? position.top : -9999,
-        left: position ? position.left : -9999,
-        zIndex: 9999,
-        background: "var(--vscode-menu-background, #1e1e1e)",
-        border: "1px solid var(--vscode-menu-border, #454545)",
-        borderRadius: 4,
-        padding: "4px 0",
-        minWidth: 200,
-        maxHeight: "calc(100vh - 8px)",
-        overflowY: "auto",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-        visibility: position ? "visible" : "hidden",
-      }}
-    >
-      <MenuItem label="Checkout" onClick={handleCheckout} />
-      <MenuItem label="Show Diff with Working Tree" onClick={handleShowDiff} />
-      <MenuItem
-        label={`Merge '${tag.name}' into '${currentBranch}'`}
-        onClick={handleMerge}
-      />
-      <MenuItem
-        label={`New Worktree from '${tag.name}'...`}
-        onClick={handleNewWorktree}
-      />
-      <MenuItem label="Push to origin" onClick={handlePush} />
-      <MenuSeparator />
-      <MenuItem label="Delete" onClick={handleDelete} />
-    </div>,
-    document.body,
-  );
-}
-
-function MenuItem({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <div
-      onClick={onClick}
-      style={{
-        padding: "6px 16px",
-        cursor: "pointer",
-        color: "var(--vscode-menu-foreground, #ccc)",
-        fontSize: "13px",
-        whiteSpace: "nowrap",
-      }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.background =
-          "var(--vscode-list-hoverBackground, #2a2d2e)";
-        (e.currentTarget as HTMLElement).style.color =
-          "var(--vscode-menu-selectionForeground, #fff)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.background = "transparent";
-        (e.currentTarget as HTMLElement).style.color =
-          "var(--vscode-menu-foreground, #ccc)";
-      }}
-    >
-      {label}
-    </div>
-  );
-}
-
-function MenuSeparator() {
-  return (
-    <div
-      style={{
-        height: 1,
-        background: "var(--vscode-menu-separatorBackground, #454545)",
-        margin: "4px 0",
-      }}
-    />
+    <ContextMenu x={x} y={y} minWidth={200}>
+      <ContextMenuItem onClick={handleCheckout}>Checkout</ContextMenuItem>
+      <ContextMenuItem onClick={handleShowDiff}>
+        Show Diff with Working Tree
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleMerge}>
+        Merge '{tag.name}' into '{currentBranch}'
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleNewWorktree}>
+        New Worktree from '{tag.name}'...
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handlePush}>Push to remote...</ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleDelete}>Delete</ContextMenuItem>
+    </ContextMenu>
   );
 }

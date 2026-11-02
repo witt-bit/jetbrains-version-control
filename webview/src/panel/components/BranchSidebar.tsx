@@ -1,5 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import { bridge } from "../../shared/bridge";
+import {
+  ContextMenu,
+  ContextMenuHeader,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import "../../shared/components/ContextMenu.css";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { usePanelStore } from "../../shared/store/panel-store";
@@ -224,40 +232,13 @@ function SettingsButton() {
 }
 
 function SettingsMenu({ onClose }: { onClose: () => void }) {
-  const menuRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      const handleClick = (e: MouseEvent) => {
-        if (!node.contains(e.target as Node)) onClose();
-      };
-      const handleKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
-      };
-      document.addEventListener("mousedown", handleClick);
-      document.addEventListener("keydown", handleKey);
-      return () => {
-        document.removeEventListener("mousedown", handleClick);
-        document.removeEventListener("keydown", handleKey);
-      };
-    },
-    [onClose],
-  );
+  const menuRef = useRef<HTMLDivElement>(null);
+  useContextMenuDismiss(menuRef, onClose);
 
   return (
-    <div
-      ref={menuRef}
-      className="commit-context-menu"
-      style={{
-        position: "fixed",
-        left: 40,
-        top: "50%",
-        zIndex: 1000,
-      }}
-    >
-      <div className="commit-context-menu-header">On Single Click</div>
-      <button
-        type="button"
-        className="commit-context-menu-item"
+    <ContextMenu x={40} y={window.innerHeight / 2} minWidth={200}>
+      <ContextMenuHeader>On Single Click</ContextMenuHeader>
+      <ContextMenuItem
         onClick={() => {
           bridge.request("setSingleClickAction", {
             action: "updateBranchFilter",
@@ -265,11 +246,9 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
           onClose();
         }}
       >
-        <span>Update Branch Filter</span>
-      </button>
-      <button
-        type="button"
-        className="commit-context-menu-item"
+        Update Branch Filter
+      </ContextMenuItem>
+      <ContextMenuItem
         onClick={() => {
           bridge.request("setSingleClickAction", {
             action: "navigateToHead",
@@ -277,20 +256,29 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
           onClose();
         }}
       >
-        <span>Navigate Log to Branch Head</span>
-      </button>
-      <div className="commit-context-menu-separator" />
-      <button
-        type="button"
-        className="commit-context-menu-item"
-        onClick={() => {
-          bridge.request("toggleShowTags");
-          onClose();
-        }}
-      >
-        <span>✓ Show Tags</span>
-      </button>
-    </div>
+        Navigate Log to Branch Head
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ShowTagsItem onClose={onClose} />
+    </ContextMenu>
+  );
+}
+
+function ShowTagsItem({ onClose }: { onClose: () => void }) {
+  const tagsSectionVisible = usePanelStore((s) => s.tagsSectionVisible);
+  const toggleTagsSectionVisible = usePanelStore(
+    (s) => s.toggleTagsSectionVisible,
+  );
+  return (
+    <ContextMenuItem
+      checked={tagsSectionVisible}
+      onClick={() => {
+        toggleTagsSectionVisible();
+        onClose();
+      }}
+    >
+      Show Tags
+    </ContextMenuItem>
   );
 }
 

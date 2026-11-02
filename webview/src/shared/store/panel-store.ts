@@ -46,6 +46,8 @@ interface PanelStore {
   remoteSectionSelected: boolean;
   currentBranchRowSelected: boolean;
   branchGroupByDirectory: boolean;
+  /** Sidebar gear menu: whether the Tags section is visible in the tree. */
+  tagsSectionVisible: boolean;
 
   filter: PanelFilter;
   /** Hashes to restore after clearing a filter */
@@ -91,6 +93,7 @@ interface PanelStore {
   toggleColumnVisibility: (column: "author" | "date" | "hash") => void;
   toggleSequenceCollapse: (sequenceId: string, intermediates: string[]) => void;
   toggleBranchGroupByDirectory: () => void;
+  toggleTagsSectionVisible: () => void;
   refresh: () => Promise<void>;
 }
 
@@ -234,6 +237,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   lastSelectedTag: null,
   remoteSectionSelected: false,
   currentBranchRowSelected: false,
+  tagsSectionVisible: true,
   branchGroupByDirectory: (() => {
     try {
       return localStorage.getItem("branchGroupByDirectory") === "true";
@@ -805,6 +809,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       }
       return { branchGroupByDirectory: next };
     });
+  },
+
+  toggleTagsSectionVisible() {
+    set((state) => ({ tagsSectionVisible: !state.tagsSectionVisible }));
   },
 
   toggleSequenceCollapse(sequenceId: string, intermediates: string[]) {

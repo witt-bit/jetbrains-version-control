@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import CodiconClippy from "~icons/codicon/clippy";
+import CodiconDesktopDownload from "~icons/codicon/desktop-download";
+import { bridge } from "../../shared/bridge";
+import {
+  ContextMenu,
+  ContextMenuItem,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import "../../shared/components/ContextMenu.css";
 import {
   type IdeaShelfEntry,
   useCommitStore,
@@ -269,111 +278,28 @@ function ShelfBgContextMenu({
   y: number;
   onClose: () => void;
 }) {
-  const menuRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node) return;
-      const handleClick = (e: MouseEvent) => {
-        if (!node.contains(e.target as Node)) onClose();
-      };
-      const handleKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
-      };
-      document.addEventListener("mousedown", handleClick);
-      document.addEventListener("keydown", handleKey);
-      return () => {
-        document.removeEventListener("mousedown", handleClick);
-        document.removeEventListener("keydown", handleKey);
-      };
-    },
-    [onClose],
-  );
+  const menuRef = useRef<HTMLDivElement>(null);
+  useContextMenuDismiss(menuRef, onClose);
 
   const handleImport = useCallback(() => {
-    import("../../shared/bridge").then(({ bridge }) => {
-      bridge.request("importPatches");
-    });
+    bridge.request("importPatches");
     onClose();
   }, [onClose]);
 
   return (
-    <div
-      className="commit-context-menu"
-      ref={menuRef}
-      style={{ position: "fixed", left: x, top: y, zIndex: 1000 }}
-    >
-      <button
-        type="button"
-        className="commit-context-menu-item"
-        onClick={handleImport}
-      >
-        <ImportIcon />
-        <span>Import Patches...</span>
-      </button>
-      <button
-        type="button"
-        className="commit-context-menu-item"
+    <ContextMenu x={x} y={y} minWidth={220}>
+      <ContextMenuItem onClick={handleImport} icon={<CodiconDesktopDownload />}>
+        Import Patches...
+      </ContextMenuItem>
+      <ContextMenuItem
         onClick={() => {
-          import("../../shared/bridge").then(({ bridge }) => {
-            bridge.request("importPatchFromClipboard");
-          });
+          bridge.request("importPatchFromClipboard");
           onClose();
         }}
+        icon={<CodiconClippy />}
       >
-        <ClipboardImportIcon />
-        <span>Import Patches from Clipboard</span>
-      </button>
-    </div>
-  );
-}
-
-function ImportIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      className="commit-context-menu-icon"
-    >
-      <path
-        d="M8 2V10M8 10L5 7M8 10L11 7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M2 12V13.5C2 14.0523 2.44772 14.5 3 14.5H13C13.5523 14.5 14 14.0523 14 13.5V12"
-        stroke="currentColor"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-function ClipboardImportIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="none"
-      className="commit-context-menu-icon"
-    >
-      <path
-        d="M5 2H4C3.44772 2 3 2.44772 3 3V13C3 13.5523 3.44772 14 5 14H11C11.5523 14 12 13.5523 12 13V12"
-        stroke="currentColor"
-        strokeLinecap="round"
-      />
-      <path
-        d="M6 2.5C6 1.67157 6.67157 1 7.5 1H8.5C9.32843 1 10 1.67157 10 2.5V3H6V2.5Z"
-        stroke="currentColor"
-      />
-      <path
-        d="M10 7V11M10 11L8 9M10 11L12 9"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+        Import Patches from Clipboard
+      </ContextMenuItem>
+    </ContextMenu>
   );
 }

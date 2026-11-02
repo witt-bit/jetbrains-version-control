@@ -2,6 +2,13 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge } from "../../shared/bridge";
+import {
+  ContextMenu,
+  ContextMenuHeader,
+  ContextMenuItem,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import "../../shared/components/ContextMenu.css";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
@@ -578,23 +585,7 @@ function HeaderColumnMenu({
   onClose: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("mousedown", handleClick, true);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleClick, true);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [onClose]);
+  useContextMenuDismiss(menuRef, onClose);
 
   const columns: { key: keyof VisibleColumns; label: string }[] = [
     { key: "author", label: "Author" },
@@ -603,30 +594,17 @@ function HeaderColumnMenu({
   ];
 
   return (
-    <div
-      ref={menuRef}
-      className="commit-context-menu"
-      style={{
-        position: "fixed",
-        left: x,
-        top: y,
-        zIndex: 10000,
-      }}
-    >
-      <div className="commit-context-menu-header">Columns</div>
+    <ContextMenu x={x} y={y} minWidth={160}>
+      <ContextMenuHeader>Columns</ContextMenuHeader>
       {columns.map((col) => (
-        <button
+        <ContextMenuItem
           key={col.key}
-          type="button"
-          className="commit-context-menu-item"
           onClick={() => onToggle(col.key)}
+          checked={visibleColumns[col.key]}
         >
-          <span style={{ width: 16, display: "inline-block" }}>
-            {visibleColumns[col.key] ? "✓" : ""}
-          </span>
-          <span>{col.label}</span>
-        </button>
+          {col.label}
+        </ContextMenuItem>
       ))}
-    </div>
+    </ContextMenu>
   );
 }

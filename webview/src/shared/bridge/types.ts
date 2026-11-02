@@ -93,6 +93,7 @@ export type CommandType =
   | "cherryPickAction"
   | "showErrorNotification"
   | "showInfoNotification"
+  | "showErrorNotification"
   | "openConflictsPanel"
   | "importPatchFromClipboard"
   | "createBranchPrompt"
@@ -121,6 +122,13 @@ export type CommandType =
   | "pruneWorktrees"
   | "openWorktree"
   | "pickFolder"
+  | "showQuickPick"
+  | "showErrorNotification"
+  | "getRemoteUrls"
+  | "addRemote"
+  | "setRemoteUrl"
+  | "removeRemote"
+  | "renameRemote"
   | "setContext";
 
 export interface Bridge {

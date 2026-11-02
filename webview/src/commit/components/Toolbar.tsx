@@ -1,5 +1,12 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { bridge } from "../../shared/bridge";
+import {
+  ContextMenuHeader,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import "../../shared/components/ContextMenu.css";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useToggleGroupByDirectoryShortcutLabel } from "../../shared/shortcuts";
@@ -146,6 +153,8 @@ export function Toolbar({
 
 function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
   const dirLabel = useToggleGroupByDirectoryShortcutLabel();
+  const menuRef = useRef<HTMLDivElement>(null);
+  useContextMenuDismiss(menuRef, onClose);
   const {
     groupByDirectory,
     toggleGroupByDirectory,
@@ -154,70 +163,40 @@ function ViewOptionsMenu({ onClose }: { onClose: () => void }) {
   } = useCommitStore();
 
   return (
-    <>
-      {/* Backdrop to close */}
-      <div
-        style={{ position: "fixed", inset: 0, zIndex: 999 }}
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
-        }}
-      />
-      <div
-        className="commit-context-menu"
-        style={{
-          position: "absolute",
-          top: "100%",
-          right: 0,
-          marginTop: 4,
-          zIndex: 1000,
+    <div
+      ref={menuRef}
+      className="jgc-context-menu"
+      style={{
+        position: "absolute",
+        top: "100%",
+        right: 0,
+        marginTop: 4,
+        zIndex: 1000,
+      }}
+    >
+      <ContextMenuHeader>Group By</ContextMenuHeader>
+      <ContextMenuItem
+        checked={groupByDirectory}
+        shortcut={dirLabel}
+        onClick={() => {
+          toggleGroupByDirectory();
+          onClose();
         }}
       >
-        <div className="commit-context-menu-header">Group By</div>
-        <button
-          type="button"
-          className="commit-context-menu-item"
-          onClick={() => {
-            toggleGroupByDirectory();
-            onClose();
-          }}
-        >
-          <span className="commit-context-menu-icon">
-            {groupByDirectory && <CheckIcon />}
-          </span>
-          <span>Directory</span>
-          <span className="commit-context-menu-shortcut">{dirLabel}</span>
-        </button>
-        <div className="commit-context-menu-separator" />
-        <div className="commit-context-menu-header">Show</div>
-        <button
-          type="button"
-          className="commit-context-menu-item"
-          onClick={() => {
-            toggleShowUnversioned();
-            onClose();
-          }}
-        >
-          <span className="commit-context-menu-icon">
-            {showUnversioned && <CheckIcon />}
-          </span>
-          <span>Unversioned Files</span>
-        </button>
-      </div>
-    </>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M3.5 8.5L6.5 11.5L12.5 4.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+        Directory
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuHeader>Show</ContextMenuHeader>
+      <ContextMenuItem
+        checked={showUnversioned}
+        onClick={() => {
+          toggleShowUnversioned();
+          onClose();
+        }}
+      >
+        Unversioned Files
+      </ContextMenuItem>
+    </div>
   );
 }
 

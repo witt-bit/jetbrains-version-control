@@ -314,6 +314,7 @@ export function BranchTree({
   const selectedTags = usePanelStore((s) => s.selectedTags);
   const selectTag = usePanelStore((s) => s.selectTag);
   const branchGroupByDirectory = usePanelStore((s) => s.branchGroupByDirectory);
+  const tagsSectionVisible = usePanelStore((s) => s.tagsSectionVisible);
 
   const containerRef = usePreventSelect();
 
@@ -783,27 +784,29 @@ export function BranchTree({
         </div>
 
         {/* Tags */}
-        <GroupSection
-          title="Tags"
-          collapsed={collapsed.tags}
-          onToggle={() => toggle("tags")}
-        >
-          <div className="tag-list" tabIndex={0} onKeyDown={handleTagKeyDown}>
-            {tagTree.map((node) => (
-              <TagTreeNodeView
-                key={node.fullPath}
-                node={node}
-                depth={0}
-                groupPrefix="tags"
-                collapsed={collapsed}
-                onToggle={toggle}
-                selectedTags={selectedTags}
-                onTagClick={handleTagClick}
-                onTagContextMenu={handleTagContextMenu}
-              />
-            ))}
-          </div>
-        </GroupSection>
+        {tagsSectionVisible && (
+          <GroupSection
+            title="Tags"
+            collapsed={collapsed.tags}
+            onToggle={() => toggle("tags")}
+          >
+            <div className="tag-list" tabIndex={0} onKeyDown={handleTagKeyDown}>
+              {tagTree.map((node) => (
+                <TagTreeNodeView
+                  key={node.fullPath}
+                  node={node}
+                  depth={0}
+                  groupPrefix="tags"
+                  collapsed={collapsed}
+                  onToggle={toggle}
+                  selectedTags={selectedTags}
+                  onTagClick={handleTagClick}
+                  onTagContextMenu={handleTagContextMenu}
+                />
+              ))}
+            </div>
+          </GroupSection>
+        )}
 
         {/* HEAD Context Menu */}
         {headContextMenu &&

@@ -742,6 +742,13 @@ export function activate(context: vscode.ExtensionContext) {
     return { value: result ?? null };
   });
 
+  messageRouter.handle("showQuickPick", async (params) => {
+    const items = (params.items as string[]) ?? [];
+    const placeHolder = params.placeHolder as string | undefined;
+    const picked = await vscode.window.showQuickPick(items, { placeHolder });
+    return { value: picked ?? null };
+  });
+
   messageRouter.handle("showConfirmMessage", async (params) => {
     const message = params.message as string;
     const confirmLabel = (params.confirmLabel as string) || "OK";
@@ -762,6 +769,12 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("showInfoNotification", async (params) => {
     const message = params.message as string;
     void vscode.window.showInformationMessage(message);
+    return { success: true };
+  });
+
+  messageRouter.handle("showErrorNotification", async (params) => {
+    const message = params.message as string;
+    void vscode.window.showErrorMessage(message);
     return { success: true };
   });
 
@@ -789,11 +802,6 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
-  messageRouter.handle("getRemotes", async () => {
-    if (!gitService) return NOT_GIT_REPO;
-    return gitService.getRemotes();
-  });
-
   messageRouter.handle("getRemoteUrls", async () => {
     if (!gitService) return NOT_GIT_REPO;
     return { remotes: await gitService.getRemoteUrls() };
@@ -813,6 +821,14 @@ export function activate(context: vscode.ExtensionContext) {
     const name = params.name as string;
     await gitService.removeRemote(name);
     messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+    return { success: true };
+  });
+
+  messageRouter.handle("setRemoteUrl", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const name = params.name as string;
+    const url = params.url as string;
+    await gitService.setRemoteUrl(name, url);
     return { success: true };
   });
 

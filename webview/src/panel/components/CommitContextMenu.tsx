@@ -1,87 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  ContextMenu,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  useContextMenuDismiss,
+} from "../../shared/components/ContextMenu";
+import {
+  IconBranch,
+  IconCherryPick,
+  IconTag,
+} from "../../shared/components/icons";
+import "../../shared/components/ContextMenu.css";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
-
-// IntelliJ-style icons for commit context menu
-function IconCopy() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect
-        x="2.5"
-        y="3.5"
-        width="9"
-        height="10"
-        rx="1.5"
-        stroke="currentColor"
-      />
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M11 2h.6C12.37 2 13 2.63 13 3.4v.51c0 .03 0 .06 0 .09v7.55c.6-.44 1-1.15 1-1.95V3.4C14 2.07 12.93 1 11.6 1H6.4c-.8 0-1.51.39-1.95 1H6.4H11z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function IconCherryPick() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="5" cy="11.5" r="2.5" stroke="currentColor" />
-      <circle cx="10.5" cy="10.5" r="2.5" stroke="currentColor" />
-      <path
-        d="M5 9C5 6 4 4 7 2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <path
-        d="M10.5 8C10.5 5.5 11 4 8 2"
-        stroke="currentColor"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function IconRevert() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M5.85 1.85a.5.5 0 00-.7-.7L1.65 4.65 1.3 5l.35.35 3.5 3.5a.5.5 0 00.7-.7L3.21 5.5H10.5a3.5 3.5 0 010 7H5.5a.5.5 0 000 1h5a4.5 4.5 0 000-9H3.21l2.64-2.65z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-function IconBranch() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <circle cx="4.5" cy="4" r="2" stroke="currentColor" />
-      <path
-        d="M4.5 11.5H8.5C9.6 11.5 10.5 10.6 10.5 9.5V8"
-        stroke="currentColor"
-      />
-      <path d="M4.5 6.5V14.5" stroke="currentColor" strokeLinecap="round" />
-      <circle cx="10.5" cy="6" r="2" stroke="currentColor" />
-    </svg>
-  );
-}
-
-function IconTag() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z" stroke="currentColor" />
-      <circle cx="5.5" cy="5" r="1" fill="currentColor" />
-    </svg>
-  );
-}
 
 interface CommitContextMenuProps {
   x: number;
@@ -99,11 +31,8 @@ export function CommitContextMenu({
   onCreateBranch,
 }: CommitContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  useContextMenuDismiss(menuRef, onClose);
   const currentBranch = usePanelStore((s) => s.currentBranch);
-  const [position, setPosition] = useState<{
-    top: number;
-    left: number;
-  } | null>(null);
   const [isRebasing, setIsRebasing] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [isCherryPicking, setIsCherryPicking] = useState(false);
@@ -129,102 +58,35 @@ export function CommitContextMenu({
     fetchRepoState();
   }, []);
 
-  // Adjust position after first render
-  useEffect(() => {
-    const menu = menuRef.current;
-    if (!menu) return;
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect();
-      const viewportH = window.innerHeight;
-      const viewportW = window.innerWidth;
-
-      let top = y;
-      let left = x;
-
-      if (top + rect.height > viewportH) {
-        const above = y - rect.height;
-        if (above >= 4) {
-          top = above;
-        } else {
-          top = Math.max(4, viewportH - rect.height - 4);
-        }
-      }
-      if (left + rect.width > viewportW) {
-        left = Math.max(4, viewportW - rect.width - 4);
-      }
-
-      setPosition({ top, left });
-    });
-  }, [x, y]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    const handleBlur = () => onClose();
-    const handleScroll = (e: Event) => {
-      if (
-        menuRef.current &&
-        e.target instanceof Node &&
-        !menuRef.current.contains(e.target)
-      ) {
-        onClose();
-      }
-    };
-    const handleContextMenu = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside, true);
-    document.addEventListener("contextmenu", handleContextMenu, true);
-    document.addEventListener("keydown", handleEscape);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("scroll", handleScroll, true);
-    window.addEventListener("resize", handleBlur);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
-      document.removeEventListener("contextmenu", handleContextMenu, true);
-      document.removeEventListener("keydown", handleEscape);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener("scroll", handleScroll, true);
-      window.removeEventListener("resize", handleBlur);
-    };
-  }, [onClose]);
-
   const shortHash = commit.shortHash || commit.hash.slice(0, 8);
 
-  const handleCopyHash = async () => {
-    onClose();
-    try {
-      await bridge.request("copyToClipboard", { text: commit.hash });
-    } catch (err) {
-      console.error("Copy failed:", err);
-    }
-  };
+  const handleCopyHash = () =>
+    runMenuAction(onClose, "Copy revision number", () =>
+      bridge.request("copyToClipboard", { text: commit.hash }),
+    );
 
-  const handleCherryPick = async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("cherryPick", { hash: commit.hash });
-    } catch (err) {
-      console.error("Cherry-pick failed:", err);
-    }
-  };
+  const handleCherryPick = () =>
+    runMenuAction(onClose, "Cherry-pick", () =>
+      bridgeWithProgress("cherryPick", { hash: commit.hash }),
+    );
 
-  const handleCheckoutRevision = async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("checkoutCommit", { hash: commit.hash });
-    } catch (err) {
-      console.error("Checkout revision failed:", err);
-    }
-  };
+  const handleCheckoutRevision = () =>
+    runMenuAction(onClose, "Checkout revision", () =>
+      bridgeWithProgress("checkoutCommit", { hash: commit.hash }),
+    );
+
+  const handleResetMixed = () =>
+    runMenuAction(onClose, "Reset (mixed)", () =>
+      bridgeWithProgress("resetToCommit", {
+        hash: commit.hash,
+        mode: "mixed",
+      }),
+    );
+
+  const handleResetSoft = () =>
+    runMenuAction(onClose, "Reset (soft)", () =>
+      bridgeWithProgress("resetToCommit", { hash: commit.hash, mode: "soft" }),
+    );
 
   const handleResetHard = async () => {
     onClose();
@@ -243,38 +105,10 @@ export function CommitContextMenu({
     }
   };
 
-  const handleResetMixed = async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("resetToCommit", {
-        hash: commit.hash,
-        mode: "mixed",
-      });
-    } catch (err) {
-      console.error("Reset failed:", err);
-    }
-  };
-
-  const handleResetSoft = async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("resetToCommit", {
-        hash: commit.hash,
-        mode: "soft",
-      });
-    } catch (err) {
-      console.error("Reset failed:", err);
-    }
-  };
-
-  const handleRevert = async () => {
-    onClose();
-    try {
-      await bridgeWithProgress("revertCommit", { hash: commit.hash });
-    } catch (err) {
-      console.error("Revert failed:", err);
-    }
-  };
+  const handleRevert = () =>
+    runMenuAction(onClose, "Revert commit", () =>
+      bridgeWithProgress("revertCommit", { hash: commit.hash }),
+    );
 
   const handleDropCommit = async () => {
     onClose();
@@ -346,130 +180,89 @@ export function CommitContextMenu({
   const isDropCommitDisabled =
     !currentBranch || isRebasing || isMerging || isCherryPicking;
 
-  const items: {
-    label: string;
-    action: () => void;
-    separator?: boolean;
-    icon?: React.ReactNode;
-    disabled?: boolean;
-  }[] = [
-    {
-      label: `Copy Revision Number`,
-      action: handleCopyHash,
-      icon: <IconCopy />,
-    },
-    {
-      label: "Cherry-Pick",
-      action: handleCherryPick,
-      icon: <IconCherryPick />,
-    },
-    { label: "", action: () => {}, separator: true },
-    { label: "Checkout Revision", action: handleCheckoutRevision },
-    { label: "", action: () => {}, separator: true },
-    {
-      label: "Reset Current Branch to Here (Mixed)...",
-      action: handleResetMixed,
-      icon: <IconRevert />,
-    },
-    {
-      label: "Reset Current Branch to Here (Soft)...",
-      action: handleResetSoft,
-      icon: <IconRevert />,
-    },
-    {
-      label: "Reset Current Branch to Here (Hard)...",
-      action: handleResetHard,
-      icon: <IconRevert />,
-    },
-    { label: "Revert Commit", action: handleRevert, icon: <IconRevert /> },
-    {
-      label: "Drop Commit",
-      action: handleDropCommit,
-      icon: <IconRevert />,
-      disabled: isDropCommitDisabled,
-    },
-    { label: "", action: () => {}, separator: true },
-    { label: "New Branch...", action: handleNewBranch, icon: <IconBranch /> },
-    { label: "New Tag...", action: handleNewTag, icon: <IconTag /> },
-  ];
-
-  // Add "Show in Git Log" when file filter is active
-  if (filter.file) {
-    items.push({ label: "", action: () => {}, separator: true });
-    items.push({
-      label: "Show in Git Log",
-      action: handleShowInGitLog,
-      icon: <IconBranch />,
-    });
-  }
-
-  const menu = (
-    <div
-      ref={menuRef}
-      style={{
-        position: "fixed",
-        top: position ? position.top : -9999,
-        left: position ? position.left : -9999,
-        zIndex: 9999,
-        background: "var(--vscode-menu-background, #1e1e1e)",
-        border: "1px solid var(--vscode-menu-border, #454545)",
-        borderRadius: 4,
-        padding: "4px 0",
-        minWidth: 200,
-        maxHeight: "calc(100vh - 8px)",
-        overflowY: "auto",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-        visibility: position ? "visible" : "hidden",
-      }}
-    >
-      {items.map((item, i) =>
-        item.separator ? (
-          <div
-            key={`sep-${i}`}
-            style={{
-              height: 1,
-              background: "var(--vscode-menu-separatorBackground, #454545)",
-              margin: "4px 0",
-            }}
-          />
-        ) : (
-          <div
-            key={item.label}
-            onClick={item.disabled ? undefined : item.action}
-            style={{
-              padding: "6px 12px",
-              cursor: item.disabled ? "default" : "pointer",
-              opacity: item.disabled ? 0.5 : 1,
-              color: "var(--vscode-menu-foreground, #ccc)",
-              fontSize: "13px",
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-            onMouseEnter={(e) => {
-              if (!item.disabled) {
-                (e.currentTarget as HTMLElement).style.background =
-                  "var(--vscode-list-hoverBackground, #2a2d2e)";
-                (e.currentTarget as HTMLElement).style.color =
-                  "var(--vscode-menu-selectionForeground, #fff)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = "transparent";
-              (e.currentTarget as HTMLElement).style.color =
-                "var(--vscode-menu-foreground, #ccc)";
-            }}
-          >
-            <span style={{ width: 16, flexShrink: 0, opacity: 0.7 }}>
-              {item.icon ?? null}
-            </span>
-            {item.label}
-          </div>
-        ),
+  return (
+    <ContextMenu x={x} y={y} minWidth={200}>
+      <ContextMenuItem onClick={handleCopyHash} icon={<IconCopy />}>
+        Copy Revision Number
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleCherryPick} icon={<IconCherryPick />}>
+        Cherry-Pick
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleCheckoutRevision}>
+        Checkout Revision
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleResetMixed} icon={<IconRevert />}>
+        Reset Current Branch to Here (Mixed)...
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleResetSoft} icon={<IconRevert />}>
+        Reset Current Branch to Here (Soft)...
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleResetHard} icon={<IconRevert />}>
+        Reset Current Branch to Here (Hard)...
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleRevert} icon={<IconRevert />}>
+        Revert Commit
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleDropCommit}
+        icon={<IconRevert />}
+        disabled={isDropCommitDisabled}
+      >
+        Drop Commit
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={handleNewBranch} icon={<IconBranch />}>
+        New Branch...
+      </ContextMenuItem>
+      <ContextMenuItem onClick={handleNewTag} icon={<IconTag />}>
+        New Tag...
+      </ContextMenuItem>
+      {filter.file && (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem onClick={handleShowInGitLog} icon={<IconBranch />}>
+            Show in Git Log
+          </ContextMenuItem>
+        </>
       )}
-    </div>
+    </ContextMenu>
   );
+}
 
-  return createPortal(menu, document.body);
+/** Original Commit-menu Copy icon (1 rect variant; the File menu has a different one). */
+export function IconCopy() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect
+        x="2.5"
+        y="3.5"
+        width="9"
+        height="10"
+        rx="1.5"
+        stroke="currentColor"
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M11 2h.6C12.37 2 13 2.63 13 3.4v.51c0 .03 0 .06 0 .09v7.55c.6-.44 1-1.15 1-1.95V3.4C14 2.07 12.93 1 11.6 1H6.4c-.8 0-1.51.39-1.95 1H6.4H11z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+/** Original Commit-menu Revert icon (compact-decimal variant). */
+export function IconRevert() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M5.85 1.85a.5.5 0 00-.7-.7L1.65 4.65 1.3 5l.35.35 3.5 3.5a.5.5 0 00.7-.7L3.21 5.5H10.5a3.5 3.5 0 010 7H5.5a.5.5 0 000 1h5a4.5 4.5 0 000-9H3.21l2.64-2.65z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }

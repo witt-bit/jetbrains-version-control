@@ -92,9 +92,9 @@ export type CommandType =
   | "mergeTag"
   | "showTagDiff"
   | "showHeadDiff"
-  | "getRemotes"
   | "getRemoteUrls"
   | "addRemote"
+  | "setRemoteUrl"
   | "removeRemote"
   | "renameRemote"
   | "deleteFiles"
@@ -134,6 +134,7 @@ export type CommandType =
   | "openWorktree"
   | "getWorkspaceRoot"
   | "pickFolder"
+  | "showQuickPick"
   | "setContext";
 
 export type EventType =

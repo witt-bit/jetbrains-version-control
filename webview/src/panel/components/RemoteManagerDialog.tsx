@@ -342,9 +342,7 @@ export function RemoteManagerDialog({ onClose }: RemoteManagerDialogProps) {
           await bridge.request("renameRemote", { oldName, newName: name });
         }
         if (url !== (remotes.find((r) => r.name === oldName)?.url ?? "")) {
-          // git has no "edit url" — the equivalent is remove + re-add.
-          await bridge.request("removeRemote", { name });
-          await bridge.request("addRemote", { name, url });
+          await bridge.request("setRemoteUrl", { name, url });
         }
       } else {
         await bridge.request("addRemote", { name, url });

@@ -772,6 +772,11 @@ export class GitService {
     this.invalidateCache();
   }
 
+  async setRemoteUrl(name: string, url: string): Promise<void> {
+    await this.execGit(["remote", "set-url", name, url]);
+    this.invalidateCache();
+  }
+
   async removeRemote(name: string): Promise<void> {
     await this.execGit(["remote", "remove", name]);
     this.invalidateCache();
@@ -780,14 +785,6 @@ export class GitService {
   async renameRemote(oldName: string, newName: string): Promise<void> {
     await this.execGit(["remote", "rename", oldName, newName]);
     this.invalidateCache();
-  }
-
-  async getRemotes(): Promise<string[]> {
-    const output = await this.execGit(["remote"]).catch(() => "");
-    return output
-      .trim()
-      .split("\n")
-      .filter((line) => line.trim().length > 0);
   }
 
   async getRemoteUrls(): Promise<{ name: string; url: string }[]> {
