@@ -1,4 +1,9 @@
-import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  bridge,
+  bridgeWithProgress,
+  reportActionError,
+  runMenuAction,
+} from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -77,7 +82,7 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
         status: file.status,
       });
     } catch (err) {
-      console.error("Revert file changes failed:", err);
+      await reportActionError("Revert file changes", err);
     }
   };
 
@@ -95,7 +100,7 @@ export function FileContextMenu({ x, y, file, onClose }: FileContextMenuProps) {
         filePath,
       });
     } catch (err) {
-      console.error("Cherry-pick file changes failed:", err);
+      await reportActionError("Cherry-pick file changes", err);
     }
   };
 

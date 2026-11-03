@@ -329,3 +329,36 @@ export function IconHelp() {
     </svg>
   );
 }
+
+/**
+ * AI-generate sparkle. Deliberately multicolour (gold gradient + orange
+ * companion) — the codicon sparkle is monochrome and inherits `color`, so it
+ * cannot express this. Not a menu glyph, hence not in icons.test.tsx's
+ * ORIGINALS shape guard; its own test pins the viewBox and gradient id.
+ */
+export function IconSparkle() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="jgc-sparkle-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#FFE97F" />
+          <stop offset="1" stopColor="#FFB300" />
+        </linearGradient>
+      </defs>
+      <path
+        d="M7 1 Q7.9 6.1 13 7 Q7.9 7.9 7 13 Q6.1 7.9 1 7 Q6.1 6.1 7 1 Z"
+        fill="url(#jgc-sparkle-gold)"
+      />
+      <path
+        d="M12.5 9 Q12.95 11.05 15 11.5 Q12.95 11.95 12.5 14 Q12.05 11.95 10 11.5 Q12.05 11.05 12.5 9 Z"
+        fill="#FF8A65"
+      />
+    </svg>
+  );
+}

@@ -28,11 +28,13 @@ const MODEL_STATE_KEY = "jgc.ai.commitModel";
  */
 export class AiCommitMessageController implements vscode.Disposable {
   private cancellation: vscode.CancellationTokenSource | undefined;
+  /** True between the entry guard and the moment the token is created. */
+  private starting = false;
 
   constructor(private readonly workspaceState: vscode.Memento) {}
 
   get busy(): boolean {
-    return this.cancellation !== undefined;
+    return this.cancellation !== undefined || this.starting;
   }
 
   /** Every model currently available to us; empty means the ✨ flow is off. */
@@ -109,13 +111,29 @@ export class AiCommitMessageController implements vscode.Disposable {
     style: StyleReference,
     onDelta: (text: string) => void,
   ): Promise<string> {
-    if (this.cancellation) {
+    // Reserve the slot BEFORE any await: `resolveModel` may open a QuickPick,
+    // and during that window a guard that only checked `this.cancellation`
+    // let a second generate() start, overwrite the token and interleave two
+    // streams into the same input box.
+    if (this.cancellation || this.starting) {
       throw new Error("A generation is already in progress");
     }
-    const models = await this.listModels();
-    const model = await this.resolveModel(models);
+    this.starting = true;
+    let model: vscode.LanguageModelChat | undefined;
+    try {
+      const models = await this.listModels();
+      // Stays under the `starting` flag on purpose: resolveModel can block on
+      // a QuickPick, which is exactly the window a second click would exploit.
+      model = await this.resolveModel(models);
+    } finally {
+      this.starting = false;
+    }
     if (!model) {
       throw new vscode.CancellationError();
+    }
+    // The picker may have been open for a while; re-check before claiming.
+    if (this.cancellation) {
+      throw new Error("A generation is already in progress");
     }
 
     const source = new vscode.CancellationTokenSource();

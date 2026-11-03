@@ -37,6 +37,7 @@ import {
   IconRight,
   IconRollback,
   IconShelve,
+  IconSparkle,
   IconTag,
   IconUnshelve,
 } from "./icons";
@@ -164,6 +165,15 @@ describe("menu icons match the original v1.1.3 glyphs", () => {
       expect(normalize(markup(Icon))).toBe(normalize(expected));
     });
   }
+
+  it("the AI sparkle is a 14×14 multicolour glyph", () => {
+    const html = renderToStaticMarkup(createElement(IconSparkle));
+    expect(html).toContain('width="14"');
+    expect(html).toContain('viewBox="0 0 16 16"');
+    expect(html).toContain("url(#jgc-sparkle-gold)");
+    // Two paths: the star and its small companion.
+    expect(html.match(/<path/g)?.length).toBe(2);
+  });
 
   it("every icon renders a 16×16 svg", () => {
     for (const Icon of [...Object.values(SHARED), ...Object.values(INLINE)]) {

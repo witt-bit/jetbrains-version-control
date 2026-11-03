@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { bridgeWithProgress } from "../../shared/bridge";
+import { bridgeWithProgress, reportActionError } from "../../shared/bridge";
 import type { Commit } from "../../shared/types/git";
 import "./GitResetDialog.css";
 
@@ -26,7 +26,6 @@ export function GitResetDialog({
   onClose,
 }: GitResetDialogProps) {
   const [selectedMode, setSelectedMode] = useState<ResetMode>("mixed");
-  const [submitting, setSubmitting] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,13 +49,16 @@ export function GitResetDialog({
   );
 
   const handleReset = () => {
-    if (submitting) return;
-    setSubmitting(true);
+    // No `submitting` guard state: onClose() unmounts us immediately, so the
+    // disabled style would never render.
+    const mode = selectedMode;
     onClose();
+    // A failed reset (local changes in the way, conflicts, …) must reach the
+    // user — the dialog is already gone, so a bare `void` would swallow it.
     void bridgeWithProgress("resetToCommit", {
       hash: commit.hash,
-      mode: selectedMode,
-    });
+      mode,
+    }).catch((err) => reportActionError(`Reset (${mode})`, err));
   };
 
   const containerStyle: React.CSSProperties = {
@@ -195,16 +197,14 @@ export function GitResetDialog({
           <button
             type="button"
             onClick={handleReset}
-            disabled={submitting}
             style={{
               background: "var(--vscode-button-background, #0e639c)",
               border: "none",
               borderRadius: 3,
               color: "var(--vscode-button-foreground, #ffffff)",
               padding: "6px 16px",
-              cursor: submitting ? "default" : "pointer",
+              cursor: "pointer",
               fontSize: "13px",
-              opacity: submitting ? 0.5 : 1,
             }}
           >
             Reset

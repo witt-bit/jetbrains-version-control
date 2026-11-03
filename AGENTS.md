@@ -73,6 +73,20 @@ Extension Host ↔ Webview communicate via `postMessage`:
 3. Broadcast from host via `messageRouter.broadcastEvent("eventName", data)`
 4. Subscribe in webview via `bridge.onEvent((event) => { if (event === "eventName") { ... } })`
 
+## Bridge protocol (do not weaken)
+
+`Bridge.request(command)` takes the closed `CommandType` union — **never widen it to `CommandType | string`.** It used to be `| string`, which made all 132 command names decorative: a typo or a rename compiled fine and only failed at runtime with "Unknown command". Removing the escape hatch immediately exposed 13 commands with handlers but no declaration, 8 missing on the webview side, a dead `getConfig` hook, and a `showWarningMessage` call with no handler that silently did nothing.
+
+- `src/messages/protocol.ts` and `webview/src/shared/bridge/types.ts` must hold **byte-identical** `CommandType` and `EventType` unions. When you add a command, add it to both (AGENTS.md "When adding a new bridge command" above).
+- `EventMessage.event` is `EventType`, and `onEvent` is typed — same reasoning.
+- Handler params arrive as `Record<string, unknown>`; `as` casts are unchecked. A command with a new param needs a runtime guard if the value can be absent.
+
+## Failures must reach the user
+
+`console.error` is invisible in production webviews. Every bridge action that can fail goes through `reportActionError(what, err)` (or `runMenuAction`, which wraps it) so the git message becomes a notification.
+
+`pnpm run verify` fails the build if `console.error` appears anywhere in `webview/src` outside `shared/bridge/index.ts` (the error channel itself). If you genuinely need a local log, that is the file to change.
+
 ## Key Patterns
 
 ### Multi-Select (3 modes)
@@ -152,7 +166,7 @@ End-of-line blame showing `Who, date * summary` after the code on the caret line
 
 ## Workflow rules (from repeated feedback)
 
-1. **Run `pnpm run compile` after every change — the FULL command, both builds.** `compile` now runs `check-types && verify && lint && esbuild` where `verify` greps for known regression patterns (empty imports, missing `onClose` on `<ContextMenu>`, stray `useContextMenuDismiss` outside the shared component). Biome warnings are non-fatal on this machine (memory-limited), so the grep-based `verify` step catches the specific mistakes that keep recurring. Never report "done" on an unverified build — run `pnpm run compile && (cd webview && pnpm run build)` before claiming anything.
+1. **Run `pnpm run compile` after every change — the FULL command, both builds, and READ the output.** Grepping only for `error TS` hides biome's diagnostics block entirely (`Formatter would have printed…`, `noUnusedImports`, `organizeImports` are errors that fail the build with exit 1). Use `tail`/full output for the final check. `compile` now runs `check-types && verify && lint && esbuild` where `verify` greps for known regression patterns (empty imports, missing `onClose` on `<ContextMenu>`, stray `useContextMenuDismiss` outside the shared component). Biome warnings are non-fatal on this machine (memory-limited), so the grep-based `verify` step catches the specific mistakes that keep recurring. Never report "done" on an unverified build — run `pnpm run compile && (cd webview && pnpm run build)` before claiming anything.
 2. **Don't commit prematurely.** Batch related fixes into one commit; avoid a trail of "fix the fix" commits. **Never commit without explicit user instruction** — the user must verify first. If the user says "开始吧" or similar after presenting changes, that counts as instruction. If not, present the changes and wait.
 3. **Verify before claiming done.** Walk through the actual interaction paths (all directions, all orderings) before saying "fixed". The mutual-exclusion bug was reported three times because only Commit→others was checked, not Branch→HEAD or HEAD→Remote.
 4. **When a fix doesn't work, stop and re-diagnose.** Don't apply another plausible-looking patch. Bisect with a minimal reproduction (e.g. hardcoded-color SVG) to isolate the variable.

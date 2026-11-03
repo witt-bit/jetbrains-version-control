@@ -140,9 +140,12 @@ describe("PanelStore mutual exclusion", () => {
 
   describe("clearAllSelections", () => {
     it("clears everything", () => {
-      getState().setCurrentBranchRowSelected(true);
       getState().setRemoteSectionSelected(true);
       getState().selectBranch("main", "single", ["main"]);
+      getState().selectTag("v1", "single", ["v1"]);
+      // HEAD last: any earlier step would clear it for us and mask a
+      // clearAllSelections() that forgets the HEAD row.
+      getState().setCurrentBranchRowSelected(true);
       getState().clearAllSelections();
       const state = getState();
       expect(state.currentBranchRowSelected).toBe(false);

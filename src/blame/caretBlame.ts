@@ -43,6 +43,14 @@ export class CaretBlameController implements vscode.Disposable {
   private readonly identities = new Map<string, CaretBlameIdentity | null>();
   private readonly disposables: vscode.Disposable[] = [];
   private decoratedEditor: vscode.TextEditor | undefined;
+  /**
+   * Monotonic id of the newest render. Async renders compare against it before
+   * painting, so a slow `git blame` cannot overwrite the blame for a line the
+   * caret has already left.
+   */
+  private renderSeq = 0;
+  /** Coalesces bursts of cursor movement into one decoration update. */
+  private debounce: ReturnType<typeof setTimeout> | undefined;
   private enabled: boolean;
   private format: string;
   private messageMaxLength: number;
@@ -76,7 +84,7 @@ export class CaretBlameController implements vscode.Disposable {
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection((e) => {
         if (e.textEditor.document.uri.scheme === "file") {
-          void this.render(e.textEditor);
+          this.scheduleRender(e.textEditor);
         }
       }),
       vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -140,6 +148,10 @@ export class CaretBlameController implements vscode.Disposable {
   }
 
   dispose(): void {
+    if (this.debounce !== undefined) {
+      clearTimeout(this.debounce);
+      this.debounce = undefined;
+    }
     this.clear();
     this.decoration.dispose();
     for (const d of this.disposables) {
@@ -155,6 +167,17 @@ export class CaretBlameController implements vscode.Disposable {
     }
   }
 
+  /** Debounce cursor-driven renders; one update per settling period. */
+  private scheduleRender(editor: vscode.TextEditor): void {
+    if (this.debounce !== undefined) {
+      clearTimeout(this.debounce);
+    }
+    this.debounce = setTimeout(() => {
+      this.debounce = undefined;
+      void this.render(editor);
+    }, 90);
+  }
+
   private async render(editor: vscode.TextEditor): Promise<void> {
     if (!this.enabled || editor.document.uri.scheme !== "file") {
       return;
@@ -163,10 +186,12 @@ export class CaretBlameController implements vscode.Disposable {
       this.decoratedEditor.setDecorations(this.decoration, []);
     }
     this.decoratedEditor = editor;
+    const seq = ++this.renderSeq;
 
     const line = editor.selection.active.line;
     const snapshot = await this.getBlame(editor.document);
-    if (this.decoratedEditor !== editor) {
+    // A newer render owns the editor now — drop this stale result.
+    if (seq !== this.renderSeq || this.decoratedEditor !== editor) {
       return;
     }
     const blame = snapshot.lines.find((l) => l.lineNumber === line + 1);
@@ -222,7 +247,11 @@ export class CaretBlameController implements vscode.Disposable {
   private async getBlame(doc: vscode.TextDocument): Promise<BlameSnapshot> {
     const key = doc.uri.toString();
     const cached = this.cache.get(key);
-    if (cached && cached.docVersion === doc.version) {
+    // `git blame` describes the SAVED file. While the document is dirty every
+    // keystroke bumps `doc.version`, so re-blame-on-version-change spawned a
+    // `git blame` process per typed character. Reusing the last snapshot keeps
+    // blame anchored to the saved state (it is re-read on save anyway).
+    if (cached && (cached.docVersion === doc.version || doc.isDirty)) {
       return cached;
     }
     const entry = this.resolveService(doc.uri);

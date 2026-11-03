@@ -213,41 +213,6 @@
         "category": "JGC"
       },
       {
-        "command": "jgc.dev.aiProbe.hijack.tongyi.command.generateCommitMessage",
-        "title": "Test Hijack: Qoder",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.hijack.github.copilot.git.generateCommitMessage",
-        "title": "Test Hijack: Copilot",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.hijack.codegeex.commit.message",
-        "title": "Test Hijack: CodeGeeX",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.generate",
-        "title": "Test AI Commit Message Generation",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.vendor.tongyi.command.generateCommitMessage",
-        "title": "Test Vendor: Qoder",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.vendor.github.copilot.git.generateCommitMessage",
-        "title": "Test Vendor: Copilot",
-        "category": "JGC"
-      },
-      {
-        "command": "jgc.dev.aiProbe.vendor.codegeex.commit.message",
-        "title": "Test Vendor: CodeGeeX",
-        "category": "JGC"
-      },
-      {
         "command": "git-brains.openPushPanel",
         "title": "Push...",
         "icon": "$(cloud-upload)",
@@ -651,7 +616,7 @@
     "build:web": "cd webview && pnpm run build",
     "build": "pnpm run compile && pnpm run build:web",
     "dev:web": "cd webview && pnpm run dev",
-    "verify": "set -e\necho \"=== grep regression checks ===\"\n# 检查空 import\nif grep -rl 'import {} from' src webview/src 2>/dev/null; then\n  echo \"FAIL: empty import found\"\n  exit 1\nfi\n# 检查 <ContextMenu> 是否都传了 onClose\nfor f in $(grep -rl '<ContextMenu ' src webview/src 2>/dev/null); do\n  if grep -q '<ContextMenu[^>]*>' \"$f\" && ! grep -q 'onClose=' \"$f\"; then\n    echo \"FAIL: <ContextMenu> without onClose in $f\"\n    exit 1\n  fi\ndone\n# 检查 useContextMenuDismiss 是否还在父组件里（应该只在 ContextMenu 内部）\nfor f in $(grep -rl 'useContextMenuDismiss' src webview/src 2>/dev/null); do\n  if [[ \"$f\" != \"webview/src/shared/components/ContextMenu.tsx\" ]]; then\n    # 允许 Toolbar.tsx（自定义下拉）\n    if [[ \"$f\" != \"webview/src/commit/components/Toolbar.tsx\" ]]; then\n      echo \"FAIL: useContextMenuDismiss in $f (should only be in ContextMenu.tsx)\"\n      exit 1\n    fi\n  fi\ndone\necho \"PASS: no regression patterns found\""
+    "verify": "set -e\necho \"=== grep regression checks ===\"\n# 检查空 import\nif grep -rl 'import {} from' src webview/src 2>/dev/null; then\n  echo \"FAIL: empty import found\"\n  exit 1\nfi\n# 检查 <ContextMenu> 是否都传了 onClose\nfor f in $(grep -rl '<ContextMenu ' src webview/src 2>/dev/null); do\n  if grep -q '<ContextMenu[^>]*>' \"$f\" && ! grep -q 'onClose=' \"$f\"; then\n    echo \"FAIL: <ContextMenu> without onClose in $f\"\n    exit 1\n  fi\ndone\n# 检查 useContextMenuDismiss 是否还在父组件里（应该只在 ContextMenu 内部）\nfor f in $(grep -rl 'useContextMenuDismiss' src webview/src 2>/dev/null); do\n  if [[ \"$f\" != \"webview/src/shared/components/ContextMenu.tsx\" ]]; then\n    # 允许 Toolbar.tsx（自定义下拉）\n    if [[ \"$f\" != \"webview/src/commit/components/Toolbar.tsx\" ]]; then\n      echo \"FAIL: useContextMenuDismiss in $f (should only be in ContextMenu.tsx)\"\n      exit 1\n    fi\n  fi\ndone\n# console.error must not be the only place a failure lands: the webview\n# console is invisible in production builds. Only the bridge module itself\n# may log directly (it *is* the error channel).\nfor f in $(grep -rl 'console\\.error' webview/src --include=*.ts --include=*.tsx 2>/dev/null); do\n  case \"$f\" in\n    *.test.ts|*.test.tsx) continue ;;\n    webview/src/shared/bridge/index.ts) continue ;;\n  esac\n  echo \"FAIL: console.error outside the bridge error channel in $f\"\n  exit 1\ndone\necho \"PASS: no silent console.error in webview\"\necho \"PASS: no regression patterns found\""
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.15",

@@ -1,5 +1,10 @@
 import { useCallback } from "react";
-import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  bridge,
+  bridgeWithProgress,
+  reportActionError,
+  runMenuAction,
+} from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -54,7 +59,7 @@ export function TagContextMenu({
     try {
       await bridgeWithProgress("mergeTag", { tagName: tag.name });
     } catch (err) {
-      console.error("Merge tag failed:", err);
+      await reportActionError("Merge tag", err);
     }
   }, [tag.name, currentBranch, onClose]);
 
@@ -71,7 +76,7 @@ export function TagContextMenu({
         branch: tag.name,
       });
     } catch (err) {
-      console.error("Create worktree from tag failed:", err);
+      await reportActionError("Create worktree from tag", err);
     }
   }, [tag.name, onClose]);
 
@@ -84,13 +89,12 @@ export function TagContextMenu({
     };
     const names = (result.remotes ?? []).map((r) => r.name);
     if (names.length === 0) {
-      try {
-        await bridge.request("showErrorNotification", {
+      // Nothing to push to — tell the user where remotes are managed.
+      await bridge
+        .request("showErrorNotification", {
           message: "No remotes configured — add one under Manage Remotes.",
-        });
-      } catch {
-        console.error("Push tag failed: no remotes configured");
-      }
+        })
+        .catch(() => undefined);
       return;
     }
     const pick = (await bridge.request("showQuickPick", {
@@ -104,7 +108,7 @@ export function TagContextMenu({
         remote: pick.value,
       });
     } catch (err) {
-      console.error("Push tag failed:", err);
+      await reportActionError("Push tag", err);
     }
   }, [tag.name, onClose]);
 
@@ -124,7 +128,7 @@ export function TagContextMenu({
         await bridgeWithProgress("deleteTag", { tagName: t });
       }
     } catch (err) {
-      console.error("Delete tag failed:", err);
+      await reportActionError("Delete tag", err);
     }
   }, [tag.name, selectedTags, isMultiSelect, onClose]);
 

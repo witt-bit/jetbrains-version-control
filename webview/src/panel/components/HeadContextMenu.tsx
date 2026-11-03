@@ -1,4 +1,9 @@
-import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  bridge,
+  bridgeWithProgress,
+  reportActionError,
+  runMenuAction,
+} from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -47,7 +52,7 @@ export function HeadContextMenu({
         branch: branch.name,
       });
     } catch (err) {
-      console.error("Create worktree failed:", err);
+      await reportActionError("Create worktree", err);
     }
   };
 
@@ -78,7 +83,7 @@ export function HeadContextMenu({
         newName: result.value.trim(),
       });
     } catch (err) {
-      console.error("Rename failed:", err);
+      await reportActionError("Rename", err);
     }
   };
 

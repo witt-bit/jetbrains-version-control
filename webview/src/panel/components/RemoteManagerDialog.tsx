@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import CodiconAdd from "~icons/codicon/add";
 import CodiconEdit from "~icons/codicon/edit";
 import CodiconTrash from "~icons/codicon/trash";
-import { bridge } from "../../shared/bridge";
+import { bridge, reportActionError } from "../../shared/bridge";
+import { ConfirmDialog } from "../../shared/components/ConfirmDialog";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 
@@ -287,7 +288,7 @@ export function RemoteManagerDialog({ onClose }: RemoteManagerDialogProps) {
       // initial load starts with nothing selected.
       setSelectedIdx((prev) => (prev >= 0 && prev < list.length ? prev : -1));
     } catch (err) {
-      console.error("Failed to load remotes:", err);
+      await reportActionError("Failed to load remotes", err);
     }
   }, []);
 
@@ -356,15 +357,19 @@ export function RemoteManagerDialog({ onClose }: RemoteManagerDialogProps) {
     }
   };
 
-  const handleRemove = async () => {
+  const [pendingRemove, setPendingRemove] = useState<RemoteEntry | null>(null);
+
+  /** Open the same confirmation dialog the remote folder menu uses. */
+  const handleRemove = () => {
     setError(null);
     if (!hasSelection) return;
-    const remote = remotes[selectedIdx];
-    const result = (await bridge.request("showConfirmMessage", {
-      message: `Remove remote '${remote.name}'?`,
-      confirmLabel: "Remove",
-    })) as { confirmed: boolean };
-    if (!result.confirmed) return;
+    setPendingRemove(remotes[selectedIdx] ?? null);
+  };
+
+  const confirmRemove = async () => {
+    const remote = pendingRemove;
+    setPendingRemove(null);
+    if (!remote) return;
     try {
       await bridge.request("removeRemote", { name: remote.name });
       setSelectedIdx(-1);
@@ -603,6 +608,18 @@ export function RemoteManagerDialog({ onClose }: RemoteManagerDialogProps) {
           </button>
         </div>
       </div>
+      {pendingRemove && (
+        <ConfirmDialog
+          title="Remove Remote"
+          message={`Remove remote ${pendingRemove.name} '${pendingRemove.url}'?`}
+          confirmLabel="Yes"
+          cancelLabel="No"
+          onConfirm={() => {
+            void confirmRemove();
+          }}
+          onCancel={() => setPendingRemove(null)}
+        />
+      )}
     </div>
   );
 }

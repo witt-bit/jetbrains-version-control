@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { bridge, bridgeWithProgress, runMenuAction } from "../../shared/bridge";
+import {
+  bridge,
+  bridgeWithProgress,
+  reportActionError,
+  runMenuAction,
+} from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -120,7 +125,7 @@ export function CommitContextMenu({
       if (!result.confirmed) return;
       await bridgeWithProgress("dropCommit", { hash: commit.hash });
     } catch (err) {
-      console.error("Drop commit failed:", err);
+      await reportActionError("Drop commit", err);
     }
   };
 
@@ -147,7 +152,7 @@ export function CommitContextMenu({
         hash: commit.hash,
       });
     } catch (err) {
-      console.error("Create branch failed:", err);
+      await reportActionError("Create branch", err);
     }
   };
 
@@ -164,7 +169,7 @@ export function CommitContextMenu({
         hash: commit.hash,
       });
     } catch (err) {
-      console.error("Create tag failed:", err);
+      await reportActionError("Create tag", err);
     }
   };
 

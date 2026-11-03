@@ -955,7 +955,7 @@ export class GitService {
 
   async resetToCommit(
     hash: string,
-    mode: "soft" | "mixed" | "hard",
+    mode: "soft" | "mixed" | "hard" | "keep",
   ): Promise<void> {
     await this.execGit(["reset", `--${mode}`, hash]);
     this.invalidateCache();
@@ -978,27 +978,37 @@ export class GitService {
     this.invalidateCache();
   }
 
-  async createPatchFromCommit(hash: string): Promise<void> {
-    const patch = await this.execGit(["format-patch", "--stdout", hash]);
-    const { writeFileSync } = await import("node:fs");
-    const { join } = await import("node:path");
-    const commit = (
-      await this.execGit(["log", "-1", "--format=%s", hash])
-    ).trim();
-    const fileName = join(
-      this.root,
-      `${hash.slice(0, 8)}-${commit.replace(/[^a-zA-Z0-9]+/g, "_")}.patch`,
-    );
-    writeFileSync(fileName, patch);
+  /**
+   * The `git format-patch` text for one commit. Returned instead of written so
+   * the caller can ask the user where to put it — writing into the working
+   * tree behind the user's back left untracked files and blew up on long
+   * subjects (ENAMETOOLONG).
+   */
+  async getPatchForCommit(hash: string): Promise<string> {
+    return this.execGit(["format-patch", "--stdout", hash]);
   }
 
-  async showRepositoryAtRevision(hash: string): Promise<void> {
-    // Show the repo state at a specific revision via diff editor
-    await this.execGit(["diff", "--stat", hash]);
+  /** `<short> <subject>` for one commit — used to name export files. */
+  async getCommitLabel(
+    hash: string,
+  ): Promise<{ short: string; subject: string }> {
+    const output = await this.execGit(["log", "-1", "--format=%h%x00%s", hash]);
+    const [short = "", subject = ""] = output.trim().split("\x00");
+    return { short, subject };
   }
 
-  async compareWithLocal(hash: string): Promise<void> {
-    await this.execGit(["diff", hash]);
+  /** Every path tracked at `hash` — the repository contents at that revision. */
+  async getRepoTreeAtRevision(hash: string): Promise<string[]> {
+    const output = await this.execGit(["ls-tree", "-r", "--name-only", hash]);
+    return output
+      .trim()
+      .split("\n")
+      .filter((line) => line.length > 0);
+  }
+
+  /** Diff between `hash` and the working tree (staged + unstaged). */
+  async getDiffWithLocal(hash: string): Promise<string> {
+    return this.execGit(["diff", hash]);
   }
 
   async undoCommit(hash: string): Promise<void> {
@@ -1023,11 +1033,19 @@ export class GitService {
     this.invalidateCache();
   }
 
-  async pushAllUpToHere(hash: string): Promise<void> {
+  /**
+   * Point the remote branch at `hash`. The refspec is `<sha>:refs/heads/<branch>`
+   * — source is the commit, destination is the branch. (The reversed form
+   * `<branch>:<sha>` created a remote branch literally named after the hash.)
+   */
+  async pushAllUpToHere(hash: string, remote: string): Promise<void> {
     const branch = (
       await this.execGit(["rev-parse", "--abbrev-ref", "HEAD"])
     ).trim();
-    await this.execGit(["push", "origin", `${branch}:${hash}`]);
+    if (!branch || branch === "HEAD") {
+      throw new Error("Cannot push from a detached HEAD");
+    }
+    await this.execGit(["push", remote, `${hash}:refs/heads/${branch}`]);
     this.invalidateCache();
   }
 
@@ -1469,16 +1487,23 @@ export class GitService {
 
   /** The configured committer identity, or null when neither field is set. */
   async getCurrentUser(): Promise<{ name: string; email: string } | null> {
-    try {
-      const name = (await this.execGit(["config", "user.name"])).trim();
-      const email = (await this.execGit(["config", "user.email"])).trim();
-      if (!name && !email) {
-        return null;
+    // `git config <key>` exits 1 when the key is unset, so a half-configured
+    // identity (name without email) must not throw away the value we did get.
+    const read = async (key: string): Promise<string> => {
+      try {
+        return (await this.execGit(["config", "--get", key])).trim();
+      } catch {
+        return "";
       }
-      return { name, email };
-    } catch {
+    };
+    const [name, email] = await Promise.all([
+      read("user.name"),
+      read("user.email"),
+    ]);
+    if (!name && !email) {
       return null;
     }
+    return { name, email };
   }
 
   /**

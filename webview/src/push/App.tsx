@@ -2,7 +2,7 @@ import { Allotment } from "allotment";
 import { useCallback, useEffect, useRef, useState } from "react";
 import CodiconListFlat from "~icons/codicon/list-flat";
 import CodiconListTree from "~icons/codicon/list-tree";
-import { bridge } from "../shared/bridge";
+import { bridge, reportActionError } from "../shared/bridge";
 import { CommitInfo } from "../shared/components/CommitInfo";
 import { FileTree } from "../shared/components/FileTree";
 import type { Commit, DiffFile } from "../shared/types/git";
@@ -107,7 +107,7 @@ export function PushApp() {
           setSelectedHash(list[0].hash);
         }
       } catch (err) {
-        console.error("Failed to load ahead commits:", err);
+        await reportActionError("Failed to load ahead commits", err);
       }
     }
     load();
@@ -125,7 +125,7 @@ export function PushApp() {
         })) as DiffFile[] | null;
         setFiles(result ?? []);
       } catch (err) {
-        console.error("Failed to load commit files:", err);
+        await reportActionError("Failed to load commit files", err);
       }
     }
     load();

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import {
+  bridge,
+  bridgeWithProgress,
+  reportActionError,
+} from "../../shared/bridge";
 import { ConfirmDialog } from "../../shared/components/ConfirmDialog";
 import { Tooltip } from "../../shared/components/Tooltip";
 import { useListKeyboardNavigation } from "../../shared/hooks/useListKeyboardNavigation";
@@ -480,7 +484,7 @@ export function BranchTree({
     try {
       await bridge.request("removeRemote", { name: target.name });
     } catch (err) {
-      console.error("Remove remote failed:", err);
+      await reportActionError("Remove remote", err);
     }
   }, [removeRemoteDialog]);
 
@@ -503,7 +507,7 @@ export function BranchTree({
           await bridge.request("fetchAll");
         }
       } catch (err) {
-        console.error("Edit remote failed:", err);
+        await reportActionError("Edit remote", err);
       }
     },
     [editRemoteDialog],
@@ -770,8 +774,9 @@ export function BranchTree({
           <div
             className={`selectable-row${currentBranchRowSelected ? " row-selected" : ""}`}
             onClick={() => {
-              setCurrentBranchRowSelected(true);
+              // Order matters: clearAllSelections() also resets HEAD.
               clearAllSelections();
+              setCurrentBranchRowSelected(true);
             }}
             onDoubleClick={() => {
               if (headBranch) {
@@ -1099,7 +1104,7 @@ export function BranchTree({
                     force,
                   });
                 } catch (err) {
-                  console.error("Push failed:", err);
+                  await reportActionError("Push", err);
                 }
               }}
             />,
@@ -1593,7 +1598,7 @@ function BranchContextMenu({
         await bridgeWithProgress("checkoutBranch", { branchName: branch.name });
       }
     } catch (err) {
-      console.error("Checkout failed:", err);
+      await reportActionError("Checkout", err);
     }
   };
 
@@ -1632,7 +1637,7 @@ function BranchContextMenu({
             force: true,
           });
         } catch (err2) {
-          console.error("Force delete failed:", err2);
+          await reportActionError("Force delete", err2);
         }
       }
     }
@@ -1656,7 +1661,7 @@ function BranchContextMenu({
         newName: result.value.trim(),
       });
     } catch (err) {
-      console.error("Rename failed:", err);
+      await reportActionError("Rename", err);
     }
   };
 
@@ -1669,7 +1674,7 @@ function BranchContextMenu({
     try {
       await bridgeWithProgress("pullBranch", { branchName: branch.name });
     } catch (err) {
-      console.error("Update failed:", err);
+      await reportActionError("Update", err);
     }
   };
 
@@ -1683,7 +1688,7 @@ function BranchContextMenu({
     try {
       await bridgeWithProgress("mergeBranch", { branchName: branch.name });
     } catch (err) {
-      console.error("Merge failed:", err);
+      await reportActionError("Merge", err);
     }
   };
 
@@ -1697,7 +1702,7 @@ function BranchContextMenu({
     try {
       await bridgeWithProgress("rebaseBranch", { onto: branch.name });
     } catch (err) {
-      console.error("Rebase failed:", err);
+      await reportActionError("Rebase", err);
     }
   };
 
@@ -1709,7 +1714,7 @@ function BranchContextMenu({
         rebaseOnto: currentBranch,
       });
     } catch (err) {
-      console.error("Checkout and rebase failed:", err);
+      await reportActionError("Checkout and rebase", err);
     }
   };
 

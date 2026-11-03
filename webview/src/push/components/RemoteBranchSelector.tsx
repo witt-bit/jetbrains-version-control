@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { bridge } from "../../shared/bridge";
+import { bridge, reportActionError } from "../../shared/bridge";
 
 interface RemoteBranchGroup {
   remote: string;
@@ -43,7 +43,7 @@ export function RemoteBranchSelector({
         const remoteNames = (result ?? []).map((g) => g.remote);
         setRemotes(remoteNames);
       } catch (err) {
-        console.error("Failed to fetch remotes:", err);
+        await reportActionError("Failed to fetch remotes", err);
       } finally {
         setLoading(false);
       }

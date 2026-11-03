@@ -92,9 +92,17 @@ export class BuiltinGitPrompt implements vscode.Disposable {
       // Either explicit answer settles the prompt.
       await this.settle();
       if (choice === "Disable built-in Git") {
+        // Workspace scope, not Global: `git.enabled = false` is a heavy hammer
+        // and the user asked about THIS project — writing it globally would
+        // silently turn off the built-in Git UI in every other folder too.
+        // With no folder open there is nothing to scope to, so fall back.
+        const target =
+          (vscode.workspace.workspaceFolders?.length ?? 0) > 0
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.Global;
         await vscode.workspace
           .getConfiguration("git")
-          .update("enabled", false, vscode.ConfigurationTarget.Global);
+          .update("enabled", false, target);
         const reload = await vscode.window.showInformationMessage(
           "Built-in Git is now disabled. Reload the window to apply it. To remove the Source Control icon from the activity bar, right-click the activity bar and uncheck Source Control.",
           "Reload Now",

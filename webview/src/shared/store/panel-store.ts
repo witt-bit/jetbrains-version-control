@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { bridge } from "../bridge";
+import { bridge, reportActionError } from "../bridge";
 import type { SelectionMode } from "../hooks/useModifierClickSelection";
 import type {
   BranchInfo,
@@ -343,7 +343,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         pendingSelectionFromFilter: [],
       });
     } catch (err) {
-      console.error("fetchInitialData failed:", err);
+      await reportActionError("fetchInitialData", err);
     } finally {
       const elapsed = Date.now() - start;
       if (elapsed < 1000) {
@@ -388,7 +388,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         set({ hasMore: false, loading: false });
       }
     } catch (err) {
-      console.error("loadMore failed:", err);
+      await reportActionError("loadMore", err);
       set({ loading: false });
     }
   },
@@ -471,7 +471,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       if (requestSeq !== commitFilesRequestSeq) return;
       set({ commitFiles: files ?? [] });
     } catch (err) {
-      console.error("selectCommit failed:", err);
+      await reportActionError("selectCommit", err);
     }
   },
 
@@ -568,7 +568,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         });
       }
     } catch (err) {
-      console.error("openDiffEditor failed:", err);
+      await reportActionError("openDiffEditor", err);
     }
   },
 
@@ -747,6 +747,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       rangeNewest: null,
       remoteSectionSelected: false,
       selectedRemoteFolder: null,
+      currentBranchRowSelected: false,
     });
   },
 
@@ -899,7 +900,10 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
           })) as DiffFile[] | null;
           set({ commitFiles: files ?? [] });
         } catch (err) {
-          console.error("toggleSequenceCollapse failed to load files:", err);
+          await reportActionError(
+            "toggleSequenceCollapse failed to load files",
+            err,
+          );
         }
       })();
     }

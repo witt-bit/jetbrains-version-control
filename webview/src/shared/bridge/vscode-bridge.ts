@@ -1,6 +1,7 @@
 import type {
   Bridge,
   EventMessage,
+  EventType,
   RequestMessage,
   ResponseMessage,
 } from "./types";
@@ -17,7 +18,7 @@ export function createVSCodeBridge(): Bridge {
     string,
     { resolve: (v: unknown) => void; reject: (e: Error) => void }
   >();
-  const eventHandlers = new Set<(event: string, data: unknown) => void>();
+  const eventHandlers = new Set<(event: EventType, data: unknown) => void>();
 
   window.addEventListener("message", (e: MessageEvent) => {
     const msg = e.data;

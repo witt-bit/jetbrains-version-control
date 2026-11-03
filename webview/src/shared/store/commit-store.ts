@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { bridge } from "../bridge";
+import { bridge, reportActionError } from "../bridge";
 import type { SelectionMode } from "../hooks/useModifierClickSelection";
 
 export interface WorkingTreeFile {
@@ -178,7 +178,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         }
       }
     } catch (err) {
-      console.error("fetchChanges failed:", err);
+      await reportActionError("fetchChanges", err);
     } finally {
       // Ensure loading bar is visible for at least 300ms
       const elapsed = Date.now() - start;
@@ -196,7 +196,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         set({ shelves: result });
       }
     } catch (err) {
-      console.error("fetchShelves failed:", err);
+      await reportActionError("fetchShelves", err);
     }
   },
 
@@ -292,7 +292,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("stageFile", { filePath });
       await get().fetchChanges();
     } catch (err) {
-      console.error("stageFile failed:", err);
+      await reportActionError("stageFile", err);
     }
   },
 
@@ -301,7 +301,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("unstageFile", { filePath });
       await get().fetchChanges();
     } catch (err) {
-      console.error("unstageFile failed:", err);
+      await reportActionError("unstageFile", err);
     }
   },
 
@@ -310,7 +310,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("stageAll");
       await get().fetchChanges();
     } catch (err) {
-      console.error("stageAll failed:", err);
+      await reportActionError("stageAll", err);
     }
   },
 
@@ -319,7 +319,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("unstageAll");
       await get().fetchChanges();
     } catch (err) {
-      console.error("unstageAll failed:", err);
+      await reportActionError("unstageAll", err);
     }
   },
 
@@ -353,7 +353,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       return true;
     } catch (err) {
-      console.error("commit failed:", err);
+      await reportActionError("commit", err);
       return false;
     } finally {
       set({ loading: false });
@@ -383,7 +383,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       return true;
     } catch (err) {
-      console.error("commitAndPush failed:", err);
+      await reportActionError("commitAndPush", err);
       return false;
     } finally {
       set({ loading: false });
@@ -395,7 +395,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("rollbackFile", { filePath });
       await get().fetchChanges();
     } catch (err) {
-      console.error("rollbackFile failed:", err);
+      await reportActionError("rollbackFile", err);
     }
   },
 
@@ -403,7 +403,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     try {
       await bridge.request("showDiffForWorkingFile", { filePath, staged });
     } catch (err) {
-      console.error("showDiff failed:", err);
+      await reportActionError("showDiff", err);
     }
   },
 
@@ -411,7 +411,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     try {
       await bridge.request("openFile", { filePath });
     } catch (err) {
-      console.error("openSourceFile failed:", err);
+      await reportActionError("openSourceFile", err);
     }
   },
 
@@ -471,7 +471,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         filePaths: [...new Set(files.map((f) => f.path))],
       });
     } catch (err) {
-      console.error("deleteHighlighted failed:", err);
+      await reportActionError("deleteHighlighted", err);
     }
   },
 
@@ -499,7 +499,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       await get().fetchShelves();
     } catch (err) {
-      console.error("shelveChanges failed:", err);
+      await reportActionError("shelveChanges", err);
     } finally {
       set({ loading: false });
     }
@@ -512,7 +512,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       await get().fetchShelves();
     } catch (err) {
-      console.error("unshelveChanges failed:", err);
+      await reportActionError("unshelveChanges", err);
     } finally {
       set({ loading: false });
     }
@@ -523,7 +523,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("deleteShelve", { stashId });
       await get().fetchShelves();
     } catch (err) {
-      console.error("deleteShelve failed:", err);
+      await reportActionError("deleteShelve", err);
     }
   },
 
@@ -536,7 +536,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         set({ ideaShelves: result });
       }
     } catch (err) {
-      console.error("fetchIdeaShelves failed:", err);
+      await reportActionError("fetchIdeaShelves", err);
     }
   },
 
@@ -547,7 +547,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       await get().fetchIdeaShelves();
     } catch (err) {
-      console.error("ideaShelveChanges failed:", err);
+      await reportActionError("ideaShelveChanges", err);
     } finally {
       set({ loading: false });
     }
@@ -560,7 +560,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await get().fetchChanges();
       await get().fetchIdeaShelves();
     } catch (err) {
-      console.error("ideaUnshelveChanges failed:", err);
+      await reportActionError("ideaUnshelveChanges", err);
     } finally {
       set({ loading: false });
     }
@@ -571,7 +571,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       await bridge.request("deleteIdeaShelf", { shelfName });
       await get().fetchIdeaShelves();
     } catch (err) {
-      console.error("deleteIdeaShelf failed:", err);
+      await reportActionError("deleteIdeaShelf", err);
     }
   },
 
@@ -642,7 +642,11 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       .map((f) => ({ path: f.path, staged: f.staged, status: f.status }));
     if (files.length === 0) return;
 
+    // Keep whatever the user already typed: a failed or cancelled generation
+    // used to leave an empty box and no way back.
+    const draft = get().commitMessage;
     set({ aiGenerating: true, commitMessage: "" });
+    let settled = false;
     try {
       const result = (await bridge.request("generateCommitMessage", {
         files,
@@ -654,12 +658,22 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
       };
       if (result?.success && typeof result.message === "string") {
         set({ commitMessage: result.message });
+        settled = true;
+      } else if (result?.cancelled) {
+        // Cancelled by the user — put the draft back silently.
+        set({ commitMessage: draft });
+        settled = true;
       } else if (result?.error) {
-        console.error("generateCommitMessage failed:", result.error);
+        set({ commitMessage: draft });
+        settled = true;
+        await reportActionError("Generate commit message", result.error);
       }
     } catch (err) {
-      console.error("generateCommitMessage failed:", err);
+      await reportActionError("Generate commit message", err);
     } finally {
+      if (!settled) {
+        set({ commitMessage: get().commitMessage || draft });
+      }
       set({ aiGenerating: false });
     }
   },
@@ -669,7 +683,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     try {
       await bridge.request("chooseAiModel");
     } catch (err) {
-      console.error("chooseAiModel failed:", err);
+      await reportActionError("Choose AI model", err);
     }
   },
 
@@ -677,7 +691,7 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     try {
       await bridge.request("cancelCommitMessage");
     } catch (err) {
-      console.error("cancelCommitMessage failed:", err);
+      await reportActionError("Cancel AI generation", err);
     }
   },
 

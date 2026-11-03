@@ -1,4 +1,5 @@
 import * as nodefs from "node:fs/promises";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { AiCommitMessageController, type PromptFile } from "./ai/commitMessage";
 import { BlameManager } from "./blame/blameManager";
@@ -12,6 +13,7 @@ import { loadMarkerIcons } from "./decorations/markerHover";
 import { registerMarkerHoverProvider } from "./decorations/markerHoverProvider";
 import { createMarkerPopup } from "./decorations/markerPopup";
 import { registerAiProbe } from "./dev/aiProbe";
+import { patchFileName } from "./git/exportFileName";
 import { GitService } from "./git/gitService";
 import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
@@ -760,6 +762,12 @@ export function activate(context: vscode.ExtensionContext) {
     return { confirmed: result === confirmLabel };
   });
 
+  messageRouter.handle("showWarningMessage", async (params) => {
+    const message = params.message as string;
+    void vscode.window.showWarningMessage(message);
+    return { success: true };
+  });
+
   messageRouter.handle("showErrorNotification", async (params) => {
     const message = params.message as string;
     void vscode.window.showErrorMessage(message);
@@ -1082,7 +1090,7 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("resetToCommit", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const hash = params.hash as string;
-    const mode = params.mode as "soft" | "mixed" | "hard";
+    const mode = params.mode as "soft" | "mixed" | "hard" | "keep";
     return withProgress(messageRouter, async () => {
       await gitService.resetToCommit(hash, mode);
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
@@ -1150,24 +1158,106 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   messageRouter.handle("createPatchFromCommit", async (params) => {
-    if (!gitService) return NOT_GIT_REPO;
+    if (!gitService || !workspaceRoot) return NOT_GIT_REPO;
     const hash = params.hash as string;
-    await gitService.createPatchFromCommit(hash);
-    return { success: true };
+    let patch: string;
+    let label: { short: string; subject: string };
+    try {
+      [patch, label] = await Promise.all([
+        gitService.getPatchForCommit(hash),
+        gitService.getCommitLabel(hash),
+      ]);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(`Could not create patch: ${msg}`);
+      return { success: false, error: msg };
+    }
+    // Ask where to put it. The old implementation wrote into the repo root,
+    // leaving an untracked file the user never asked for.
+    const defaultName = patchFileName(label.short, label.subject);
+    const saveUri = await vscode.window.showSaveDialog({
+      defaultUri: vscode.Uri.file(path.join(workspaceRoot, defaultName)),
+      filters: { "Patch files": ["patch", "diff"], "All files": ["*"] },
+      title: "Save Patch File",
+    });
+    if (!saveUri) {
+      return { success: false, cancelled: true };
+    }
+    try {
+      await nodefs.writeFile(saveUri.fsPath, patch, "utf-8");
+      void vscode.window.showInformationMessage(
+        `Patch saved to ${saveUri.fsPath}`,
+      );
+      return { success: true, path: saveUri.fsPath };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(`Could not save patch: ${msg}`);
+      return { success: false, error: msg };
+    }
   });
 
   messageRouter.handle("showRepositoryAtRevision", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const hash = params.hash as string;
-    await gitService.showRepositoryAtRevision(hash);
-    return { success: true };
+    try {
+      const [paths, label] = await Promise.all([
+        gitService.getRepoTreeAtRevision(hash),
+        gitService.getCommitLabel(hash),
+      ]);
+      if (paths.length === 0) {
+        void vscode.window.showInformationMessage(
+          "That revision has no tracked files.",
+        );
+        return { success: false, error: "empty revision" };
+      }
+      const content = [
+        `Repository at ${label.short} — ${label.subject}`,
+        `${paths.length} tracked file(s)`,
+        "",
+        ...paths,
+      ].join("\n");
+      const doc = await vscode.workspace.openTextDocument({
+        language: "plaintext",
+        content,
+      });
+      await vscode.window.showTextDocument(doc, { preview: true });
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(
+        `Could not show repository at revision: ${msg}`,
+      );
+      return { success: false, error: msg };
+    }
   });
 
   messageRouter.handle("compareWithLocal", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const hash = params.hash as string;
-    await gitService.compareWithLocal(hash);
-    return { success: true };
+    try {
+      const [diff, label] = await Promise.all([
+        gitService.getDiffWithLocal(hash),
+        gitService.getCommitLabel(hash),
+      ]);
+      if (!diff.trim()) {
+        void vscode.window.showInformationMessage(
+          `No differences between ${label.short} and your working tree.`,
+        );
+        return { success: true, empty: true };
+      }
+      const doc = await vscode.workspace.openTextDocument({
+        language: "diff",
+        content: `# Working tree vs ${label.short} — ${label.subject}\n${diff}`,
+      });
+      await vscode.window.showTextDocument(doc, { preview: true });
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(
+        `Could not compare with local: ${msg}`,
+      );
+      return { success: false, error: msg };
+    }
   });
 
   messageRouter.handle("undoCommit", async (params) => {
@@ -1182,8 +1272,25 @@ export function activate(context: vscode.ExtensionContext) {
   messageRouter.handle("pushAllUpToHere", async (params) => {
     if (!gitService) return NOT_GIT_REPO;
     const hash = params.hash as string;
+    // Never hardcode `origin` — repos can have several remotes or none.
+    const remotes = (await gitService.getRemoteUrls().catch(() => [])) ?? [];
+    if (remotes.length === 0) {
+      void vscode.window.showErrorMessage(
+        "No remote configured — nothing to push to.",
+      );
+      return { success: false, error: "no remote" };
+    }
+    let remote = remotes[0].name;
+    if (remotes.length > 1) {
+      const picked = await vscode.window.showQuickPick(
+        remotes.map((r) => r.name),
+        { placeHolder: "Push to which remote?" },
+      );
+      if (!picked) return { success: false, cancelled: true };
+      remote = picked;
+    }
     return withProgress(messageRouter, async () => {
-      await gitService.pushAllUpToHere(hash);
+      await gitService.pushAllUpToHere(hash, remote);
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
       return { success: true };
     });
