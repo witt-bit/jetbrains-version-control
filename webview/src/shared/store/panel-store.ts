@@ -44,6 +44,8 @@ interface PanelStore {
   selectedTags: string[];
   lastSelectedTag: string | null;
   remoteSectionSelected: boolean;
+  /** Name of the selected remote folder row in the remote tree (e.g. "origin"). */
+  selectedRemoteFolder: string | null;
   currentBranchRowSelected: boolean;
   branchGroupByDirectory: boolean;
   /** Sidebar gear menu: whether the Tags section is visible in the tree. */
@@ -88,6 +90,7 @@ interface PanelStore {
   ) => void;
   clearAllSelections: () => void;
   setRemoteSectionSelected: (selected: boolean) => void;
+  setSelectedRemoteFolder: (remoteName: string | null) => void;
   setCurrentBranchRowSelected: (selected: boolean) => void;
   setHoveredColumn: (column: number | null) => void;
   toggleColumnVisibility: (column: "author" | "date" | "hash") => void;
@@ -236,6 +239,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   selectedTags: [],
   lastSelectedTag: null,
   remoteSectionSelected: false,
+  selectedRemoteFolder: null,
   currentBranchRowSelected: false,
   tagsSectionVisible: true,
   branchGroupByDirectory: (() => {
@@ -455,6 +459,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       lastSelectedBranch: null,
       lastSelectedTag: null,
       remoteSectionSelected: false,
+      selectedRemoteFolder: null,
       currentBranchRowSelected: false,
     });
     const requestSeq = ++commitFilesRequestSeq;
@@ -623,6 +628,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       lastSelectedCommitHash: null,
       lastSelectedTag: null,
       remoteSectionSelected: false,
+      selectedRemoteFolder: null,
       currentBranchRowSelected: false,
     };
     if (mode === "single") {
@@ -681,6 +687,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       lastSelectedCommitHash: null,
       lastSelectedBranch: null,
       remoteSectionSelected: false,
+      selectedRemoteFolder: null,
       currentBranchRowSelected: false,
     };
     if (mode === "single") {
@@ -739,6 +746,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       rangeOldest: null,
       rangeNewest: null,
       remoteSectionSelected: false,
+      selectedRemoteFolder: null,
     });
   },
 
@@ -746,6 +754,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     if (selected) {
       set({
         remoteSectionSelected: true,
+        selectedRemoteFolder: null,
         currentBranchRowSelected: false,
         selectedBranches: [],
         selectedTags: [],
@@ -764,11 +773,35 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     }
   },
 
+  setSelectedRemoteFolder(remoteName: string | null) {
+    if (!remoteName) {
+      set({ selectedRemoteFolder: null });
+      return;
+    }
+    set({
+      selectedRemoteFolder: remoteName,
+      remoteSectionSelected: false,
+      currentBranchRowSelected: false,
+      selectedBranches: [],
+      selectedTags: [],
+      selectedCommitHashes: [],
+      selectedCommitHash: null,
+      lastSelectedBranch: null,
+      lastSelectedTag: null,
+      lastSelectedCommitHash: null,
+      commitFiles: [],
+      selectedFilePath: null,
+      rangeOldest: null,
+      rangeNewest: null,
+    });
+  },
+
   setCurrentBranchRowSelected(selected: boolean) {
     if (selected) {
       set({
         currentBranchRowSelected: true,
         remoteSectionSelected: false,
+        selectedRemoteFolder: null,
         selectedBranches: [],
         selectedTags: [],
         selectedCommitHashes: [],

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { bridge, bridgeWithProgress } from "../../shared/bridge";
+import { ConfirmDialog } from "../../shared/components/ConfirmDialog";
 import { Tooltip } from "../../shared/components/Tooltip";
 import { useListKeyboardNavigation } from "../../shared/hooks/useListKeyboardNavigation";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
@@ -11,7 +12,8 @@ import { BranchSidebar as BranchSidebarComponent } from "./BranchSidebar";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { HeadContextMenu } from "./HeadContextMenu";
 import { PushDialog } from "./PushDialog";
-import { RemoteManagerDialog } from "./RemoteManagerDialog";
+import { RemoteFolderContextMenu } from "./RemoteFolderContextMenu";
+import { DefineRemoteDialog, RemoteManagerDialog } from "./RemoteManagerDialog";
 import { TagContextMenu } from "./TagContextMenu";
 
 // ---------------------------------------------------------------------------
@@ -356,9 +358,32 @@ export function BranchTree({
 
   // Remote manager dialog state
   const [remoteManagerDialog, setRemoteManagerDialog] = useState(false);
+
+  // Remote folder (e.g. "origin") context menu state
+  const [remoteFolderMenu, setRemoteFolderMenu] = useState<{
+    x: number;
+    y: number;
+    remoteName: string;
+  } | null>(null);
+
+  // Define Remote dialog for editing an existing remote
+  const [editRemoteDialog, setEditRemoteDialog] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
+
+  // Remove Remote confirmation dialog
+  const [removeRemoteDialog, setRemoveRemoteDialog] = useState<{
+    name: string;
+    url: string;
+  } | null>(null);
   const remoteSectionSelected = usePanelStore((s) => s.remoteSectionSelected);
   const setRemoteSectionSelected = usePanelStore(
     (s) => s.setRemoteSectionSelected,
+  );
+  const selectedRemoteFolder = usePanelStore((s) => s.selectedRemoteFolder);
+  const setSelectedRemoteFolder = usePanelStore(
+    (s) => s.setSelectedRemoteFolder,
   );
 
   // Create branch dialog state
@@ -422,6 +447,66 @@ export function BranchTree({
       setRemoteContextMenu({ x: e.clientX, y: e.clientY });
     },
     [setRemoteSectionSelected],
+  );
+
+  const handleRemoteFolderContextMenu = useCallback(
+    (e: React.MouseEvent, remoteName: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedRemoteFolder(remoteName);
+      setRemoteFolderMenu({ x: e.clientX, y: e.clientY, remoteName });
+    },
+    [setSelectedRemoteFolder],
+  );
+
+  const closeRemoteFolderMenu = useCallback(() => {
+    setRemoteFolderMenu(null);
+  }, []);
+
+  const handleEditRemote = useCallback((name: string, url: string) => {
+    setRemoteFolderMenu(null);
+    setEditRemoteDialog({ name, url });
+  }, []);
+
+  const handleRemoveRemote = useCallback((name: string, url: string) => {
+    setRemoteFolderMenu(null);
+    setRemoveRemoteDialog({ name, url });
+  }, []);
+
+  const confirmRemoveRemote = useCallback(async () => {
+    const target = removeRemoteDialog;
+    setRemoveRemoteDialog(null);
+    if (!target) return;
+    try {
+      await bridge.request("removeRemote", { name: target.name });
+    } catch (err) {
+      console.error("Remove remote failed:", err);
+    }
+  }, [removeRemoteDialog]);
+
+  const submitEditRemote = useCallback(
+    async (name: string, url: string, fetchRemote: boolean) => {
+      const old = editRemoteDialog;
+      setEditRemoteDialog(null);
+      if (!old) return;
+      try {
+        if (name !== old.name) {
+          await bridge.request("renameRemote", {
+            oldName: old.name,
+            newName: name,
+          });
+        }
+        if (url !== old.url) {
+          await bridge.request("setRemoteUrl", { name, url });
+        }
+        if (fetchRemote) {
+          await bridge.request("fetchAll");
+        }
+      } catch (err) {
+        console.error("Edit remote failed:", err);
+      }
+    },
+    [editRemoteDialog],
   );
 
   useEffect(() => {
@@ -775,6 +860,9 @@ export function BranchTree({
                   onBranchClick={handleClick}
                   onBranchDoubleClick={handleBranchDoubleClick}
                   onBranchContextMenu={handleContextMenu}
+                  onDirContextMenu={handleRemoteFolderContextMenu}
+                  onDirSelect={setSelectedRemoteFolder}
+                  selectedRemoteFolder={selectedRemoteFolder}
                   collapsed={collapsed}
                   onToggle={toggle}
                 />
@@ -952,6 +1040,51 @@ export function BranchTree({
             document.body,
           )}
 
+        {/* Remote folder context menu (Edit / Remove Remote) */}
+        {remoteFolderMenu &&
+          createPortal(
+            <RemoteFolderContextMenu
+              x={remoteFolderMenu.x}
+              y={remoteFolderMenu.y}
+              remoteName={remoteFolderMenu.remoteName}
+              onClose={closeRemoteFolderMenu}
+              onEdit={handleEditRemote}
+              onRemove={handleRemoveRemote}
+            />,
+            document.body,
+          )}
+
+        {/* Edit Remote dialog — reuses the Define Remote dialog */}
+        {editRemoteDialog &&
+          createPortal(
+            <DefineRemoteDialog
+              mode="edit"
+              initialName={editRemoteDialog.name}
+              initialUrl={editRemoteDialog.url}
+              onCancel={() => setEditRemoteDialog(null)}
+              onSubmit={(name, url, fetchRemote) => {
+                void submitEditRemote(name, url, fetchRemote);
+              }}
+            />,
+            document.body,
+          )}
+
+        {/* Remove Remote confirmation */}
+        {removeRemoteDialog &&
+          createPortal(
+            <ConfirmDialog
+              title="Remove Remote"
+              message={`Remove remote ${removeRemoteDialog.name} '${removeRemoteDialog.url}'?`}
+              confirmLabel="Yes"
+              cancelLabel="No"
+              onConfirm={() => {
+                void confirmRemoveRemote();
+              }}
+              onCancel={() => setRemoveRemoteDialog(null)}
+            />,
+            document.body,
+          )}
+
         {/* Push Dialog */}
         {pushDialog &&
           createPortal(
@@ -991,6 +1124,9 @@ function TreeNodeView({
   onBranchClick,
   onBranchDoubleClick,
   onBranchContextMenu,
+  onDirContextMenu,
+  onDirSelect,
+  selectedRemoteFolder,
   collapsed,
   onToggle,
 }: {
@@ -1003,6 +1139,12 @@ function TreeNodeView({
   onBranchClick: (e: React.MouseEvent, name: string) => void;
   onBranchDoubleClick: (name: string) => void;
   onBranchContextMenu: (e: React.MouseEvent, branch: BranchInfo) => void;
+  /** Right-click on a directory node — used for remote folders (origin, …). */
+  onDirContextMenu?: (e: React.MouseEvent, dirName: string) => void;
+  /** Click on a remote folder row selects it (not just right-click). */
+  onDirSelect?: (dirName: string) => void;
+  /** Name of the currently selected remote folder row, if any. */
+  selectedRemoteFolder?: string | null;
   collapsed: Record<string, boolean>;
   onToggle: (key: string) => void;
 }) {
@@ -1040,16 +1182,39 @@ function TreeNodeView({
 
   // Directory node
   const isCollapsed = collapsed[collapseKey] ?? false;
+  // A remote root folder (e.g. "origin") behaves like the Remote section
+  // header: single click selects, double click expands/collapses.
+  const isRemoteRootDir = groupPrefix === "remote" && depth === 0;
+  const isDirSelected = isRemoteRootDir && selectedRemoteFolder === node.name;
 
   return (
     <div>
       <div
-        onClick={() => onToggle(collapseKey)}
+        className={isDirSelected ? "selectable-row row-selected" : undefined}
+        onClick={() => {
+          if (isRemoteRootDir) {
+            onDirSelect?.(node.name);
+          } else {
+            onToggle(collapseKey);
+          }
+        }}
+        onDoubleClick={
+          isRemoteRootDir ? () => onToggle(collapseKey) : undefined
+        }
+        onContextMenu={
+          onDirContextMenu
+            ? (e) => {
+                if (groupPrefix === "remote" && depth === 0) {
+                  onDirContextMenu(e, node.name);
+                }
+              }
+            : undefined
+        }
         style={{
           padding: `4px 8px 4px ${20 + depth * 12}px`,
           cursor: "pointer",
           userSelect: "none",
-          opacity: 0.8,
+          opacity: isDirSelected ? 1 : 0.8,
           display: "flex",
           alignItems: "center",
           gap: 2,
@@ -1072,6 +1237,9 @@ function TreeNodeView({
             onBranchClick={onBranchClick}
             onBranchDoubleClick={onBranchDoubleClick}
             onBranchContextMenu={onBranchContextMenu}
+            onDirContextMenu={onDirContextMenu}
+            onDirSelect={onDirSelect}
+            selectedRemoteFolder={selectedRemoteFolder}
             collapsed={collapsed}
             onToggle={onToggle}
           />

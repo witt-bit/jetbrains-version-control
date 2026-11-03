@@ -16,7 +16,7 @@ interface RemoteEntry {
 }
 
 /** Shared Add/Edit sub-dialog. mode distinguishes the initial state. */
-function DefineRemoteDialog({
+export function DefineRemoteDialog({
   mode,
   initialName,
   initialUrl,

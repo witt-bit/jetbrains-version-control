@@ -1,8 +1,15 @@
 import {
+  Children,
   type CSSProperties,
+  createContext,
+  Fragment,
+  isValidElement,
+  type ReactElement,
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -21,6 +28,10 @@ import { createPortal } from "react-dom";
  * - `<ContextMenuHeader>` — a non-interactive group title (e.g. "Columns").
  * - `<ContextMenuItem>` — one row: optional icon, label, optional shortcut.
  *   Items are `<button>`s so disabled state is native.
+ *
+ * The 16px icon column is reserved per MENU, not per item: if none of a menu's
+ * items supplies an icon the column is not rendered at all, so text starts at
+ * the menu padding instead of after an empty gutter.
  * - `<ContextMenuSeparator>` — the 1px divider.
  * - `<ContextMenuCheck>` — the check mark used by option toggles.
  *
@@ -123,44 +134,10 @@ export function useContextMenuDismiss(
   }, [menuRef, onClose]);
 }
 
-interface ContextMenuProps {
-  /** Raw click coordinates — clamping happens inside. */
-  x: number;
-  y: number;
-  /** Container min-width in px (menus without icons: 160–180, with icons: 200). */
-  minWidth?: number;
-  /** Close the menu (unmount) — called on outside click / Escape / blur / scroll / resize. */
-  onClose: () => void;
-  children: ReactNode;
-}
+/** True when the surrounding menu reserves a 16px icon column. */
+const IconColumnContext = createContext(true);
 
-export function ContextMenu({
-  x,
-  y,
-  minWidth = 200,
-  onClose,
-  children,
-}: ContextMenuProps) {
-  const { ref, position } = useContextMenuPosition(x, y);
-  useContextMenuDismiss(ref, onClose);
-  const style: CSSProperties = {
-    position: "fixed",
-    top: position ? position.top : -9999,
-    left: position ? position.left : -9999,
-    visibility: position ? "visible" : "hidden",
-  };
-  return createPortal(
-    <div ref={ref} className="jgc-context-menu" style={{ ...style, minWidth }}>
-      {children}
-    </div>,
-    document.body,
-  );
-}
-
-export function ContextMenuHeader({ children }: { children: ReactNode }) {
-  return <div className="jgc-context-menu-header">{children}</div>;
-}
-
+/** Props of one menu row, used to detect whether a menu has any icons. */
 interface ContextMenuItemProps {
   onClick: () => void;
   icon?: ReactNode;
@@ -172,6 +149,92 @@ interface ContextMenuItemProps {
   children: ReactNode;
 }
 
+/**
+ * Collect every `<ContextMenuItem>` in a menu's children, looking through
+ * arrays, fragments and `{cond && <Item/>}` ternaries.
+ */
+function collectMenuItems(
+  children: ReactNode,
+  out: ReactElement<ContextMenuItemProps>[] = [],
+): ReactElement<ContextMenuItemProps>[] {
+  Children.forEach(children, (child) => {
+    if (!isValidElement(child)) return;
+    const props = child.props as { children?: ReactNode };
+    if (child.type === ContextMenuItem) {
+      out.push(child as ReactElement<ContextMenuItemProps>);
+      return;
+    }
+    if (child.type === Fragment) {
+      collectMenuItems(props.children, out);
+      return;
+    }
+    // One level into wrapper elements (e.g. a helper that renders rows).
+    if (typeof child.type !== "string" && props.children) {
+      collectMenuItems(props.children, out);
+    }
+  });
+  return out;
+}
+
+/**
+ * Whether the icon column should exist. Falls back to `true` when the menu's
+ * children cannot be inspected, so an unusual menu keeps the legacy layout
+ * instead of collapsing its icons.
+ */
+function menuHasIcons(children: ReactNode): boolean {
+  const items = collectMenuItems(children);
+  if (items.length === 0) return true;
+  return items.some((item) => item.props.icon != null);
+}
+
+interface ContextMenuProps {
+  /** Raw click coordinates — clamping happens inside. */
+  x: number;
+  y: number;
+  /** Container min-width in px (menus without icons: 160–180, with icons: 200). */
+  minWidth?: number;
+  /** Close the menu (unmount) — called on outside click / Escape / blur / scroll / resize. */
+  onClose: () => void;
+  /**
+   * Force the 16px icon column on/off. Only needed for menus whose rows are
+   * built by code the child scan cannot see; otherwise it is auto-detected.
+   */
+  reserveIconColumn?: boolean;
+  children: ReactNode;
+}
+
+export function ContextMenu({
+  x,
+  y,
+  minWidth = 200,
+  onClose,
+  reserveIconColumn,
+  children,
+}: ContextMenuProps) {
+  const { ref, position } = useContextMenuPosition(x, y);
+  useContextMenuDismiss(ref, onClose);
+  const autoReserve = useMemo(() => menuHasIcons(children), [children]);
+  const showIconColumn = reserveIconColumn ?? autoReserve;
+  const style: CSSProperties = {
+    position: "fixed",
+    top: position ? position.top : -9999,
+    left: position ? position.left : -9999,
+    visibility: position ? "visible" : "hidden",
+  };
+  return createPortal(
+    <div ref={ref} className="jgc-context-menu" style={{ ...style, minWidth }}>
+      <IconColumnContext.Provider value={showIconColumn}>
+        {children}
+      </IconColumnContext.Provider>
+    </div>,
+    document.body,
+  );
+}
+
+export function ContextMenuHeader({ children }: { children: ReactNode }) {
+  return <div className="jgc-context-menu-header">{children}</div>;
+}
+
 export function ContextMenuItem({
   onClick,
   icon,
@@ -180,6 +243,7 @@ export function ContextMenuItem({
   checked,
   children,
 }: ContextMenuItemProps) {
+  const reserveIcon = useContext(IconColumnContext);
   return (
     <button
       type="button"
@@ -190,7 +254,9 @@ export function ContextMenuItem({
       {checked !== undefined && (
         <span className="jgc-context-menu-check">{checked ? "✓" : ""}</span>
       )}
-      <span className="jgc-context-menu-icon">{icon ?? null}</span>
+      {reserveIcon && (
+        <span className="jgc-context-menu-icon">{icon ?? null}</span>
+      )}
       <span>{children}</span>
       {shortcut && (
         <span className="jgc-context-menu-shortcut">{shortcut}</span>

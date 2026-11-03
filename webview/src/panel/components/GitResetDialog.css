@@ -1,0 +1,36 @@
+/* ─── Git Reset dialog ─────────────────────────────────────────── */
+
+.git-reset-radio {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin: 2px 0 0 0;
+  border: 1.5px solid var(--vscode-checkbox-border, #6b6b6b);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+  outline: none;
+}
+
+.git-reset-radio:checked {
+  border-color: #3574f0;
+}
+
+.git-reset-radio:checked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3574f0;
+  transform: translate(-50%, -50%);
+}
+
+.git-reset-radio:focus-visible {
+  border-color: #3574f0;
+}

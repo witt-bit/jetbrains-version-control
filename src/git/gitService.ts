@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
+import { parseRemoteBranchLines } from "./branchParsing";
 import { GitCache } from "./cache";
 import { computeGraphLayout } from "./graphLayout";
 import {
@@ -192,6 +193,12 @@ export class GitService {
       "%(objectname:short)",
     ].join(REF_FMT_FIELD_SEP);
 
+    // Remote listing needs the FULL refname to detect the per-remote HEAD
+    // symref: `%(refname:short)` resolves refs/remotes/origin/HEAD to just
+    // "origin" (its symref target's remote prefix), which used to leak in
+    // as a bogus branch named after the remote.
+    const remoteFormat = `${localFormat}${REF_FMT_FIELD_SEP}%(refname)`;
+
     const localOutput = await this.execGit([
       "branch",
       `--format=${localFormat}`,
@@ -200,7 +207,7 @@ export class GitService {
     const remoteOutput = await this.execGit([
       "branch",
       "-r",
-      `--format=${localFormat}`,
+      `--format=${remoteFormat}`,
     ]).catch(() => "");
 
     const branches: BranchInfo[] = [];
@@ -229,28 +236,7 @@ export class GitService {
       });
     }
 
-    for (const line of remoteOutput.trim().split("\n")) {
-      if (!line.trim()) {
-        continue;
-      }
-      const fields = line.split(FIELD_SEP);
-      const name = fields[0]?.trim() ?? "";
-      const lastCommitHash = fields[4]?.trim() ?? "";
-
-      // Skip HEAD pointers like origin/HEAD
-      if (name.endsWith("/HEAD")) {
-        continue;
-      }
-
-      branches.push({
-        name,
-        isRemote: true,
-        isCurrent: false,
-        ahead: 0,
-        behind: 0,
-        lastCommitHash,
-      });
-    }
+    branches.push(...parseRemoteBranchLines(remoteOutput));
 
     this.cache.set(cacheKey, branches);
     return branches;

@@ -102,7 +102,12 @@ These were iterated on repeatedly; each regression cost a full debugging round.
 
 ### Context Menus
 
-**Icon space is always reserved.** `<ContextMenuItem>` renders the 16px icon span whether or not an icon is provided — items without icons leave the column empty so all entries in the same menu have consistent text left-alignment. Do not conditionally render the icon span.
+**The icon column is per-menu, not per-item.** `<ContextMenuItem>` does not decide this on its own — it reads `IconColumnContext`, which `<ContextMenu>` sets by scanning its own children for an `icon` prop:
+
+- **Any item has an icon →** every row renders the 16px span, including rows without one, so labels in the same menu stay left-aligned.
+- **No item has an icon →** no span is rendered at all, and text starts at the menu padding. A text-only menu must not show an empty 24px gutter on the left.
+
+Never conditionally drop the span item-by-item (`{icon && <span/>}`) — that is exactly the misalignment this rule exists to prevent. If a menu's rows are produced in a way the child scan cannot see, pass `reserveIconColumn` to `<ContextMenu>` explicitly. `ContextMenu.test.tsx` covers all four cases (no icons, mixed, nested fragments/conditionals, explicit override).
 
 Every menu renders through the shared primitives in
 `webview/src/shared/components/ContextMenu.tsx` (+ `ContextMenu.css`):

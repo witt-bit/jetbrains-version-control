@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { bridgeWithProgress } from "../../shared/bridge";
 import type { Commit } from "../../shared/types/git";
+import "./GitResetDialog.css";
 
 export type ResetMode = "soft" | "mixed" | "hard" | "keep";
 
@@ -73,7 +74,7 @@ export function GitResetDialog({
     background: "var(--vscode-editorWidget-background, #252526)",
     border: "1px solid var(--border)",
     borderRadius: 8,
-    width: 580,
+    width: 640,
     display: "flex",
     flexDirection: "column",
   };
@@ -101,11 +102,6 @@ export function GitResetDialog({
     gap: 8,
     padding: "6px 0",
     cursor: "pointer",
-  };
-
-  const radioStyle: React.CSSProperties = {
-    marginTop: 2,
-    flexShrink: 0,
   };
 
   const modeTextStyle: React.CSSProperties = {
@@ -159,7 +155,7 @@ export function GitResetDialog({
                 type="radio"
                 checked={selectedMode === mode}
                 onChange={() => setSelectedMode(mode)}
-                style={radioStyle}
+                className="git-reset-radio"
               />
               <div style={modeTextStyle}>
                 <div style={modeNameStyle}>

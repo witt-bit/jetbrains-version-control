@@ -25,6 +25,7 @@ describe("PanelStore mutual exclusion", () => {
       lastSelectedTag: null,
       lastSelectedCommitHash: null,
       remoteSectionSelected: false,
+      selectedRemoteFolder: null,
       currentBranchRowSelected: false,
       commitFiles: [],
       selectedFilePath: null,
@@ -68,6 +69,44 @@ describe("PanelStore mutual exclusion", () => {
       getState().setRemoteSectionSelected(true);
       getState().setRemoteSectionSelected(false);
       expect(getState().remoteSectionSelected).toBe(false);
+    });
+  });
+
+  describe("setSelectedRemoteFolder", () => {
+    it("clears the remote section row, HEAD and all list selections", () => {
+      getState().setRemoteSectionSelected(true);
+      getState().setCurrentBranchRowSelected(true);
+      getState().selectBranch("main", "single", ["main"]);
+      getState().setSelectedRemoteFolder("origin");
+      const state = getState();
+      expect(state.selectedRemoteFolder).toBe("origin");
+      expect(state.remoteSectionSelected).toBe(false);
+      expect(state.currentBranchRowSelected).toBe(false);
+      expect(state.selectedBranches).toEqual([]);
+      expect(state.selectedTags).toEqual([]);
+      expect(state.selectedCommitHashes).toEqual([]);
+    });
+
+    it("is cleared when another list takes the selection", () => {
+      getState().setSelectedRemoteFolder("origin");
+      getState().selectBranch("main", "single", ["main"]);
+      expect(getState().selectedRemoteFolder).toBeNull();
+    });
+
+    it("is cleared by the HEAD row and the Remote section row", () => {
+      getState().setSelectedRemoteFolder("origin");
+      getState().setCurrentBranchRowSelected(true);
+      expect(getState().selectedRemoteFolder).toBeNull();
+
+      getState().setSelectedRemoteFolder("origin");
+      getState().setRemoteSectionSelected(true);
+      expect(getState().selectedRemoteFolder).toBeNull();
+    });
+
+    it("clears only itself when passed null", () => {
+      getState().setSelectedRemoteFolder("origin");
+      getState().setSelectedRemoteFolder(null);
+      expect(getState().selectedRemoteFolder).toBeNull();
     });
   });
 
