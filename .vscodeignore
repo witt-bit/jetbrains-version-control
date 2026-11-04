@@ -34,12 +34,18 @@ AGENTS.md
 # Already-built release artifacts must never end up inside the next package.
 *.vsix
 
-# Unreferenced: nothing in README.md, README.zh_CN.md, package.json or the
-# webview points at these. logo.png alone was ~1.1MB of the package.
+# README screenshots. vsce rewrites relative image links to raw.githubusercontent
+# URLs at package time, so the Marketplace loads them from the repository and they
+# do not need to travel inside the VSIX. Together they were ~1.8 MB.
+# What must stay: images/icon.png (the extension icon), images/commit-icon.svg
+# and images/icons/** (loaded at runtime for the change card), all still shipped.
 images/logo.png
 images/icon-128.png
 images/assets/**
 images/*.gif
+images/git-graph.png
+images/three-way-merge.png
+images/conflicts-list.png
 
 # The changelog is split by language, and pre-1.0.0 history is archived.
 # Only CHANGELOG.md is uploaded by vsce (it is the single changelog the
