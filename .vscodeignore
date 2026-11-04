@@ -40,3 +40,10 @@ images/logo.png
 images/icon-128.png
 images/assets/**
 images/*.gif
+
+# The changelog is split by language, and pre-1.0.0 history is archived.
+# Only CHANGELOG.md is uploaded by vsce (it is the single changelog the
+# Marketplace renders); the other two are read on GitHub through the
+# absolute links at the top of CHANGELOG.md.
+CHANGELOG.zh_CN.md
+CHANGELOG-archive.md

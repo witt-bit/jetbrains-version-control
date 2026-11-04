@@ -1,581 +1,144 @@
-# Changelog / 更新日志
+# Changelog
+
+**English** · [简体中文](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG.zh_CN.md)
+
+Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG-archive.md).
 
 ## [Unreleased]
 
-### Added / 新增
-- **Git Reset dialog** — the Commit context menu's three Reset items (Mixed, Soft, Hard) are replaced by a single "Reset Current Branch to Here..." that opens a Git Reset dialog. The dialog shows the branch → commit line, a description, and four radio-button modes (Soft, Mixed, Hard, Keep) each with its own explanation. Cancel/Reset footer follows the standard dialog pattern / Commit 右键菜单的三个 Reset 项（Mixed、Soft、Hard）合并为一个 "Reset Current Branch to Here..."，点击打开 Git Reset 弹窗。弹窗显示分支→提交信息行、说明文字，以及四个 radio 按钮模式（Soft、Mixed、Hard、Keep），每个模式附带说明。Cancel/Reset 按钮遵循标准弹窗样式
-- **New Commit context menu items** — added Create Patch... (under Cherry-Pick), Show Repository at Revision and Compare with Local (under Checkout Revision), Undo Commit... (under Revert Commit, disabled on non-HEAD commits and main/master branch), Push All up to Here... (in the Drop Commit section), and Go to Child Commit / Go to Parent Commit (new section below New Tag, with left/right arrow icons from JetBrains SVGs) / Commit 右键菜单新增：Create Patch...（Cherry-Pick 下）、Show Repository at Revision 和 Compare with Local（Checkout Revision 下）、Undo Commit...（Revert Commit 下，非 HEAD 提交和主分支禁用）、Push All up to Here...（Drop Commit 独立区域下）、Go to Child Commit / Go to Parent Commit（New Tag 下方新区域，左/右箭头图标取自 JetBrains SVG）
-- **Remote folder context menu (Edit / Remove Remote)** — right-clicking a remote's folder row in the Remote section (e.g. `origin`) shows a two-item menu: Edit Remote... and Remove Remote. Edit opens the shared Define Remote dialog pre-filled with that remote's name and URL (renaming runs `git remote rename`, URL changes run `git remote set-url`, and the Fetch Remote checkbox triggers a fetch). Remove opens a Remove Remote confirmation dialog — centered title, question-mark icon to the left of `Remove remote origin 'git@...'?`, and No / Yes buttons — then runs `git remote remove` / 右键点击 Remote 区块里的 remote 文件夹行（如 `origin`）会弹出两项菜单：Edit Remote... 和 Remove Remote。Edit 打开共享的 Define Remote 弹窗并预填该 remote 的名字与 URL（改名走 `git remote rename`，改地址走 `git remote set-url`，勾选 Fetch Remote 会执行 fetch）。Remove 打开 Remove Remote 确认弹窗——标题居中、左侧问号图标、右侧 `Remove remote origin 'git@...'?`、按钮为 No / Yes——确认后执行 `git remote remove`
-- **Remote management** — right-clicking the Remote section header in the Git Log sidebar shows a Manage Remotes... menu item that opens a Git Remotes dialog. The dialog lists all configured remotes (Name / URL columns), with Add / Remove / Edit icon buttons in the top-left and Cancel / OK in the bottom-right. Add and Edit share a Define Remote sub-dialog (Name, URL, Fetch Remote checkbox — checked by default) styled after the New Worktree dialog. Remove and Edit are disabled until a row is selected; Remove asks for confirmation. URL edits are applied via `git remote set-url` / 右键点击 Git Log 侧边栏的 Remote 区块标题，菜单中的 Manage Remotes... 会打开 Git Remotes 管理弹窗：列表以 Name / URL 两列展示已配置的 remote，左上角是 Add / Remove / Edit 三个图标按钮，右下角是 Cancel / OK。新增与编辑共用一个 Define Remote 子弹窗（Name、URL、默认勾选的 Fetch Remote 复选框），样式对齐 New Worktree 弹窗。Remove 和 Edit 在未选中记录时禁用；Remove 有确认提示。编辑 URL 通过 `git remote set-url` 实现
-- **HEAD right-click context menu** — right-clicking the `HEAD (Current Branch)` row in the Git Log sidebar shows a menu with: New Branch from 'branch'..., Show Diff with Working Tree, New Worktree from 'branch'..., Update, Push..., Rename... / 右键点击 Git Log 侧边栏的 `HEAD (Current Branch)` 行，菜单包含：New Branch from '分支名'...、Show Diff with Working Tree、New Worktree from '分支名'...、Update、Push...、Rename...
-- **Tag right-click context menu** — right-clicking a tag in the Git Log panel's Tags section shows a menu with Checkout, Show Diff with Working Tree, Merge 'tag' into 'current branch', New Worktree from 'tag'..., Push to origin, and Delete. Multi-select tags show only Delete / 右键点击 Git Log 面板 Tags 区域的标签，菜单包含 Checkout、Show Diff with Working Tree、Merge 'tag' into 'current branch'、New Worktree from 'tag'...、Push to origin 和 Delete。多选标签只显示 Delete
-- **Three-mode multi-select for Tags, Branches, Files, and Commits** — all list items in the Git Log panel (tags, branches) and Commit panel (files) and commit history now support three selection modes: (1) Shift+click range selection, (2) Cmd/Ctrl+click toggle, (3) Shift+Arrow Up/Down keyboard range selection / Git Log 面板（标签、分支）和 Commit 面板（文件）及提交历史中的所有列表项现在支持三种选择方式：(1) Shift+点击范围选择，(2) Cmd/Ctrl+点击切换，(3) Shift+方向键键盘范围选择
-- **Offer to disable the built-in Git extension** — while `jgc.onboarding.builtinGitPrompt` is `ask` (the default), JGC shows a dialog offering to set `git.enabled` to false globally, since two Git UIs running together duplicate the status bar, decorations and file watchers. Confirming disables it and offers a one-click reload. The Source Control view then shows an empty state, and VS Code keeps its activity-bar icon (the built-in Changes view stays active without providers), so the dialog also explains how to remove the icon: right-click the activity bar and uncheck Source Control. Either answer writes the setting to `never`; change it back to `ask` and the dialog returns without a reload / 当 `jgc.onboarding.builtinGitPrompt` 为 `ask`（默认）时，JGC 弹窗询问是否全局禁用 VS Code 内置 Git 扩展（`git.enabled=false`）：两套 Git 界面并存会让状态栏、装饰和文件监听重复。确认后即禁用并引导一键重载窗口。重载后"源代码管理"视图为空状态，活动栏图标 VS Code 会保留（内置 Changes 视图没有 provider 也保持激活），弹窗会说明移除方法：右键活动栏，取消勾选"源代码管理"。任一明确答复都会把设置写为 `never`；改回 `ask` 弹窗立即重现，无需重载
-- **Caret line-end blame** — the line the caret sits on shows `Who, date * summary` after the code, JetBrains-style line blame that follows the caret instead of annotating every line. Your own commits read `You, …`; uncommitted (new) lines show nothing. The message is capped at 50 characters (`jgc.caretBlame.messageMaxLength`) and the hash at 8, with an ellipsis when cut. The blame snapshot is cached per document version and refreshed on save and Git changes. Settings follow GitLens: `jgc.caretBlame.enabled`, `…format` (a template with ${who} ${date} ${message} ${hash} tokens) and `…messageMaxLength` / 光标所在行的行尾显示 `Who, 日期 * 摘要`，JetBrains 式行级 blame，但跟随光标而非全量标注。本人提交显示 `You, …`；未提交（新增）的行不显示。message 最多 50 字符（`jgc.caretBlame.messageMaxLength`）、hash 最多 8 位，超出以省略号结尾，其余不限长。blame 快照按文档版本缓存，保存与 Git 变化时刷新。设置仿 GitLens：`jgc.caretBlame.enabled`、`…format`（支持 ${who} ${date} ${message} ${hash} 令牌的模板）、`…messageMaxLength`
-- **AI commit message generation** — a sparkle button next to **Commit** writes the commit message for exactly the files you checked: the prompt carries only their diffs (staged entries against the index, unstaged against worktree, untracked files as content) plus the repository's recent commit subjects as a style reference, and the result streams into our own input box where you can edit it before committing / **Commit** 按钮旁新增 ✨ 按钮，只为**你勾选的文件**生成提交信息：prompt 只携带这些文件的 diff（已暂存对比 index、未暂存对比工作区、未跟踪文件取内容）和本仓库最近的提交主题作为风格参考，结果流式写入我们自己的输入框，提交前可任意编辑
-  - Runs on the VS Code Language Model API (`vscode.lm`): every model you have configured works, GitHub Copilot out of the box, anything added under **Chat: Manage Language Models** (OpenRouter, Ollama, OpenAI-compatible endpoints, …), and models contributed by other extensions. JGC itself has no configuration / 基于 VS Code 的语言模型 API（`vscode.lm`）：已配置的模型都可用，GitHub Copilot 开箱即用，也可以在 **Chat: Manage Language Models**（OpenRouter、Ollama、OpenAI 兼容端点等）里添加，或使用其它扩展贡献的模型；JGC 自身没有配置项
-  - Multiple models installed: the first generation asks once which to use and remembers the choice; the chevron next to the sparkle reopens the model picker any time / 装有多个模型时首次生成会询问一次并记住选择；✨ 旁的下拉箭头可随时重新选择模型
-  - The style reference takes the committer's own recent commits first, falling back to the repository's latest history when this person has not committed here yet; the generated message follows the reference's language / 风格参照先取当前提交人本人的最近提交，本人尚无提交时回退到仓库最近历史；生成信息的语言跟随参照提交
-  - Generating again mid-flight cancels the request; clicking with no model configured shows where to add one / 生成中再次点击即取消；未配置任何模型时点击会提示添加模型的入口
-  - Requires VS Code 1.91+ (raised from 1.85), the version where the Language Model API became stable / 要求 VS Code 1.91+（从 1.85 提升），语言模型 API 自该版本起稳定可用
+### Added
 
-### Changed / 变更
-- **Unified context menus** — all 12 context menus in the app (Git Log panel: Tag, HEAD, Commit, File, branch-sidebar settings, commit-list column toggles; Commit panel: file, shelf, IDEA-shelf, shelf-file, IDEA-shelf-file, directory, empty-area, and the toolbar View Options menu) now render through one shared component (`ContextMenu`/`ContextMenuItem`) with identical viewport clamping, close behaviour (outside click / Escape / blur / scroll / resize), item styling, check marks and shortcut alignment. Menu styling no longer leaks from the Commit panel stylesheet into the Git Log panel — it lives in `shared/components/ContextMenu.css`. Menu code volume: 12 menus, each previously ~80 lines of listener + style boilerplate, now ~30 lines of pure `<ContextMenuItem>` markup / 应用内 12 个右键菜单（Git Log 面板的标签/HEAD/提交/文件/侧栏设置/列显示，Commit 面板的文件/两个 Shelf 及其文件菜单/目录/空白区，工具栏视图选项）统一由共享的 `ContextMenu` 组件渲染，视口防溢出、关闭行为（外点/Esc/失焦/滚动/缩放）、条目样式、勾选列与快捷键对齐全部一致。菜单样式不再由 Commit 面板样式表"泄漏"给 Git Log 面板，而是收敛到 `shared/components/ContextMenu.css`。每个菜单原来 ~80 行的监听器+样式样板代码，现在变成 ~30 行的纯 `<ContextMenuItem>` 标记
-- **Menu icons restored to original IntelliJ glyphs** — the menu icons went through a codicon look-alike migration which produced wrong glyphs (Cherry-Pick showed a pull-request, Shelve showed the Rollback arrow, both Copy variants were flattened to one). They are now restored to the exact v1.1.3 SVG shapes, extracted verbatim into `shared/components/icons.tsx`, and pinned by 23 shape-guard tests in `icons.test.tsx` that fail on any path drift / 菜单图标经历过一次 codicon 替换，结果字形错配（Cherry-Pick 显示了 pull-request、Shelve 显示了 rollback 箭头、两个 Copy 变体被合并）。现已恢复为 v1.1.3 的原始 SVG 形状，逐字节提取到 `shared/components/icons.tsx`，并由 23 个形状守护测试锁定，任何路径改动都会测试失败
-- **Drop Commit uses the trash icon** — the Commit context menu's Drop Commit item previously shared the Reset/Revert icon (undo arrow); it now uses the trash-can icon (`IconDelete`) to match its semantics (deleting a commit from history) / Commit 右键菜单的 Drop Commit 之前与 Reset/Revert 共用回退箭头图标，现在改用垃圾桶图标（`IconDelete`），与其语义（从历史中删除提交）一致
-- **Icon column is per menu, not per item** — `<ContextMenu>` now scans its own children for an `icon` prop. If any row has an icon, every row renders the 16px span (including rows without one) so labels stay left-aligned with each other; if no row has an icon, the span is not rendered at all and text starts at the menu padding instead of after an empty gutter. Purely textual menus (HEAD, Tag, remote folder, sidebar settings, column toggles) lost their 24px left indent as a result / `<ContextMenu>` 现在扫描自己的 children 是否有 `icon`。只要有一行带图标，所有行都渲染 16px 占位（包括没图标的那行），保证同一菜单内文字左对齐；如果一行图标都没有，则完全不渲染占位，文字直接从菜单内边距开始，不再先留一段空槽。纯文字菜单（HEAD、Tag、remote 文件夹、侧栏设置、列显示开关）因此去掉了左侧 24px 的空白
-- **Menu failures are reported** — git operations launched from context menus (checkout tag/branch, merge, cherry-pick, reset, revert, drop commit, pull, delete, etc.) no longer fail silently into the webview console; failures now surface as an error notification with the git message / 右键菜单发起的 git 操作（checkout 标签/分支、merge、cherry-pick、reset、revert、drop commit、pull、删除等）失败不再静默吞进 webview 控制台，而是弹出带 git 错误信息的通知
-- **Tag push asks which remote** — "Push to origin" in the tag context menu is now "Push to remote..." and shows a quick-pick of configured remotes instead of hardcoding `origin` (repos without an origin remote or with several remotes now work) / 标签右键菜单的 "Push to origin" 改为 "Push to remote..."，弹出 quick-pick 列出已配置的 remote 供选择，不再硬编码 `origin`（没有 origin 或有多个 remote 的仓库现在都能正确推送）
-- **"Show Tags" toggle is real** — the sidebar gear menu's Show Tags item used to show a permanent check mark and do nothing; it now actually hides/shows the Tags section in the Git Log sidebar (state kept in the panel store) / 侧栏齿轮菜单的 Show Tags 之前勾选是假的且点击无效，现在真正控制 Git Log 侧栏 Tags 区块的显示/隐藏（状态存于 panel store）
-- **Remote URL editing uses `git remote set-url`** — the Define Remote dialog no longer emulates URL edits with remove + re-add (which could drop the remote if the re-add failed and discarded custom fetch refspecs); it now runs the native `git remote set-url` / Define Remote 弹窗编辑 URL 不再用 remove + 重新 add 模拟（一旦重新 add 失败会把 remote 直接弄丢，且会丢掉自定义 fetch refspec），改为原生 `git remote set-url`
-- **Remote folder row: click selects, double-click expands** — the remote's own folder row in the Remote section (e.g. `origin`) now behaves like the Remote section header it sits under: a single click selects the row (with a selection highlight) and a double click expands/collapses it. Previously one click did both, so selecting the remote and toggling its branches could not be done separately. Right-clicking selects the row and opens its menu, and this selection joins the same store-backed mutual exclusion as branches, tags, commits, HEAD and the Remote header row / Remote 区块里 remote 自己的文件夹行（如 `origin`）现在和它上方的 Remote 区块标题行为一致：单击选中该行（带高亮），双击展开/折叠。之前单击同时做这两件事，无法把"选中 remote"和"折叠分支"分开操作。右键点击会选中该行并弹出菜单，该选择与分支、标签、提交、HEAD、Remote 标题同属 store 里的互斥选择组
-- **`getRemotes` dead command removed** — the `getRemotes` bridge command existed in the protocol and extension but was never called by any webview component; removed along with its gitService method / `getRemotes` bridge 命令在协议和 extension 中存在但从未被 webview 调用，连同 gitService 方法一并删除
-- **HEAD row shows "HEAD (Current Branch)"** — the unified HEAD entry in the Git Log sidebar now reads `HEAD (Current Branch)` instead of `Current Branch: <branch-name>` / Git Log 侧边栏的 HEAD 统一入口现在显示 `HEAD (Current Branch)`，而非 `Current Branch: <分支名>`
-- **Context-menu shortcuts are now real keybindings** — every shortcut label in the Commit panel context menus (Show Diff, Add to VCS, Rollback, Delete, Unshelve, Directory toggle) is backed by an actual VS Code keybinding. The labels are platform-aware: macOS shows `⌘D`, `⌥⌘A`, `⌥⌘Z`, `⌘⌫`, `⇧⌘U`, `⌘P`; Windows/Linux shows `Ctrl + D`, `Alt + Ctrl + A`, `Alt + Ctrl + Z`, `Ctrl + ⌫`, `Shift + Ctrl + U`, `Ctrl + P`. All bindings use `jgc.commitPanelFocused` as the `when` clause so they only fire when the Commit panel has focus / Commit 面板上下文菜单里的所有快捷键标签（Show Diff、Add to VCS、Rollback、Delete、Unshelve、Directory 切换）均已注册为真实 VS Code 快捷键。标签按平台区分：macOS 显示 `⌘D`、`⌥⌘A`、`⌥⌘Z`、`⌘⌫`、`⇧⌘U`、`⌘P`；Windows/Linux 显示 `Ctrl + D`、`Alt + Ctrl + A`、`Alt + Ctrl + Z`、`Ctrl + ⌫`、`Shift + Ctrl + U`、`Ctrl + P`。所有绑定使用 `jgc.commitPanelFocused` 作为 `when` 条件，仅在 Commit 面板获得焦点时触发
-- **`jgc.shortcut.jumpToSourceLabel` removed** — the setting that let users customise the Jump to Source / Edit Source label in webview context menus is gone: the label is now hardcoded to show both default bindings (`F4 · ⌘ ↓` / `F4 · Ctrl + ↓`), and the `getConfig` bridge it depended on is removed. The F4 / Ctrl+↓ keybindings themselves are unchanged / 移除 `jgc.shortcut.jumpToSourceLabel` 配置：webview 菜单里 Jump to Source / Edit Source 的快捷键标签改为硬编码显示两个默认绑定，依赖的 `getConfig` bridge 一并移除。F4 / Ctrl+↓ 快捷键本身不变
-- **Bridge command/event names are now type-checked** — `Bridge.request(command: CommandType | string)` widened the union to `string`, which made all 132 command names decorative: a typo or a rename compiled fine and only failed at runtime with "Unknown command". The `| string` is gone, `onEvent` is typed with `EventType`, `EventMessage.event` uses `EventType`, and the two `CommandType` unions (host + webview) are byte-identical — the type immediately exposed 13 commands with handlers but no declaration, 8 missing on the webview side and a dead `getConfig` hook / `Bridge.request(command: CommandType | string)` 把联合类型放宽成 `string`，132 个命令名形同注释：拼错或改名都能编译通过，只在运行时 "Unknown command" 失败。现在去掉 `| string`，`onEvent` 用 `EventType`，`EventMessage.event` 改为 `EventType`，宿主与 webview 两份 `CommandType` 完全一致——类型立刻暴露出 13 个有 handler 却无声明的命令、webview 侧缺失的 8 个命令，以及一个引用已删命令的 `getConfig` hook
-- **No more silent failures in the webview** — all 50 `console.error` calls in bridge-action paths were replaced by `reportActionError`, which also surfaces the git message as a notification; `pnpm run verify` now fails the build if `console.error` reappears outside `shared/bridge/index.ts` / webview 里 50 处落在 bridge 动作路径上的 `console.error` 全部改为 `reportActionError`，把 git 的报错信息弹给用户；`pnpm run verify` 现在会在 `shared/bridge/index.ts` 之外重新出现 `console.error` 时让构建失败
-- **Dev probe commands removed from the Command Palette** — seven "Test Hijack: …" / "Test AI Commit Message Generation" entries were contributed for every user while their commands are only registered in Extension Development Host, so invoking them threw "command not found" / 七条 "Test Hijack: …" / "Test AI Commit Message Generation" 被贡献给所有用户，而这些命令只在扩展开发宿主里注册，点了就报 "command not found"
-- **Remote removal uses one dialog** — Manage Remotes removed a remote through the native VS Code modal while the remote folder menu used the IntelliJ-style dialog, so the same operation looked different depending on where it started. Both use `ConfirmDialog` now / Manage Remotes 用原生 VS Code 弹窗删 remote，而 remote 文件夹菜单用的是 IntelliJ 风格弹窗，同一个操作在两个入口长得不一样。现在统一用 `ConfirmDialog`
-- **Built-in Git prompt writes workspace scope** — answering "Disable built-in Git" set `git.enabled = false` at Global scope, turning off the built-in Git UI in every other project too. It now writes Workspace scope (falling back to Global when no folder is open) / 回答 "Disable built-in Git" 会在 Global 作用域写 `git.enabled = false`，把用户其他项目的内置 Git 界面也一起关掉。现在写 Workspace 作用域（没有打开文件夹时回退到 Global）
-- **`resetToCommit` accepts `keep`** — the dialog offers four modes but the host and service typed three, with an `as` cast papering over the mismatch; it only worked because `git reset --keep` happens to be a valid flag / 弹窗提供四种模式而宿主与服务只声明了三种，靠 `as` 强转掩盖；能跑纯属因为 `git reset --keep` 恰好是合法 flag
+- **Git Reset dialog** — Reset Current Branch to Here... on a commit opens a dialog with four modes (Soft, Mixed, Hard, Keep), each explaining what it does to the working tree and the index.
+- **More commit context menu actions** — Create Patch... (export the commit as a patch file), Show Repository at Revision (list the files at that revision), Compare with Local (diff against the working tree), Undo Commit... (revert the current commit; unavailable on main/master and on non-HEAD commits), Push All up to Here... (push the current branch up to that commit) and Go to Child / Parent Commit.
+- **Remote context menu** — Right-clicking a remote's folder offers Edit Remote... and Remove Remote with confirmation. The folder row now matches the section header: one click selects, double click expands or collapses.
+- **Manage Remotes dialog** — Lists every remote with its name and URL, and adds, renames, re-addresses or removes them, with an option to fetch right away.
+- **HEAD row context menu** — New branch, compare with working tree, new worktree, update, push and rename.
+- **Tag context menu** — Checkout, compare with working tree, merge into the current branch, new worktree, push to a chosen remote and delete; a multi-selection shows delete only.
+- **Caret line-end blame** — The line the caret sits on shows `Who, date * summary` after the code, with `You` for your own commits and nothing for uncommitted lines. Template, message length and date format are configurable.
+- **AI-generated commit messages** — The sparkle next to **Commit** writes a message for the checked files only, streams it into the input box, and can be edited or cancelled at any point. It uses any model configured in VS Code; with several installed it asks once and remembers, and the chevron reopens the picker.
+- **List multi-selection** — Branches, tags and files support Shift+click ranges, Cmd/Ctrl+click toggling and Shift+Arrow keyboard ranges.
+- **Built-in Git prompt** — A first-run prompt offers to disable VS Code's built-in Git so two Git UIs do not duplicate the status bar and decorations. It applies to the current workspace only and can be switched back at any time.
 
-### Fixed / 修复
-- **Show Repository at Revision / Compare with Local did nothing** — both menu items ran a git command and threw the output away, then reported success: the user saw a progress bar and no result. Show Repository at Revision now opens the revision's tracked files (`git ls-tree -r --name-only`) in a read-only editor, and Compare with Local opens the working-tree diff (`git diff <hash>`) in a read-only diff editor; an empty result says so instead of failing silently / 两个菜单项都是执行 git 命令后丢弃输出再报成功，用户只看到进度条却没有任何结果。Show Repository at Revision 现在用 `git ls-tree -r --name-only` 把该版本的受版本控制文件列在只读编辑器里；Compare with Local 把 `git diff <hash>` 的结果开在只读 diff 编辑器里；无差异时会明确提示而不是静默结束
-- **Push All up to Here pushed to the wrong refspec** — the command was `git push origin <branch>:<hash>`, so the destination ref was a commit hash and git created a remote branch literally named after it. It is now `<hash>:refs/heads/<branch>`, refuses to run from a detached HEAD, and asks which remote to use instead of hardcoding `origin` (repos with several remotes or without origin now work) / 原命令是 `git push origin <分支>:<hash>`，目标 ref 是个提交哈希，git 会在远端创建一个以哈希命名的分支。现在改为 `<hash>:refs/heads/<分支>`，detached HEAD 下拒绝执行，并且不再硬编码 `origin` 而是让用户选择 remote（多 remote 或没有 origin 的仓库现在可用）
-- **Create Patch wrote into the repository and could crash** — the patch file was written to the repo root as an untracked file (no way back) and the name was built from the raw commit subject, so a long subject exceeded the 255-byte filesystem limit and threw ENAMETOOLONG. It now asks where to save via a Save dialog, uses a sanitized and length-capped file name (`src/git/exportFileName.ts`, unit-tested), and confirms the written path / patch 文件被写到仓库根目录变成未跟踪文件（无法撤销），文件名又直接取自提交标题，标题一长就超过文件系统 255 字节上限导致 ENAMETOOLONG 崩溃。现在改为弹保存对话框让用户选路径，文件名经过清洗和长度截断（`src/git/exportFileName.ts`，有单测），写完后提示实际路径
-- **Git Reset failures were swallowed** — the dialog closed itself and fired the reset with a bare `void`, so a rejected reset (local changes in the way, conflicts) produced an unhandled rejection and no message. Failures now surface through `reportActionError` / 弹窗先关闭再用裸 `void` 发起 reset，失败（本地改动阻挡、冲突等）会变成 unhandled rejection 且没有任何提示。现在失败通过 `reportActionError` 报给用户
-- **AI generation failures were swallowed and destroyed the draft** — the input box was cleared before the request and failures only reached `console.error` (invisible in production), so a missing model, exhausted quota or network error lost whatever the user had typed with zero feedback. The draft is now restored on failure/cancel and errors are reported / 请求前就清空了输入框，失败只写进 `console.error`（生产环境不可见），模型缺失、配额用尽或网络错误会让用户已写的内容永久丢失且毫无提示。现在失败或取消时恢复草稿，并弹出错误提示
-- **Caret blame re-ran `git blame` on every keystroke** — the snapshot cache was keyed on the live document version, which increments on each edit, so moving the caret in a dirty file spawned a `git blame` process per typed character. The snapshot is now reused while the document is dirty (blame describes the saved file) and cursor-driven renders are debounced / 快照缓存以文档实时版本号为键，每次编辑都会递增，于是在脏文件里移动光标就是每敲一个字符起一个 `git blame` 进程。现在文档为脏时复用已有快照（blame 描述的是已保存内容），并对光标驱动的渲染加了防抖
-- **Stale caret blame could overwrite the current line** — concurrent async renders painted in completion order rather than request order, so fast cursor movement flashed blame for a line the caret had already left. A monotonic render sequence now discards outdated results / 并发的异步渲染按完成顺序而不是请求顺序落笔，快速移动光标会闪出旧行的 blame。现在用单调递增的渲染序号丢弃过期结果
-- **AI generation could start twice** — the "already in progress" guard ran before the model QuickPick but the token was only assigned after it, so two quick clicks both passed and interleaved two streams into one input box (leaking the first cancellation token). The slot is reserved before any await / "正在生成"的守卫在模型 QuickPick 之前执行，而 token 在其中之后才赋值，两次快速点击都能通过，把两条流交织进同一个输入框（并泄漏第一个取消令牌）。现在在任何 await 之前先占位
-- **`getCurrentUser` lost a half-configured identity** — `git config user.email` exits non-zero when unset, the throw skipped the whole function and returned null, so a user with only `user.name` configured never saw "You" on their own commits. Each key is now read independently / `user.email` 未配置时 `git config user.email` 以非零码退出，抛错让整个函数返回 null，只配了 `user.name` 的用户在自己的提交上永远看不到 "You"。现在两个键独立读取
-- **`showWarningMessage` bridge call had no handler** — deleting the main worktree silently did nothing because the command was never implemented on the host. Implemented / 删除主 worktree 时静默无反应，因为宿主从来没有实现该命令。已补上
-- **`clearAllSelections` did not reset the HEAD row** — it cleared every other group but not `currentBranchRowSelected`, and its unit test only passed because an earlier step in the same test happened to clear it. The store action now resets it, `BranchTree` clears before selecting HEAD, and the test sets HEAD last so a regression fails / 它清除了其他所有分组却没清 `currentBranchRowSelected`，而单测之所以通过是因为同一个测试里前面的步骤顺手清掉了它。现在 store action 会重置该字段，`BranchTree` 改为先清空再选中 HEAD，测试也改为最后才设 HEAD，回归即失败
-- **Phantom branch named after the remote (`origin`)** — the Remote section listed one extra branch per remote, named exactly like the remote (`origin`, `dunlingzi`, ...). `git branch -r` emits a `refs/remotes/<remote>/HEAD` symref, and the code skipped it by checking whether the SHORT name ended with `/HEAD` — but `%(refname:short)` resolves that symref to just `origin`, so the check never matched. The remote listing now also requests the full refname and drops anything pointing at `refs/remotes/<remote>/HEAD` (plus any slash-less entry), pinned by `src/git/branchParsing.test.ts` / Remote 区块会为每个 remote 多列出一个与 remote 同名的假分支（`origin`、`dunlingzi` 等）。`git branch -r` 会输出 `refs/remotes/<remote>/HEAD` 符号引用，而代码是靠"短名是否以 `/HEAD` 结尾"来跳过它——但 `%(refname:short)` 把这个符号引用解析成了 `origin`，判断永远不成立。现在 remote 列表额外获取完整 refname，丢弃指向 `refs/remotes/<remote>/HEAD` 的条目（以及任何不含 `/` 的条目），并由 `src/git/branchParsing.test.ts` 锁定
-- **Mutual exclusion across Git Log lists** — HEAD, Branches, Tags, and Messages are four separate groups; selecting in any one now clears the other three, regardless of order. Added `clearAllSelections` store action for the HEAD row / Git Log 面板中 HEAD、Branches、Tags、Messages 四个组完全互斥：选任何一个都会清空其他三个的选择，与先后顺序无关。新增 `clearAllSelections` store action 供 HEAD 行使用
-- **Tag Shift+click and Shift+Arrow multi-select** — `collectVisibleLeaves` only checked `node.branch` and ignored `node.tag`, so `allVisibleTags` was always empty. This silently broke range selection and keyboard navigation for tags / `collectVisibleLeaves` 此前只检查 `node.branch` 而忽略 `node.tag`，导致 `allVisibleTags` 永远为空，Tag 的 Shift+点击范围选择和 Shift+方向键键盘导航静默失效
-- **Blame display mode removed** — the `jgc.blame.displayMode` / `jgc.blame.aroundLines` settings are gone: the inline blame annotations in the line-number column always paint every line of the file, and the caret line-end blame is the only one that follows the cursor. The settings are deprecated and ignored / 移除 `jgc.blame.displayMode` / `jgc.blame.aroundLines` 配置：行号列的行首 blame 标注永远全行显示，只有光标行尾 blame 跟随光标。旧配置项已废弃并忽略
-- **Caret blame follows the blame date format** — the end-of-line `${date}` token rendered the raw `YYYY/MM/DD` string git blame reports, ignoring `jgc.blame.dateFormat`, while the inline annotations on the same screen honored it. The caret blame now formats `authorTime` through the same setting (default `yyyy-MM-dd HH:mm`), and changing it refreshes the caret line live / 行尾 blame 的 `${date}` 令牌此前直接渲染 git blame 返回的 `YYYY/MM/DD` 原始字符串，不跟随 `jgc.blame.dateFormat`，而同一屏幕上的行首标注却遵守该设置。现在行尾 blame 用同一设置格式化 `authorTime`（默认 `yyyy-MM-dd HH:mm`），修改该设置后行尾标注实时刷新
-- **No stray context menu on blank areas** — right-clicking empty space in the Commit, Git Log and Git Worktree panels no longer pops the raw webview menu; rows and items keep their own custom menus, and editable text fields keep copy/paste / Commit、Git Log、Git Worktree 面板的空白处右键不再弹出 webview 原生菜单；列表行仍使用各自的自定义菜单，文本输入框保留复制/粘贴
+### Improved
 
-### Removed / 移除
-- **Dead icon files** — deleted 18 SVG files under `webview/src/commit/icons/` that nothing referenced since v0.4.0 / 删除 `webview/src/commit/icons/` 下自 v0.4.0 起零引用的 18 个 SVG 文件
-- **Old menu CSS** — the 62 lines of `.commit-context-menu-*` styles in `commit.css` are gone (now lives in `shared/components/ContextMenu.css`); the panel mode was implicitly depending on the single-bundle CSS code-splitting to pick them up / `commit.css` 中 62 行旧 `.commit-context-menu-*` 样式已删除（现位于 `shared/components/ContextMenu.css`）；此前 panel 模式靠单 CSS bundle 的隐式代码拆分依赖拿到这些样式
+- **Consistent context menus** — Every menu in the app now looks and behaves the same: it stays inside the viewport, closes on outside click, Esc, scroll or window blur, and aligns icons and shortcuts. Text-only menus no longer leave an empty icon gutter.
+- **Menu shortcuts work** — Shortcuts shown in the Commit panel menus are real VS Code keybindings, labelled per platform (`⌘D`, `⌥⌘A` on macOS; `Ctrl + D`, `Alt + Ctrl + A` on Windows/Linux), and active only while the Commit panel has focus.
+- **Tag push picks a remote** — Pushing a tag asks which configured remote to use instead of assuming origin.
+- **Show Tags actually works** — The sidebar's Show Tags toggle now really shows and hides the Tags section.
+- **Clearer HEAD row** — The sidebar's HEAD entry reads `HEAD (Current Branch)`.
+- **Simpler blame settings** — `jgc.blame.displayMode` and `jgc.blame.aroundLines` are gone: the line-number annotations always cover the whole file and only the end-of-line blame follows the caret.
+- **Fewer redundant settings** — `jgc.shortcut.jumpToSourceLabel` is removed; the Jump to Source label always shows the default bindings.
+- **Tidier Command Palette** — Seven development-only commands no longer appear.
+- **Changelog split by language** — Release notes now come as an English file and a Simplified Chinese file, with everything before 1.0.0 archived separately, so each version is shorter to scan and the two languages are easier to keep in sync.
+
+### Fixed
+
+- **Phantom branch named after each remote** — The Remote section listed an extra branch named after the remote; it now shows only real remote branches.
+- **Stray native menu on empty panels** — Right-clicking empty space in the Commit, Git Log and Worktree panels no longer pops the raw webview menu, while text inputs keep copy and paste.
+- **Silent operation failures** — Failed Git operations from menus and panels now raise a notification carrying Git's own message instead of failing silently.
 
 ## [1.1.3] - 2026-10-25
 
-### Changed / 变更
-- **Everything lives under the Git context menu** — the editor's right-click menu has one top-level **Git** submenu: **Show File History** moved into it, and **Manage Selection...** floats the marker card over the editor's first line of the change block at the cursor, with the six actions left to right: Prev Change, Next Change, Rollback Lines, Show Diff for Lines, Copy, Commit this change / 编辑器右键菜单收敛为一个一级 **Git** 子菜单：**Show File History** 移入其中，**Manage Selection...** 则在编辑器内浮动弹出胶囊卡片，锚定光标所在变更块的首行行首，从左到右依次是 Prev Change、Next Change、Rollback Lines、Show Diff for Lines、Copy、Commit this change 六个按钮
-- **Manage Selection... on the line number** — right-clicking a line number (or the gutter marker area) now offers **Manage Selection...** right next to the blame entries, opening the same floating card for the block that line belongs to / 在行号（或行号右侧的标记区域）上右键，菜单里紧挨 blame 两项就是 **Manage Selection...**，点击后为该行所属的变更块打开同一张浮动卡片
-- **Jump to Source keeps your selection** — in a diff editor, **Jump to Source** now carries over the whole selection and pins the scroll position, so text you selected stays selected after the jump instead of collapsing to a bare cursor line / diff 编辑器中的 **Jump to Source** 现在会保留完整选区并固定滚动位置，之前选中的文字跳转后仍然处于选中状态，而不是收缩成一个光标点
-- **Status bar shows the current branch** — the status bar item now displays the branch of the repository you are working in, with incoming/outgoing commit counts, replacing VS Code's built-in Git status bar item / 状态栏现在显示当前仓库的分支名与待推送/待拉取提交数，替代 VS Code 内置 git 的状态栏项
-  - Click it for a menu of common actions: Update Project, Commit, Push, New Branch, Switch Branch and the Git Log view / 点击可打开常用操作菜单：更新项目、提交、推送、新建分支、切换分支、Git Log
-  - Follows the folder of the active editor in multi-root workspaces, and refreshes on Git changes in every workspace folder / 多根工作区下自动跟随当前编辑器所在文件夹，并在各工作区的 Git 状态变化时刷新
-  - A detached HEAD shows up instead of disappearing, and checking out a remote branch warns before leaving you detached / 处于 detached HEAD 时状态栏会显示提示而不是消失；检出远程分支前会先警告
+### Added
 
-### Added / 新增
-- **Marker hover card (IDEA-style)** — hovering a change marker or any changed line shows a card of exactly that block: modified lines are word-diffed with the changed words highlighted in the editor's diff colors, a deleted block shows the content as it reads in `HEAD`, an insertion shows just the actions; the six action buttons are the bundled JetBrains UI icons (light and dark theme variants), and **Manage Selection...** in the Git context menu floats the same card over the block, staying open until you act on it / 悬停变更标记或任意变更行会显示该块的改动卡片：修改行按词级高亮变化的部分（取编辑器 diff 主题色），删除块直接显示 `HEAD` 中的内容，新增块只有操作按钮；六个操作按钮用打包的 JetBrains UI 图标（浅色/深色两套），右键 Git 菜单的 **Manage Selection...** 会把同一张卡片浮在该块上方，保持显示直到你操作它
-  - **Prev Change / Next Change** walk between blocks in the file, wrapping around / 在文件的变更块之间循环跳转
-  - **Rollback Lines** reverts exactly this block to `HEAD`, keeping unsaved-buffer semantics / 只回滚该块到 `HEAD`，支持未保存的缓冲内容
-  - **Show Diff for Lines** opens the `HEAD ↔ Working Tree` diff and lands on the block / 打开 `HEAD ↔ Working Tree` 的 diff 并定位到该块
-  - **Copy** takes the current lines (or the deleted content from `HEAD`) / 复制当前内容（删除块复制 `HEAD` 中的内容）
-  - **Commit this change** commits only this block through a throwaway index, leaving the rest of the file — staged or not — exactly as it was / 通过临时 index 只提交该块，文件其余的暂存与未暂存状态原样保留
-- **Turn the decorations off** — `JGC Decorations › Enabled`, `… › File Colors` and `… › Gutter Markers` switch off the Explorer colors and the gutter markers independently, so either layer can fall back to VS Code's built-in Git decorations / `JGC Decorations › Enabled`、`… › File Colors`、`… › Gutter Markers` 可分别关闭资源管理器着色与行号槽标记，某一层可退回使用 VS Code 内置 Git 的装饰
-- **Explorer file colors by Git status** — file names in the Explorer are tinted by their Git status (added, modified, deleted, untracked, ignored, conflict), so built-in Git can be disabled without losing them / 资源管理器中的文件名按 Git 状态着色（新增、修改、删除、未跟踪、已忽略、冲突），禁用内置 git 后依然保留
-- **Gutter change markers** — the line-number gutter shows a colored bar next to every added or modified line, and a short marker at the position where lines were deleted / 行号槽中为每个新增或修改的行显示彩色小竖条，删除位置显示较短的标记
-  - With inline blame annotations on, every marker keeps the same column to the right of the blame text — lines without a label reserve that column too, so markers never slide left / 开启行内 blame 注释时，所有标记保持在注释文字右侧的同一列；无标签的行同样保留该列宽度，标记不会向左滑动
-  - Files Git ignores get no markers at all, and neither do folders that are not a repository / 被 Git 忽略的文件不显示任何标记，非 Git 仓库的文件夹同样不显示
-- **File and line colors follow your palette** — the six Git status colors (added, modified, deleted, untracked, ignored, conflict) are declared as `jgc.decoration.*` color IDs and can be changed in **Settings** or under `workbench.colorCustomizations`. Both the Explorer file colors and the gutter markers follow the change; the defaults are taken from IDEA's File Status Colors / 六种 Git 状态颜色（新增、修改、删除、未跟踪、已忽略、冲突）以 `jgc.decoration.*` 颜色 ID 声明，可在**设置**中或通过 `workbench.colorCustomizations` 修改，资源管理器文件色与行号槽标记会同步变化；默认取色参照 IDEA 的 File Status Colors
+- **Change hover card** — Hovering a change marker or any changed line shows a card for that block: word-level highlighting for modifications, the HEAD content for deletions, and six actions — Prev Change, Next Change, Rollback Lines, Show Diff for Lines, Copy and Commit this change.
+  - Manage Selection... floats the same card over the block at the caret and keeps it open until you act on it.
+  - Commit this change commits just that block and leaves the rest of the file exactly as it was.
+- **Explorer colours by Git status** — File names are tinted by added, modified, deleted, untracked, ignored and conflict status, so they survive disabling the built-in Git extension.
+- **Gutter change markers** — A coloured bar marks every added or modified line and a short marker shows where lines were deleted; ignored files and non-repositories show nothing.
+  - With inline blame on, markers keep one column and lines without a label reserve that column too.
+- **Decorations can be switched off per layer** — JGC Decorations › Enabled, File Colors and Gutter Markers toggle the two layers independently, so either can fall back to VS Code's built-in decorations.
+- **Customisable status colours** — The six Git status colours are exposed as `jgc.decoration.*` IDs and can be changed in Settings or `workbench.colorCustomizations`, defaulting to IDEA's palette.
+- **Status bar shows the current branch** — The status bar shows the current branch with incoming and outgoing commit counts in place of the built-in Git item; clicking it opens the usual actions.
+  - It follows the active editor's folder in multi-root workspaces and refreshes on any Git change. A detached HEAD is shown instead of disappearing, and checking out a remote branch warns first.
+- **Editor context menu folds into one Git submenu** — Show File History moves into it, and the line-number menu gains a Manage Selection... entry.
 
-### Fixed / 修复
-- **Each line-number column toggles its own blame** — in a diff editor, the blame menu entries used `activeTextEditor`, which does not reliably follow the pane you interacted with, so both columns' entries drove the same side: annotating one side and then closing from the other column killed the first side's blame. The gutter menu now has a single **Toggle Git Blame Annotations** entry that acts on the editor the menu was opened on — VS Code forwards the clicked editor's URI (`{ lineNumber, uri }`) and the command annotates or clears exactly that editor, so each column, and each diff side, opens and closes its own blame independently / diff 编辑器里 blame 菜单项此前取的是 `activeTextEditor`（并不总是跟随你实际操作的栏），两列的菜单因此控制同一侧：给一侧打开 blame 后从另一列关闭，会关掉第一侧的 blame。现在行号菜单只有一个 **Toggle Git Blame Annotations** 入口，作用于菜单打开时所在的那一列——VS Code 会转发被点击编辑器的 URI（`{ lineNumber, uri }`），命令只对该编辑器做打开或关闭——每一列、diff 的每一侧都独立开关自己的 blame
-  - Blame works on both sides of a diff: virtual sides are blamed at the revision they display (`git blame <ref> -- <path>`), so line numbers match that side; sides without a git revision (empty placeholder, index, shelf content) say so instead of failing silently / diff 两列都能打开 blame：虚拟侧按其显示的版本执行 blame（`git blame <ref> -- <path>`），行号与该侧一致；没有 git 版本的侧（空占位、index、shelve 内容）会明确提示而不是无响应
-- **Commit badge shows without opening the panel** — two things conspired to keep the pending-changes badge on the activity bar's Commit icon hidden until the first click on it. The extension declared no `activationEvents`, so VS Code activated it only through contributions (`onView`, `onCommand`) — meaning the badge code did not run at all until some JGC UI was touched; the extension now activates with `onStartupFinished`, so it comes alive with the window. And a `WebviewView` is resolved lazily, so `WebviewView.badge` does not exist until the view has been opened once (microsoft/vscode#146330); the badge now rides a hidden tree view in the same container, whose `TreeView.badge` reaches the container icon without any resolution. The count now shows on window load and tracks every change, click or no click / 活动栏 Commit 图标上的待提交数角标此前只有第一次点击后才会出现，两个原因叠加：其一，扩展没有声明 `activationEvents`，VS Code 只按贡献点隐式激活（`onView`、`onCommand`）——没碰过任何 JGC 界面之前角标代码根本没运行；现在扩展以 `onStartupFinished` 随窗口启动激活。其二，`WebviewView` 是懒解析的，首次打开前 `WebviewView.badge` 不存在（microsoft/vscode#146330）；现在角标由同容器内一个隐藏的 TreeView 承载，`TreeView.badge` 无需解析即可作用到容器图标。窗口一加载就显示数量，并随每次变更更新
-- **Committing respects your checkboxes** — files that were staged but UNchecked still landed in the commit, because `git commit -m` swept the whole index in. Unchecked staged files are now unstaged for the commit and re-staged afterwards, so only the checked files are committed; Commit and Commit & Push behave the same / Commit 面板中已暂存但未勾选的文件此前仍会被提交（`git commit -m` 会带入整个暂存区）。现在提交前先对这些文件取消暂存、提交后再恢复，只有勾选的文件进入提交；Commit 与 Commit & Push 行为一致
-- **Saving a file no longer resets the Git Log panel** — every Git state event rebuilt the graph, so a plain file save (a `status` event) cleared the selected commit, the collapsed sequences and scrolled the list back to the first 200 commits. The panel now ignores `status` and `mergeState` events and only rebuilds when commits, branches or tags can actually change / 此前任意 Git 状态事件都会重建提交图——单纯保存文件（status 事件）也会清空选中的提交、折叠的提交序列，并把列表卷回前 200 条。现在面板忽略 status 与 mergeState 事件，只在提交/分支/标签真正变化时刷新
-- **Compare with Current shows the real diff** — the branch sidebar action opened two empty virtual documents because the URIs carried no `ref`. It now shows the merge-base patch of the selected branch against the current one / 分支侧边栏的 Compare with Current 此前打开的是两个空虚拟文档（URI 缺少 `ref`）。现在显示所选分支相对当前分支基于 merge-base 的 patch 内容
-- **Worktree panel refresh works again** — the Refresh Worktrees command invoked itself, looping forever when triggered. It now tells the panel to refetch / Worktree 面板的刷新命令此前会无限调用自身；现在改为通知面板重新拉取数据
-- **Rollback keeps new files on disk when you ask** — a new file that also had unstaged edits was classified as "modified" by the rollback panel, so it was deleted from disk even with delete-local-copies unchecked. Rollback now classifies by whether the file exists in `HEAD`; keeping the file only unstages it / 回滚面板此前会把「已暂存新增且又有未暂存修改」的文件误判为 modified，即使不勾选删除本地副本也会将其从磁盘删除。现在按文件是否存在于 `HEAD` 判定，保留文件时仅将其移出暂存区
-- **Drop Commit no longer fakes a timeout** — the operation reported "Operation timed out" after 30 seconds while the rebase kept running in the background. The fake timeout is gone (the progress indicator runs until the rebase actually finishes), and commits that are not on the current branch are rejected up front / Drop Commit 超过 30 秒会报「Operation timed out」，但 rebase 仍在后台继续。现在移除假超时（进度指示等待 rebase 真正结束），且不属于当前分支历史的提交会被提前拒绝
-- **Rollback Lines keeps your other unsaved edits unsaved** — rolling back one block force-saved the whole file, silently publishing unrelated edits with it. Only a previously clean document is written through now / 卡片中的 Rollback Lines 此前会保存整个文件，把同文件里其它未保存的修改一并写盘。现在只有回滚前没有未保存修改的文件才会自动保存
-- **IDEA shelves restore text containing backslash escapes** — the base revision was unescaped with sequential replaces, so a literal `\n` inside the shelved file (e.g. inside string literals) turned into a real newline. Unescaping is now a single pass / IDEA Shelf 恢复时，shelved 文件中的字面 `\n` 序列（如字符串字面量里）会被错误解码成真实换行。现在改为单遍转义解析
-- **Unshelving untracked files no longer appends a blank line** — the generated patch counted the phantom line after the trailing newline, so the restored file ended with an extra empty line; empty files now produce a valid patch too / 恢复包含 untracked 文件的 shelf 时，文件末尾会多出一个空行（patch 行数把末尾换行多算了一行）；空文件现在也能生成合法 patch
-- **Local branches with a slash are local again** — ref badges guessed remote-vs-local from a hardcoded prefix list, so branches like `dev/sub` or `user/feature` showed as remote branches. Classification now checks the first segment against the actually configured remotes / 带斜杠的本地分支（如 `dev/sub`、`user/feature`）此前基于硬编码前缀被误判为远程分支。现在用实际配置的 remote 名单判定
-- **Continue flows stage only the resolved conflicts** — cherry-pick, rebase and merge "Continue" used `git add -u`, staging every modified file including changes you never meant to commit. Only still-unmerged paths are staged now / cherry-pick、rebase、merge 的 Continue 此前使用 `git add -u`，会把所有已修改文件（包括并不想提交的改动）一起暂存。现在只暂存仍未合并的冲突文件
-- **Block commit keeps the executable bit** — committing a single change block always recorded mode `100644`, silently un-executing executable files; the mode now comes from `HEAD` / 单块提交（Commit this change）此前固定写入 100644 权限，可执行文件会丢失可执行位；现在从 `HEAD` 继承文件 mode
-- **Amend keeps the message you typed** — enabling Amend overwrote whatever message was already in the box with the last commit message / 勾选 Amend 会用上一次提交信息覆盖输入框中已输入的内容；现在仅在输入框为空时填入
-- **Commit file lists no longer race** — clicking commit B while commit A's changed-files request was still loading could show A's file list under B / 快速切换选中提交时，旧请求晚返回可能把 A 的文件列表显示在 B 之下
-- **Faster blame on large files** — the per-line label lookup rescanned the whole blame output linearly; it now uses a prebuilt line→index map / 大文件 blame 的逐行标签查找由线性重扫改为预建的行号映射
-- **Deleted files open a diff again** — clicking a deleted (`D`) entry in the Commit panel failed the whole diff editor with "cannot open editor: file not found", because the diff always used the on-disk working-tree file as its right side, and a deleted file is no longer on disk. Deleted entries now render as *content before deletion → empty*, the same way IDEA's Git UI and VS Code's built-in Git show them / 在 Commit 面板点击删除（`D`）条目时，整个 diff 编辑器报「由于找不到该文件，因此无法打开编辑器」——diff 右侧固定取磁盘上的工作区文件，而已删除的文件已不在磁盘上。现在删除条目按「删除前内容 → 空」展示，与 IDEA 的 Git UI 和 VS Code 内置 Git 一致
-  - Staged deletions diff against the index revision, unstaged ones against an empty virtual document / 已暂存的删除对比 index 版本，未暂存的删除对比空虚拟文档
-  - The `HEAD ↔ Staged` diff now really compares against the index instead of the working tree, so the title matches the content / `HEAD ↔ Staged` 的 diff 右侧现在真正对比暂存区（index）而非工作区，标题与内容一致
-  - Fixed by @dunlingzi in #8, reported in #7 / 由 @dunlingzi 在 #8 中修复，#7 报告
-- **Gutter markers now read your edits, not the diff's alignment** — line classification was rewritten around jsdiff's block semantics (`removed+added` runs pair into one modified block), replacing the old node-diff3 + per-line similarity heuristics that lost track of line identity when lines were inserted above an edit, turning whole regions green / 行号槽标记的行分类改为基于 jsdiff 的块语义（`removed+added` 区块配对为一个修改块），替换原先 node-diff3 加逐行相似度推断的方案——插入新行后整片修改行被误判为新增（绿色）的问题由此解决
-  - Blocks that only a blank line separates join into one modification when either side is large enough (more than 5 lines), the same rule VS Code's own quick diff applies — without it, a rewrite whose old and new lines happen to straddle a blank line would split into a green insertion and a gray deletion / 两个变更块之间仅隔空行时，任一侧超过 5 行即合并为一个修改块——与 VS Code 原生 quick diff 的启发式一致，否则跨空行的改写会被拆成绿色新增加灰色删除
-  - The classification ships with regression tests built from the original failing scenarios / 分类逻辑附带由原始出错场景提炼的回归测试
-- **All-caps headings** — headings across the Commit, Push and Git Log panels were forced to all caps: the Commit panel's file group headers and their file counts, the section headers in the Commit toolbar, Git Log list and branch sidebar context menus, and the Push panel's remote branch sections. `UNVERSIONED FILES` and `12 FILES` now read `Unversioned Files` and `12 files`, `ON SINGLE CLICK` reads `On Single Click`, `REMOTE` and `BRANCH` read `Remote` and `Branch` / Commit、Push、Git Log 面板的标题此前被强制转为全大写：Commit 面板的文件分组标题及文件计数、Commit 工具栏与 Git Log 列表与分支侧边栏右键菜单的分节标题、Push 面板的远程分支分节标题。`UNVERSIONED FILES` 与 `12 FILES` 现显示为 `Unversioned Files` 与 `12 files`，`ON SINGLE CLICK` 显示为 `On Single Click`，`REMOTE`、`BRANCH` 显示为 `Remote`、`Branch`
-- **Non-ASCII filenames** — Chinese and other non-ASCII filenames were shown as octal escape sequences such as `\344\270\255\346\226\207.txt` instead of `中文.txt`, and every Git operation on them (open diff, stage, discard, shelve) failed. Reported by @dunlingzi in #3, fixed in #4 / 中文等非 ASCII 文件名会显示成八进制转义串（如 `\344\270\255\346\226\207.txt`）而非文件名本身，且对这些文件的 Git 操作（打开 diff、暂存、撤销、shelve）全部失败 - 由 @dunlingzi 在 #3 中报告，#4 修复
-  - Paths are now decoded before use, so Git receives the real filename / 路径在使用前会先解码，Git 收到的是真实文件名
-  - Filenames containing a space, a double quote or an arrow are handled too, including a file literally named `a -> b` / 同时也能正确处理含空格、双引号或箭头的文件名，包括名字里就带 `a -> b` 的文件
-- **Files missing from an IDEA shelf** — a shelf could omit files whose name forced Git to quote the path, so restoring it left those changes behind / IDEA Shelf 的文件列表可能漏掉路径被 Git 加引号的文件，恢复后这些改动会丢失
+### Improved
+
+- **Jump to Source keeps your selection** — In a diff editor the selection and the scroll position survive the jump instead of collapsing to a bare cursor line.
+- **Faster blame on large files** — Per-line label lookup uses a prebuilt line map instead of rescanning the whole output.
+
+### Fixed
+
+- **Each diff column controls its own blame** — The line-number menu has a single Toggle Git Blame Annotations entry that acts only on the editor the menu was opened on, so neither the two columns nor the two diff sides affect each other.
+  - Virtual sides are blamed at the revision they display, and sides without a Git revision say so instead of doing nothing.
+- **Commit badge appears immediately** — The pending-changes badge shows as soon as the window loads, without clicking the Commit icon first.
+- **Committing respects your checkboxes** — Files that were staged but unchecked no longer end up in the commit.
+- **Saving a file no longer resets the Git Log** — A plain save no longer clears the selected commit or the collapsed sequences, and does not scroll back to the top.
+- **Compare with Current shows the real diff** — The branch sidebar action shows the merge-base diff instead of opening two empty documents.
+- **Worktree refresh works again** — The refresh command no longer invokes itself in a loop.
+- **Rollback keeps local copies** — A new file with unstaged edits is no longer deleted from disk when local copies are kept; it is only unstaged.
+- **Drop Commit no longer fakes a timeout** — The operation stops reporting a timeout after 30 seconds while the rebase is still running.
+- **Rollback Lines leaves other edits alone** — Rolling back one block no longer saves unrelated unsaved edits in the same file.
+- **IDEA shelves restore escaped text correctly** — A literal `\n` inside a shelved file is no longer decoded into a real newline.
+- **Unshelving no longer adds a blank line** — Restoring a shelf with untracked files no longer appends an empty line, and empty files produce a valid patch.
+- **Local branches with a slash stay local** — Branches such as `dev/sub` are classified against the configured remotes instead of a hardcoded prefix list.
+- **Continue stages only the conflicts** — Continuing a cherry-pick, rebase or merge no longer stages other modified files.
+- **Block commit keeps the executable bit** — Committing a single block takes the file mode from HEAD instead of writing 100644.
+- **Amend keeps your message** — Enabling Amend fills the previous message only when the box is empty.
+- **Commit file lists no longer get mixed up** — Switching commits quickly no longer shows the previous commit's file list.
+- **Deleted files open a diff again** — Deleted entries render as *content before deletion → empty* instead of failing with "file not found", and the HEAD ↔ Staged diff really compares against the index. Fixed by @dunlingzi in #8, reported in #7.
+- **Gutter markers follow your edits** — Inserting lines above an edit no longer turns the whole modified region green.
+  - Blocks separated only by a blank line merge into one modification when either side exceeds five lines, matching VS Code's quick diff.
+- **Headings are no longer all caps** — Group headers, section headers and file counts in the Commit, Push and Git Log panels keep their normal casing.
+- **Non-ASCII filenames** — Chinese and other non-ASCII names are no longer shown as octal escapes and every Git operation on them works again, including names with spaces, quotes or arrows. Reported by @dunlingzi in #3, fixed in #4.
+- **IDEA shelf file lists are complete** — A shelf no longer omits files whose path Git had quoted.
 
 ## [1.1.2] - 2026-10-08
 
-### Added / 新增
-- **Triple-click jumps to source** — in the Commit panel file list: single click selects, double click opens the diff, triple click opens the file / Commit 面板文件列表支持三击跳转源码：单击选中，双击打开 diff，三击打开文件
-- **Shift-click range selection** — select a contiguous run of files in the Commit panel / Commit 面板支持按住 Shift 连续选择多个文件
-- **Jump to Source shortcut** — `F4`, plus `Cmd+↓` on macOS and `Ctrl+↓` on Windows/Linux / 跳转源码快捷键：`F4`，macOS 额外支持 `Cmd+↓`，Windows/Linux 支持 `Ctrl+↓`
-  - Works in the Commit panel, the Git Log Changed Files list, and inside a diff editor / Commit 面板、Git Log 的 Changed Files 列表、diff 编辑器内均可用
-  - In a diff editor it opens the file on disk and jumps to the line the cursor is on / 在 diff 编辑器中会打开磁盘上的文件并定位到光标所在行
-  - Can be rebound in **Preferences: Open Keyboard Shortcuts** / 可在 **Preferences: Open Keyboard Shortcuts** 中重新绑定
-  - Context menus show the shortcut beside **Jump to Source** and **Edit Source** / 右键菜单中 **Jump to Source** 与 **Edit Source** 旁显示快捷键
-- **Commit badge** — the Commit entry in the activity bar shows how many files are pending, matching the count in VS Code's own Source Control view / Commit 侧边栏图标显示待处理的文件数量，与 VS Code 自带源代码管理视图的数字一致
-- **New setting** `jgc.shortcut.jumpToSourceLabel` — text shown beside the shortcut in context menus; leave empty to hide it / 新增设置 `jgc.shortcut.jumpToSourceLabel`，控制右键菜单中快捷键的显示文案，留空则隐藏
+### Added
 
-### Changed / 变更
-- **Smaller extension package** — the VSIX shrank from 3.69 MB to 2.48 MB, a 33% reduction, so download and install are faster / 扩展包体积从 3.69 MB 缩减到 2.48 MB，减少 33%，下载与安装更快
-  - Editor and IDE working files that were being packaged by mistake are no longer shipped / 不再打包误混入的编辑器与 IDE 工作文件
-  - Two unused images were dropped / 移除两张未被引用的图片
+- **Triple-click to open the source file** — In the Commit panel file list a single click selects, a double click opens the diff and a triple click opens the file.
+- **Shift range selection** — Shift+click selects a contiguous run of files in the Commit panel.
+- **Jump to Source shortcut** — F4, plus Cmd+↓ on macOS and Ctrl+↓ on Windows/Linux. It works in the Commit panel, the Git Log Changed Files list and inside a diff editor, and can be rebound.
+- **Commit badge** — The Commit icon in the activity bar shows how many files are pending, matching the built-in Source Control view.
+- **New setting** — `jgc.shortcut.jumpToSourceLabel` controls the text beside Jump to Source in context menus; leave it empty to hide the text.
 
-### Fixed / 修复
-- The **Changed Files** header was shown in all caps / **Changed Files** 标题显示为全大写
-- Double-clicking a file in **Changed Files** highlighted its name as text / 双击 **Changed Files** 里的文件会把文件名选成文字
-- Newly created, renamed or deleted untracked files did not appear in the Commit panel until an unrelated action triggered a refresh / 新建、重命名或删除未追踪文件后，Commit 面板不会立即刷新，需要其他操作触发
-- Pressing Shift showed a stray border around the Commit file list / 按 Shift 会在 Commit 文件列表周围出现多余边框
-- Selection could keep referring to files that no longer existed after a refresh / 刷新后选中状态会残留已不存在的文件
+### Improved
+
+- **Package 33% smaller** — The download shrank from 3.69 MB to 2.48 MB by dropping editor and IDE working files that were shipped by mistake, along with two unreferenced images.
+
+### Fixed
+
+- **Changed Files header was all caps** — It keeps its normal casing.
+- **Double-click selected the file name as text** — Double-clicking a file no longer highlights its name.
+- **New files did not appear right away** — The Commit panel refreshes as soon as an untracked file is created, renamed or deleted.
+- **A stray border appeared while pressing Shift** — The border around the Commit file list is gone.
+- **Selection kept files that no longer existed** — A refresh no longer keeps a selection pointing at removed files.
 
 ## [1.1.1] - 2026-09-12
 
-### Added / 新增
-- **Commit hash search** — search commits by hash in the search bar / 搜索栏支持按 commit hash 搜索提交
+### Added
 
-### Fixed / 修复
-- **Commit panel text selection** — disabled mouse text selection in commit panel file list / 禁用 commit 面板文件列表的文字选中
-- **Worktree table header uppercase** — removed `text-transform: uppercase` from worktree table header / 移除 worktree 表头的全大写样式
+- **Search by commit hash** — Type a commit hash in the search bar to find commits.
+
+### Fixed
+
+- **Commit panel text could be selected** — The file list no longer responds to mouse text selection.
+- **Worktree table header was all caps** — It keeps its normal casing.
 
 ## [1.1.0] - 2026-08-29
-### Added / 新增
-- **Git Worktree** — sidebar panel for managing Git worktrees (JetBrains-style) / Git Worktree 侧边栏面板（JetBrains 风格）
-  - Worktree list with branch, path columns; main worktree protection / 工作树列表显示分支和路径列，主工作树受保护不可删除
-  - New Worktree dialog: searchable branch/tag dropdown (local + origin/* + tags), input filtering, auto-fill project name / 新建工作树对话框：可搜索分支/标签下拉、输入过滤、自动填充项目名
-  - Branch name validation: real-time duplicate check with red border / 分支名校验：实时检查重名并红框提示
-  - Open Project dialog (native VS Code): Cancel / This Window / New Window / 打开项目对话框（原生 VS Code API）
-  - `jgc.worktree.openBehavior` setting: ask (default) / thisWindow / newWindow / 配置项控制打开行为
-  - Prune button with JetBrains clearCash icon / 清理按钮使用 JetBrains clearCash 图标
-  - Sidebar collapse/expand toggle / 侧边栏折叠/展开切换
-  - Location defaults to repo root, remembers per-repo preference / Location 默认为仓库根目录，按仓库记忆上次选择
+
+### Added
+
+- **Git Worktree panel** — A sidebar panel manages Git worktrees, listing branch and path with the main worktree protected from deletion.
+  - The New Worktree dialog offers a searchable branch and tag dropdown (local branches, `origin/*`, tags), input filtering, an auto-filled project name and a live duplicate-name check.
+  - Opening a worktree can cancel, reuse the current window or open a new one, defaulting to the `jgc.worktree.openBehavior` setting.
+  - It includes a Prune button and a collapsible sidebar, defaults the location to the repository root and remembers it per repository.
 
 ## [1.0.0] - 2026-08-28
-### Added / 新增
-- **Annotate with Git Blame** — WebStorm-style inline blame annotations for every line, with click-to-jump to the Git Log commit graph / WebStorm 风格的行内 blame 注释，点击注释跳转到 Git Log 提交图并定位提交
-  - Gutter (line number) right-click menu: `Annotate with Git Blame` / `Close Annotations` / 行号右键菜单触发，菜单项互斥切换
-  - **Annotation View** submenu (nested under gutter menu): multi-select columns Revision / Date (default on) / Author (default on) / Commit Number, plus nested **Colors** (Author / Order (default) / Hide) and **Names** (Initials / Last Name / First Name / Full Name / Email) radio submenus; at least one column must stay enabled / 注释视图子菜单：Revision、Date（默认选）、Author（默认选）、Commit Number 多选；内嵌 Colors（Author / Order（默认）/ Hide 单选）与 Names（作者名显示方式单选）子菜单；至少保留一列
-  - JetBrains-style age-based coloring, configurable via `jgc.blame.colorMode` / 按提交新旧程度渐变着色（新→蓝、中→绿、旧→灰）
-  - Display scope config: whole file / cursor line only / N lines around cursor (`jgc.blame.displayMode`) / 展示范围可配置：全文件 / 仅光标行 / 光标前后 N 行
-  - Date format config (`jgc.blame.dateFormat`, default `yyyy-MM-dd HH:mm`), hash off by default / 日期格式可配置，默认不显示 hash
-
-### Changed / 变更
-- Renamed extension to **JetBrains Git Control** (short brand: JGC); extension ID changed from `idea-like-git-graph` to `jetbrains-git-control` / 插件更名为 JetBrains Git Control（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`
-
-### Fixed / 修复
-- **GitLog panel text selection** — disabled mouse text selection in GitLog panel file list / 禁用 Git Log 面板文件列表的文字选中
-
-## [0.4.17] - 2026-06-20
-
-### Added / 新增
-- **Push Panel: multi-remote switching** — push panel now supports switching between multiple remotes (e.g. origin, fork) via a dropdown selector, with separate branch input / Push 面板支持多 remote 切换，remote 下拉选择和 branch 输入框独立
-
-### Fixed / 修复
-- **Push Panel: stale remote list** — uses `git remote` directly; deleted remotes no longer appear / 修复已删除的 remote 仍显示的问题
-- **Push Panel: default remote detection** — auto-detects correct default remote from upstream tracking config / 自动检测正确的默认 remote
-- **Push Panel: ahead commits respect selected remote** — commit list updates dynamically when switching remotes / 切换 remote 后 commit 列表动态更新
-- **Dark theme: commit panel** — fixed tabs, toolbar buttons, textarea border, checkboxes, buttons (Cancel/Commit and Push) all using hardcoded light colors / 修复 commit 面板深色主题下各组件颜色不正确
-- **Dark theme: file name colors** — commit panel and FileTree now use IDEA Dark Island palette (blue for modified, green for added, etc.) instead of invisible dark-on-dark colors / 文件名颜色改为 IDEA Dark Island 风格，深色主题下清晰可见
-- **Dark theme: dropdown menus** — all dropdown/context menu backgrounds, borders, hover states, separators fixed across git log, commit panel, push panel / 所有下拉菜单和右键菜单深色主题适配
-- **Dark theme: push/rollback panels** — Cancel button, menu items, checkbox styling all fixed / Push/Rollback 面板按钮和 checkbox 深色适配
-
-## [0.4.16] - 2026-06-20
-
-### Added / 新增
-- **Push Panel: multi-remote switching** — push panel now supports switching between multiple remotes (e.g. origin, fork) via a dropdown selector / Push 面板支持切换多个 remote（如 origin、fork）
-- **Push Panel: separate remote selector & branch input** — remote is selected from a list, branch name is typed in a text input, independent of each other / Remote 下拉选择和 Branch 输入框分离，互不影响
-
-### Fixed / 修复
-- **Push Panel: stale remote list** — remote list now uses `git remote` directly and invalidates cache, deleted remotes no longer appear / 修复已删除的 remote 仍显示在列表中的问题
-- **Push Panel: default remote detection** — opening push panel now detects the correct default remote from upstream tracking config instead of hardcoding "origin" / 打开 Push 面板时自动检测正确的默认 remote，不再硬编码 origin
-- **Push Panel: ahead commits respect selected remote** — commit list updates dynamically when switching remotes, comparing against the correct remote tracking branch / 切换 remote 后 commit 列表会根据所选 remote 重新计算
-
-## [0.4.15] - 2026-06-10
-
-### Fixed / 修复
-- **Revert Selected Changes for added files** — no longer fails with "pathspec did not match" when reverting a file that was newly added in a commit / 修复 Revert Selected Changes 对新增文件报 pathspec 错误
-- **Rollback for staged new files** — correctly removes file from index and disk for files not yet in HEAD (untracked → staged → rollback) / 修复已暂存的新文件 Rollback 报 ENOENT 错误
-- **Remote branch checkout** — "Checkout" on a remote branch (e.g. `origin/dev`) now creates a local tracking branch (`dev`) instead of entering detached HEAD / 远程分支 Checkout 现在创建本地跟踪分支而非 detached HEAD
-- **New Branch default name** — "New Branch from 'origin/stg'" dialog now defaults to `stg` instead of `origin/stg` / 从远程分支创建新分支时默认名去掉 remote 前缀
-- **Ref tag/branch labels truncated** — commit message now properly shrinks with ellipsis so tag/branch labels always display fully / 修复 tag/branch 标签被 commit message 挤压截断的问题
-
-## [0.4.14] - 2026-06-09
-
-### Added / 新增
-- **Drop Commit** — right-click a commit in git log to drop it from history while preserving its changes as unstaged modifications (IDEA-style) / 右键 commit 支持 Drop Commit，移除 commit 但保留变更到工作区
-- **Push Panel: editable remote branch target** — click "origin : main" label to type a custom push target branch name / Push 面板支持点击编辑远程分支目标
-- **Push Panel: draggable split divider** — drag the vertical divider between commit list and file changes to resize panes / Push 面板分割线支持拖拽调整宽度
-- **Push Panel: progress bar + native notification** — indeterminate progress bar during push, VS Code notification on completion / Push 时显示进度条，完成后弹出原生通知
-- **Push Panel: reuse FileTree + CommitInfo** — right side now uses the same FileTree (with tree/flat toggle) and CommitInfo components as git log / Push 面板右侧复用 git log 的文件树和 commit 详情组件
-- **Rollback Panel** — dedicated confirmation tab (like Push Panel) with file tree, checkboxes, "Delete local copies of added files" option, and Rollback/Cancel buttons / 全新 Rollback 确认面板，类似 Push 面板，带文件树 + checkbox + 删除选项
-- **(JetGit) Edit Source** — right-click in diff editor to jump to the source file at the same line / Diff 编辑器右键跳转到源文件
-- **Ref tag icons: dual icons for merged labels** — "origin & dev" now shows both remote (purple) + local (green) overlapping tag icons / 合并标签显示双色重叠图标
-
-### Changed / 变更
-- **Rollback uses highlighted files** — rollback button now operates on mouse-click selected (highlighted) files, not checkbox-selected files / Rollback 按钮根据鼠标点击高亮的文件操作
-- **No default checkbox selection** — commit panel no longer auto-selects all files on load / Commit 面板不再默认全选文件
-- **(JetGit) Show File History** — renamed from "Show File History" to clearly indicate plugin origin, focuses git log panel before filtering / 文案改为 (JetGit) Show File History，点击时先聚焦 git log 面板
-- **Ref icon styling** — 16px icons, 5px overlap spacing, white-fill with 1.2px colored stroke for IDEA-like layered effect / 图标调大到 16px，间距 5px，白色填充+彩色描边
-
-### Fixed / 修复
-- **Pull --rebase with unstaged changes** — added `--autostash` flag so rebase works even with uncommitted changes (matches IDEA behavior) / pull --rebase 加 --autostash，有未提交变更时也能正常 rebase
-- **Edit Source path resolution** — correctly resolves `git-brains:/` URI paths to workspace files / Edit Source 正确解析 diff URI 到工作区文件
-
-## [0.4.11] - 2026-06-06
-
-### Changed / 变更
-- **IDEA-style graph colors** — lane colors updated to match IntelliJ IDEA's softer, professional palette (blue, red, green, golden, purple, teal, orange, light teal) / Git graph 配色更新为 IDEA 风格的柔和专业色系
-- **IDEA-style angular lines** — graph lines changed from Bézier curves to IDEA-style diagonal transitions (vertical → diagonal → vertical) / 分支线从贝塞尔曲线改为 IDEA 风格的斜线过渡
-- **Stub lines with arrows** — branch tips whose parents are beyond the loaded range now show a solid line with a downward arrow (matching IDEA) instead of dashed stubs / 超出加载范围的分支末端改为实线+向下箭头
-- **Branch ahead/behind indicators** — shows green ↗ for ahead and teal ↙ for behind on branch names in the tree (IDEA style) / 分支树显示绿色 ↗ ahead 和青色 ↙ behind 标记
-- **Ref icon colors** — remote-branch and tag icon colors updated to match the new graph palette / Ref 图标颜色与 graph 配色统一
-
-### Fixed / 修复
-- **Graph hidden by header** — git graph SVG no longer renders above the column header when scrolling; header properly clips the graph / 滚动时 graph 不再穿过表头
-- **Node-text overlap** — improved per-row max column tracking to prevent graph nodes from overlapping commit message text / 改进每行最大列计算，防止节点与文字重叠
-- **Date-order sorting** — git log now uses `--date-order` for commit ordering consistent with IDEA / git log 使用 `--date-order` 排序，与 IDEA 一致
-
-## [0.4.10] - 2026-06-04
-
-### Added / 新增
-- **Create Branch dialog** — replaced native input box with a custom dialog featuring "Checkout branch" and "Overwrite existing branch" checkboxes, matching JetBrains style / 创建分支改为自定义对话框，支持 "Checkout branch" 和 "Overwrite existing branch" 选项
-- **Inline error in Create Branch dialog** — shows git error message (e.g. branch already exists) directly in the dialog instead of only logging to console / 创建分支失败时在对话框内显示错误提示
-
-### Fixed / 修复
-- **Rollback toolbar button** — the Rollback button in the commit panel toolbar now works (was missing onClick handler) / Commit 面板工具栏的 Rollback 按钮现在可以正常使用
-
-## [0.4.9] - 2026-06-03
-
-### Added / 新增
-- **Tooltip on truncated branch names** — hover over ellipsized branch names to see full name via custom Tooltip / 悬浮被截断的分支名显示完整名称（使用自定义 Tooltip）
-- **Tooltip on truncated commit messages** — hover over ellipsized commit subjects to see full message / 悬浮被截断的 commit message 显示完整内容
-- **Tooltip on ref/tag labels** — hover over branch/tag labels in commit rows to see full ref names / 悬浮 commit 行的 ref/tag 标签显示完整名称
-- **Directory rollback** — added "Rollback..." option to folder context menu to revert all files in directory / 文件夹右键菜单新增 "Rollback..." 选项
-
-### Fixed / 修复
-- **Tooltip renders via portal** — tooltips now render to document.body, preventing clipping by overflow:hidden containers / Tooltip 通过 portal 渲染到 body，不再被父容器裁剪
-- **Tooltip auto-flip** — when near viewport top edge, tooltip automatically flips to bottom / Tooltip 靠近顶部时自动翻转到下方显示
-- **Context menu viewport overflow** — file and folder context menus auto-adjust position near viewport edges / 右键菜单靠近边缘时自动调整位置
-- **Context menu dismiss on blur** — clicking outside webview now closes context menus / 点击 webview 外部关闭右键菜单
-- **Preserve file selection on refresh** — refresh no longer resets checkbox state, preserves user selections / 刷新不再重置勾选状态
-- **Behind count font size** — reduced to 0.85em to match branch name size / behind 数字字体缩小匹配分支名
-- **Thin scrollbar** — 6px scrollbar that doesn't expand on hover / 6px 细滚动条，悬浮不变宽
-
-## [0.4.8] - 2026-06-02
-
-### Added / 新增
-- **Column visibility toggle** — right-click the column header or use the eye icon (View Options) in the toolbar to show/hide Author, Date, Hash columns, similar to IntelliJ IDEA / 右键表头或点击工具栏眼睛图标可切换显示/隐藏 Author、Date、Hash 列，类似 IDEA 的 Columns 菜单
-- **View Options button** — eye icon button on the far right of the toolbar with a dropdown for column visibility / 工具栏最右侧新增眼睛图标按钮，下拉菜单控制列显示
-- **Branch panel collapse button in sidebar** — the "<" collapse button is now at the top of the left toolbar (BranchSidebar), matching JetBrains layout / 分支面板收起按钮移到左侧工具栏顶部，与 JetBrains 布局一致
-- **New Branch input pre-filled** — "New Branch from..." now pre-fills the input with the source branch name (fully selected) / "New Branch from..." 现在预填源分支名称并全选
-
-### Fixed / 修复
-- **Diff icon** — replaced with official JetBrains `expui/vcs/diff.svg` icon (two offset arrows → ←) across all context menus and toolbars / 所有右键菜单和工具栏的 diff 图标替换为 JetBrains 官方 `expui/vcs/diff.svg`
-- **Compare with Current icon** — now uses the official diff icon instead of the external-link style / "Compare with Current" 按钮改用官方 diff 图标
-- **Group By Directory icon** — replaced with JetBrains `groupByPackage` icon (folder inside brackets) / "Group By Directory" 图标改为 JetBrains `groupByPackage` 风格（方括号内文件夹）
-- **Settings icon** — replaced with stroke-based gear icon for better clarity / 设置图标替换为描边齿轮，更清晰
-- **Ref badges right-aligned** — tag/branch labels in the git log are now right-aligned within the message column / Git log 中的 tag/分支名标签现在右对齐
-- **Context menu viewport overflow** — file and directory context menus now auto-adjust position when near viewport edges / 文件和文件夹右键菜单现在在靠近视口边缘时自动调整位置
-- **Context menu dismiss on blur** — clicking outside the webview (editor, other panels) now correctly closes context menus / 点击 webview 外部（编辑器、其他面板）现在能正确关闭右键菜单
-- **Directory rollback** — added "Rollback..." option to folder context menu to revert all files in the directory / 文件夹右键菜单新增 "Rollback..." 选项，可还原目录内所有文件
-
-### Changed / 变更
-- **Panel layout** — uses `proportionalLayout={false}` so collapsing left/right panels gives all space to the center git log / 面板布局改为非等比分配，收起侧面板时空间全部给中间 git log
-- **All buttons have tooltips** — enforced tooltip on every interactive button / 所有按钮强制添加 tooltip
-
-## [0.4.7] - 2026-05-31
-
-### Added / 新增
-- **Merge conflict banner** — displays "Merging {branch}" with continue/abort buttons when merge conflicts are detected, matching IntelliJ IDEA behavior / 合并冲突时显示 "Merging {branch}" 横幅，带继续/终止按钮，与 IDEA 行为一致
-- **Merge Conflicts file group** — conflicted files are separated into a dedicated "Merge Conflicts" group with a "Resolve" link / 冲突文件单独分组为 "Merge Conflicts"，带 "Resolve" 链接
-- **Rebase banner** — displays "Rebasing {branch} (step/total)" with continue/abort buttons during rebase / Rebase 时显示进度横幅和操作按钮
-- **Custom fast Tooltip** — 300ms delay tooltip component replacing slow native browser tooltips across all buttons / 自定义 300ms 快速 Tooltip 组件，替换所有按钮的原生浏览器提示
-
-### Fixed / 修复
-- **Merge editor Apply button** — accepting a single side now auto-resolves the conflict block, enabling the Apply button immediately / 合并编辑器中接受单侧变更后立即启用 Apply 按钮
-- **Rebase/Merge continue button** — opens conflict resolution panel when unresolved conflicts exist, commits only when all resolved / 有未解决冲突时打开冲突面板，全部解决后才执行 commit
-
-### Changed / 变更
-- **Rebase continue/abort icons** — replaced with JetBrains official expui-style icons (double chevron >> and ×) / 替换为 JetBrains 官方 expui 风格图标
-- **Merge editor buttons** — restyled to match plugin design (rounded corners, hover effects) / 合并编辑器按钮样式统一为插件风格（圆角、hover 效果）
-- **Tooltip unified** — all toolbar, merge editor, and gutter buttons now use the custom Tooltip component / 所有工具栏、合并编辑器和 gutter 按钮统一使用自定义 Tooltip
-
-## [0.4.6] - 2026-05-30
-
-### Added / 新增
-- **Current branch sorted to top** — the checked-out branch (or folder containing it) is always shown first in the Local branch tree / 当前分支（或包含它的文件夹）始终排在 Local 分支树最顶部
-- **Commit message history dropdown** — click the clock icon next to "Amend" to pick from recent commit messages / 点击 Amend 旁的时钟图标可选择最近的 commit message
-- **Refresh syncs both panels** — the refresh button in the commit panel now also refreshes the git log view / Commit 面板的刷新按钮现在同时刷新 Git Log 视图
-
-### Fixed / 修复
-- History dropdown opens upward to avoid being clipped by panel boundary / 历史下拉菜单向上弹出，避免被面板边界裁剪
-- History dropdown dismisses on outside click / 点击外部区域关闭历史下拉菜单
-
-## [0.4.4] - 2026-05-28
-
-### Added / 新增
-- **IDEA-style compact Git Graph** — narrower lanes, smaller nodes, thinner lines / IDEA 风格紧凑 Git 图 — 更窄的通道、更小的节点、更细的线条
-- **Per-row text indent** — commit message starts right after the graph for that row, not global max width / 每行文字缩进基于该行 graph 宽度，不再使用全局最大宽度
-- **IDEA-style ref tag icons** — outline tag icons with overlapping layout, color-coded / IDEA 风格标签图标 — 线条轮廓标签重叠显示，颜色区分
-- **Ref merge rules** — local + remote same-name branches merge as "origin & branchName" / 同名本地+远程分支合并显示为 "origin & branchName"
-- **Detail panel email** — author email shown as clickable mailto link / 详情面板显示作者邮箱（可点击）
-- **URL highlighting** — links in commit messages are clickable / 提交信息中的链接可点击
-- **Mailmap support** — uses %aN/%aE for consistent author identity / 支持 .mailmap 统一作者身份
-- **Delete files** — right-click file or directory to delete (with confirmation) / 右键删除文件或目录（带确认）
-- **Default directory view** — commit panel defaults to directory tree mode / Commit 面板默认使用目录树视图
-
-### Fixed / 修复
-- origin/HEAD filtered from ref display / 过滤 origin/HEAD 不显示
-- HEAD shows only icon in list row (no text) / HEAD 在列表行只显示图标
-- Local branches with slashes (feat/xxx) correctly classified / 带斜杠的本地分支正确分类
-- Empty email no longer shows `<>` / 空邮箱不再显示 `<>`
-- Graph-to-text gap increased for readability / 增加 graph 和文字间距
-- Per-row indent considers all lanes passing through each row / 每行缩进考虑所有经过该行的 lane
-
-### Changed / 变更
-- Git graph COLUMN_WIDTH: 16→10, line stroke: 1.6→1.2, node radius reduced / Git 图列宽、线粗、节点半径缩小
-- Ref display: background badges → outline tag icons / 标签显示从背景色方块改为轮廓图标
-
-## [0.4.3] - 2026-05-27
-
-### Fixed / 修复
-- Larger checkboxes (16px) for better visibility / 更大的复选框（16px）提升可见性
-- Removed yellow/orange focus outline on unchecked checkboxes / 移除取消选中时的黄色聚焦边框
-- Checkbox accent color uses IDEA blue (#3574f0) / 复选框选中颜色使用 IDEA 蓝色
-- "Commit and Push" button hover color matches toolbar style (#ededed) / "Commit and Push" 按钮悬浮颜色与工具栏一致
-
-## [0.4.2] - 2026-05-27
-
-### Added / 新增
-- Clicking Commit icon in Activity Bar now opens both sidebar and bottom Git Log panel simultaneously / 点击 Activity Bar 的 Commit 图标同时打开侧边栏和底部 Git Log 面板
-- Clicking again to collapse also closes the bottom panel / 再次点击收起时同时关闭底部面板
-- Custom larger SVG icon for Commit in Activity Bar / Activity Bar 使用更大的自定义 SVG 图标
-
-## [0.4.1] - 2026-05-26
-
-### Added / 新增
-- **Next/Previous File Diff Navigation** — jump between file diffs with keyboard shortcuts
-  **下一个/上一个文件 Diff 导航** — 用快捷键在文件 diff 之间跳转
-  - Cmd+F7: next file diff / 下一个文件 diff
-  - Cmd+Shift+F7: previous file diff / 上一个文件 diff
-  - Status bar shows current position (e.g. "File 2/5: filename.tsx") / 状态栏显示当前位置
-  - Commands: `git-brains.nextDiff` / `git-brains.prevDiff` (rebindable in Keyboard Shortcuts) / 可在键盘快捷键设置中自定义绑定
-- **Directory node checkboxes** in tree view / 目录树视图中的文件夹复选框
-  - Check/uncheck recursively selects/deselects all files under a directory / 勾选/取消勾选递归选中/取消目录下所有文件
-  - Indeterminate state when partially selected / 部分选中时显示半选状态
-- **Keyboard arrow navigation** — Up/Down arrows move highlight between files / 上下箭头键在文件间移动高亮
-
-### Fixed / 修复
-- Directory tree expanded state now persists across tab switches / 目录树展开状态在切换标签页后保持不变
-- Show all individual untracked files (use `git status -uall`) instead of directory summaries / 显示所有未跟踪文件而非目录摘要
-- Directory tree indentation matches IDEA style with proper nesting / 目录树缩进匹配 IDEA 风格
-- Chevron arrow placed before checkbox in directory rows (matches IDEA) / 文件夹行中箭头在复选框前面
-
-## [0.4.0] - 2026-05-26
-
-### Added / 新增
-- **IDEA-style Commit Panel** — new sidebar panel (Activity Bar) replicating IntelliJ's commit workflow
-  **IDEA 风格 Commit 面板** — 新增侧边栏面板，复刻 IntelliJ 的提交工作流
-  - File changes grouped by Changes / Staged / Unversioned Files / 文件变更按 Changes / Staged / Unversioned Files 分组
-  - Checkbox-based file selection for partial commits / 基于复选框的文件选择，支持部分提交
-  - Commit message input with Ctrl+Enter shortcut / 提交信息输入框，支持 Ctrl+Enter 快捷提交
-  - Commit / Commit and Push buttons / Commit 和 Commit and Push 按钮
-  - Amend commit support (auto-loads previous message) / Amend 提交支持（自动加载上次提交信息）
-  - Right-click context menu: Show Diff, Jump to Source, Add to VCS/Unstage, Rollback, Shelve Changes / 右键菜单：查看差异、跳转源码、暂存/取消暂存、回滚、搁置变更
-  - Cmd+Click multi-select for batch operations / Cmd+点击多选，支持批量操作
-  - Group by Directory toggle with tree view (collapsible folders) / 按目录分组切换，支持树形视图（可折叠文件夹）
-  - View Options menu (eye icon): Group By Directory, Show Unversioned Files / 视图选项菜单（眼睛图标）：按目录分组、显示未跟踪文件
-  - Expand All / Collapse All toolbar buttons / 展开全部/折叠全部工具栏按钮
-- **IDEA-compatible Shelf** — real shelf stored in `.idea/shelf/` (compatible with IntelliJ IDEA)
-  **IDEA 兼容 Shelf** — 真正的 shelf 功能，存储在 `.idea/shelf/`（与 IntelliJ IDEA 完全兼容）
-  - Patch-based storage format matching IDEA's XML + unified diff / 基于 patch 的存储格式，匹配 IDEA 的 XML + unified diff
-  - Expandable shelf entries showing individual file changes / 可展开的 shelf 条目，显示每个文件的变更
-  - Right-click context menu: Unshelve, Restore, Create Patch, Copy as Patch to Clipboard, Import Patches, Delete / 右键菜单：取消搁置、恢复、创建补丁、复制补丁到剪贴板、导入补丁、删除
-  - Show Diff opens side-by-side diff editor (base vs modified) / Show Diff 打开左右对比差异编辑器（原始 vs 修改后）
-  - Import Patches from external .patch/.diff files / 从外部 .patch/.diff 文件导入补丁
-  - Right-click on empty area to Import Patches / 空白区域右键可导入补丁
-- **Stash Tab** — git stash management (renamed from previous "Shelf")
-  **Stash 标签页** — git stash 管理（从之前的 "Shelf" 重命名）
-  - Expandable stash entries with file details / 可展开的 stash 条目，显示文件详情
-  - Right-click context menu: Unshelve, Restore, Delete / 右键菜单：弹出、应用、删除
-  - Per-file context menu: Show Diff, Jump to Source, Copy Path / 单文件右键菜单：查看差异、跳转源码、复制路径
-- All icons sourced from [JetBrains IntelliJ Icons](https://intellij-icons.jetbrains.design/) (Apache 2.0)
-  所有图标来源于 [JetBrains IntelliJ Icons](https://intellij-icons.jetbrains.design/)（Apache 2.0 许可）
-- Unified design language: 6px border-radius, consistent hover colors (#ededed), IDEA blue focus (#3574f0)
-  统一设计语言：6px 圆角、一致的悬浮颜色（#ededed）、IDEA 蓝色聚焦（#3574f0）
-- File status colors matching IDEA: green (added), blue (modified), red (unversioned), gray (deleted)
-  文件状态颜色匹配 IDEA：绿色（新增）、蓝色（修改）、红色（未跟踪）、灰色（删除）
-- Unknown file types use IDEA-style three-line text icon / 未知文件类型使用 IDEA 风格三横线文本图标
-
-### Changed / 变更
-- Tab order: Commit | Shelf | Stash (matches IDEA layout) / 标签页顺序：Commit | Shelf | Stash（匹配 IDEA 布局）
-- Global button/input border-radius unified to 6px via `--radius` CSS variable / 全局按钮/输入框圆角统一为 6px
-- Tab hover/active styles match IDEA (rounded, light blue active state #dfe7f5) / 标签页悬浮/选中样式匹配 IDEA（圆角、淡蓝色选中状态）
-- Context menu hover color matches existing branch panel (#e8f0fe) / 右键菜单悬浮颜色与分支面板一致
-- Commit message textarea focus border uses IDEA blue (#3574f0) / 提交信息输入框聚焦边框使用 IDEA 蓝色
-
-### Fixed / 修复
-- Binary files (zip, png) now open correctly via Jump to Source / 二进制文件（zip、png）现在可以通过"跳转源码"正确打开
-- Single-file shelve no longer pulls in unrelated staged files / 单文件搁置不再连带其他已暂存文件
-- Shelf/Stash lists auto-refresh after operations / Shelf/Stash 列表在操作后自动刷新
-
-## [0.3.5] - 2025-05-25
 
 ### Added
-- Status bar button "IDEA Git" at the bottom to quickly open/focus the Git Graph panel
 
-## [0.3.4] - 2025-05-25
+- **Inline Git blame annotations** — WebStorm-style inline blame for every line, with click-to-jump into the Git Log commit graph.
+  - The line-number menu toggles between Annotate with Git Blame and Close Annotations.
+  - The annotation view multi-selects Revision, Date, Author and Commit Number columns, colours by author or by commit age (or not at all), and shows names as initials, last name, first name, full name or email — keeping at least one column.
+  - Colour follows commit age and can be adjusted with `jgc.blame.colorMode`; the date format comes from `jgc.blame.dateFormat` and the hash is hidden by default.
+
+### Improved
+
+- **Renamed to JetBrains Git Control** — Short brand JGC; the extension ID changed from `idea-like-git-graph` to `jetbrains-git-control`.
 
 ### Fixed
-- Input hover/focus border now uses hardcoded IDEA blue (#3574f0) instead of VS Code theme variable which was overriding it
 
-## [0.3.3] - 2025-05-25
-
-### Changed
-- User and Date filter dropdowns now also have search input (same as Branch)
-- Removed unused FilterDropdown component
-
-## [0.3.2] - 2025-05-25
-
-### Added
-- Branch filter dropdown now has a search input for quick filtering when there are many branches
-
-## [0.3.1] - 2025-05-25
-
-### Fixed
-- Filter dropdowns (Branch/User/Date) now close when clicking anywhere outside, scrolling, or window blur
-
-## [0.3.0] - 2025-05-25
-
-### Changed
-- Input border colors match IDEA: default `#c4c4c4`, focus/hover `#3574f0`
-
-## [0.2.9] - 2025-05-25
-
-### Fixed
-- Refresh button (built-in) also respects minimum 1s progress bar display
-
-## [0.2.8] - 2025-05-25
-
-### Fixed
-- Progress bar shows for minimum 1 second, ensuring animation is always visible even for fast operations
-
-## [0.2.7] - 2025-05-25
-
-### Fixed
-- Remove duplicate refresh button from panel title (keep VS Code's built-in one)
-
-## [0.2.6] - 2025-05-25
-
-### Fixed
-- Progress bar animation improved: thicker (3px), faster (1s), gradient glow effect for better visibility
-
-## [0.2.5] - 2025-05-25
-
-### Fixed
-- Progress bar now shows immediately when clicking git operations (checkout, push, pull, merge, rebase, cherry-pick, reset, revert, delete) instead of waiting for server response
-
-## [0.2.4] - 2025-05-25
-
-### Added
-- Auto-maximize editor when opening Diff viewer (same as Merge editor)
-
-## [0.2.3] - 2025-05-25
-
-### Added
-- Auto-maximize editor when opening 3-Way Merge Editor for full-screen experience
-
-## [0.2.2] - 2025-05-25
-
-### Added
-- IDEA-style blue progress bar during async git operations (checkout, push, pull, merge, rebase, cherry-pick, reset, revert)
-
-## [0.2.1] - 2025-05-25
-
-### Added
-- **Show File History command** — right-click a file in editor or Explorer → "IDEA Git: Show File History"
-- Also available from Command Palette
-- Triggers file history view in the Git Log panel
-
-### Changed
-- Command category renamed to "IDEA Git" for easy recognition
-
-## [0.1.9] - 2025-05-25
-
-### Added
-- **Show in Git Log** — when viewing file history, right-click a commit to jump back to full log view at that commit
-- **Tab-style file history** — file filter displays as a closeable tab (`History: filename.tsx ×`)
-
-## [0.1.8] - 2025-05-25
-
-### Fixed
-- Changed Files panel now only shows the filtered file when "History Up to Here" is active
-
-## [0.1.7] - 2025-05-25
-
-### Added
-- **History Up to Here** — right-click a file → show only commits that modified it (`git log -- <file>`)
-- File filter indicator in toolbar with clear button
-
-## [0.1.6] - 2025-05-25
-
-### Added
-- SEO keywords for Marketplace discoverability
-- Improved description with more searchable terms
-
-## [0.1.4] - 2025-05-25
-
-### Fixed
-- Repository URL now points to the correct fork
-
-## [0.1.3] - 2025-05-25
-
-### Added
-- Chinese README (简体中文文档)
-- GIF demos for branch checkout and commit context menu
-
-## [0.1.1] - 2025-05-25
-
-### Added
-- **Branch Context Menu** — Checkout, New Branch, Checkout and Rebase, Rebase, Merge, Rename, Delete, Update, Push
-- **Commit Context Menu** — Copy Revision Number, Cherry-Pick, Checkout Revision, Reset (Mixed/Soft/Hard), Revert, New Branch, New Tag
-- **Changed Files Context Menu** — Show Diff, Edit Source, Open Repository Version, Revert Selected Changes, Cherry-Pick Selected Changes, Copy Path, Copy File Name
-- **Branch search** — filter branches and tags by name
-- **Commit filters** — filter by Branch, User, Date range
-- **Resizable columns** — drag to adjust Author, Date, Hash column widths
-- **Hash column** — short commit hash in dedicated column
-- **Current branch indicator** — shows name next to "Current Branch"
-- **IntelliJ IDEA icons** — official SVG icons from intellij-icons.jetbrains.design (Apache 2.0)
-- **Context menu icons** — Cherry-Pick (cherry), Revert (undo arrow), Copy, Edit, Diff, Branch, Tag
-- **IDEA-style menu colors** — light background, soft shadow, subtle borders
-
-### Changed
-- Search inputs match IDEA style with search icon and clear button
-- Filter dropdowns use stroke-based chevron icons
-- Folder icons use official IntelliJ folder SVG (light fill + stroke)
-- Context menus render via React portal for proper positioning
-- Menu auto-adjusts position to stay within viewport
-- Menu dismisses on outside click, scroll, blur, and resize
-
-## [0.0.4] - Original
-
-- Git Graph visualization
-- 3-Way Merge Editor
-- Conflict List management
-- Diff Editor
+- **Git Log panel text could be selected** — The file list no longer responds to mouse text selection.
