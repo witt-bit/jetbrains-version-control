@@ -1,6 +1,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  CONTEXT_MENU_Z_INDEX,
   ContextMenu,
   ContextMenuItem,
   ContextMenuSeparator,
@@ -70,5 +71,29 @@ describe("ContextMenu icon column", () => {
     );
 
     expect(document.querySelectorAll(".jgc-context-menu-icon")).toHaveLength(0);
+  });
+});
+
+/**
+ * Regression: the menu used to carry no z-index at all. Portalling a
+ * `position: fixed` node to `document.body` does not beat a plain
+ * `z-index: auto` sibling, so the CommitList header (`position: relative;
+ * z-index: 3`) painted over an open menu — the row bled through it and its
+ * column-resize handles still took the cursor.
+ */
+describe("ContextMenu stacking", () => {
+  it("sets a z-index on the portal root", () => {
+    renderMenu(<ContextMenuItem onClick={() => {}}>Only item</ContextMenuItem>);
+
+    const menu = document.querySelector<HTMLElement>(".jgc-context-menu");
+    expect(menu?.style.zIndex).toBe(String(CONTEXT_MENU_Z_INDEX));
+  });
+
+  it("out-ranks panel chrome and stays below dialogs", () => {
+    // Panel chrome tops out at 10000 (the panel progress bar) and the commit
+    // list header uses 3. Dialogs sit at 99999 and above; they only ever open
+    // once the menu has already closed.
+    expect(CONTEXT_MENU_Z_INDEX).toBeGreaterThan(10000);
+    expect(CONTEXT_MENU_Z_INDEX).toBeLessThan(99999);
   });
 });

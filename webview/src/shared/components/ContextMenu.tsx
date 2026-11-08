@@ -203,6 +203,21 @@ interface ContextMenuProps {
   children: ReactNode;
 }
 
+/**
+ * Stacking order for every menu in the app.
+ *
+ * Portalling to `document.body` does not by itself put the menu on top: a
+ * `position: fixed` element with `z-index: auto` still paints below any
+ * positive-z-index element, whatever the DOM order. The CommitList column
+ * header is `position: relative; z-index: 3`, so an open menu sat underneath
+ * it — the row showed through the menu and its column-resize handles kept
+ * receiving the cursor.
+ *
+ * Must stay above panel chrome (the panel progress bar is 10000) and below
+ * dialogs (99999+), which only ever open after the menu has closed.
+ */
+export const CONTEXT_MENU_Z_INDEX = 50000;
+
 export function ContextMenu({
   x,
   y,
@@ -217,6 +232,7 @@ export function ContextMenu({
   const showIconColumn = reserveIconColumn ?? autoReserve;
   const style: CSSProperties = {
     position: "fixed",
+    zIndex: CONTEXT_MENU_Z_INDEX,
     top: position ? position.top : -9999,
     left: position ? position.left : -9999,
     visibility: position ? "visible" : "hidden",

@@ -127,7 +127,8 @@ Every menu renders through the shared primitives in
 `webview/src/shared/components/ContextMenu.tsx` (+ `ContextMenu.css`):
 
 - `useContextMenuDismiss(menuRef, onClose)` — the one close-on-outside/Escape/blur/scroll/resize hook. Never re-add document listeners by hand.
-- `<ContextMenu x y minWidth>` — the fixed-position portal container with viewport clamping.
+- `<ContextMenu x y minWidth>` — the fixed-position portal container with viewport clamping. It also owns the stacking order: `CONTEXT_MENU_Z_INDEX` (50000) must stay above panel chrome (the panel progress bar is 10000) and below dialogs (99999+).
+  Portalling to `document.body` is **not** enough on its own — a `position: fixed` node with `z-index: auto` still paints below any positive-z-index element regardless of DOM order, which is how the CommitList header (`position: relative; z-index: 3`, `opacity: 0.6`) ended up painting *over* open menus, bleeding the Message/Author/Date/Hash row through and keeping its column-resize handles on the cursor. `ContextMenu.test.tsx` guards the z-index.
 - `<ContextMenuItem onClick icon shortcut checked disabled>` — a `<button>` row; `checked` renders the ✓ column for toggles, `disabled` is native.
 - `<ContextMenuHeader>` / `<ContextMenuSeparator>`.
 

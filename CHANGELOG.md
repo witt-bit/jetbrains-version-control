@@ -36,6 +36,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 - **Phantom branch named after each remote** — The Remote section listed an extra branch named after the remote; it now shows only real remote branches.
 - **Stray native menu on empty panels** — Right-clicking empty space in the Commit, Git Log and Worktree panels no longer pops the raw webview menu, while text inputs keep copy and paste.
 - **Silent operation failures** — Failed Git operations from menus and panels now raise a notification carrying Git's own message instead of failing silently.
+- Fix context menus being drawn behind the Git Log column header: right-clicking the topmost commit in a short panel let the Message / Author / Date / Hash row show through the menu, and its resize handles still took the cursor.
 
 ## [1.1.3] - 2026-10-25
 
