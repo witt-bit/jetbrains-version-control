@@ -43,6 +43,9 @@ import {
   IconShelve,
   IconSparkle,
   IconTag,
+  IconTreeBranch,
+  IconTreeCurrentBranch,
+  IconTreeTag,
   IconUnshelve,
   IconViewOptions,
 } from "./icons";
@@ -88,6 +91,13 @@ const SHARED = {
 const SECTION = {
   IconChevronDown,
   IconChevronRight,
+};
+
+/** Git Log tree glyphs: branch, current branch, tag. 14×14. */
+const TREE = {
+  IconTreeBranch,
+  IconTreeCurrentBranch,
+  IconTreeTag,
 };
 
 /** Panel-only inline variants (their original shapes differ). */
@@ -144,6 +154,12 @@ const ORIGINALS: Record<string, string> = {
     '<path fill-rule="evenodd" clip-rule="evenodd" d="M4 4H1V15H11V12H4V4Z" fill="currentColor" fill-opacity="0.2" /> <path d="M5 1H15V11H5V1Z" stroke="currentColor" stroke-linejoin="round" /> <path d="M1 4.5V15H11.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />',
   IconDelete:
     '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2H9C9.55228 2 10 2.44772 10 3H6C6 2.44772 6.44772 2 7 2ZM5 3C5 1.89543 5.89543 1 7 1H9C10.1046 1 11 1.89543 11 3H13C13.5523 3 14 3.44772 14 4V5V6H13V13C13 14.1046 12.1046 15 11 15H5C3.89543 15 3 14.1046 3 13V6H2V5V4C2 3.44772 2.44772 3 3 3H5ZM11 4H10H6H5H3V5H4H12H13V4H11ZM4 6H12V13C12 13.5523 11.5523 14 11 14H5C4.44772 14 4 13.5523 4 13V6ZM6.5 7C6.22386 7 6 7.22386 6 7.5V11.5C6 11.7761 6.22386 12 6.5 12C6.77614 12 7 11.7761 7 11.5V7.5C7 7.22386 6.77614 7 6.5 7ZM9 7.5C9 7.22386 9.22386 7 9.5 7C9.77614 7 10 7.22386 10 7.5V11.5C10 11.7761 9.77614 12 9.5 12C9.22386 12 9 11.7761 9 11.5V7.5Z" fill="currentColor" />',
+  IconTreeBranch:
+    '<circle cx="4.5" cy="4" r="2" stroke="currentColor" /> <path d="M4.5 11.5H8.5C9.60457 11.5 10.5 10.6046 10.5 9.5V9.5V8" stroke="currentColor" /> <path d="M4.5 6.5L4.5 14.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" /> <circle cx="10.5" cy="6" r="2" stroke="currentColor" />',
+  IconTreeCurrentBranch:
+    '<path d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z" stroke="currentColor" /> <circle cx="5.5" cy="5" r="1" fill="currentColor" />',
+  IconTreeTag:
+    '<path d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z" stroke="currentColor" stroke-dasharray="2 1.5" /> <circle cx="5.5" cy="5" r="1" fill="currentColor" />',
   IconChevronDown: '<polyline points="4,6 8,10 12,6" />',
   IconChevronRight: '<polyline points="6,4 10,8 6,12" />',
   IconCollapseAll:
@@ -184,7 +200,8 @@ describe("menu icons match the original v1.1.3 glyphs", () => {
       const Icon =
         (SHARED as Record<string, () => React.ReactElement>)[name] ??
         (INLINE as Record<string, () => React.ReactElement>)[name] ??
-        (SECTION as Record<string, () => React.ReactElement>)[name];
+        (SECTION as Record<string, () => React.ReactElement>)[name] ??
+        (TREE as Record<string, () => React.ReactElement>)[name];
       expect(normalize(markup(Icon))).toBe(normalize(expected));
     });
   }
@@ -205,6 +222,15 @@ describe("menu icons match the original v1.1.3 glyphs", () => {
       expect(html).toContain('height="14"');
       expect(html).toContain('viewBox="0 0 16 16"');
       expect(html).toContain('stroke="currentColor"');
+    }
+  });
+
+  it("tree glyphs are 14×14", () => {
+    for (const Icon of Object.values(TREE)) {
+      const html = renderToStaticMarkup(createElement(Icon));
+      expect(html).toContain('width="14"');
+      expect(html).toContain('height="14"');
+      expect(html).toContain('viewBox="0 0 16 16"');
     }
   });
 

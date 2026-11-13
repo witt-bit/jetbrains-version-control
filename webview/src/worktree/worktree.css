@@ -502,6 +502,9 @@
 }
 
 .ss-select-display {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   background: var(--vscode-input-background, #3c3c3c);
   border: 1px solid var(--vscode-input-border, #3c3c3c);
   border-radius: 3px;
@@ -512,6 +515,24 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.ss-select-display-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* The worktree a branch is already checked out in: present, but clearly
+   secondary to the branch name. */
+.ss-select-display-suffix {
+  flex-shrink: 0;
+  margin-left: 4px;
+  padding-left: 8px;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  opacity: 0.8;
+  border-left: 1px solid var(--vscode-widget-border, #3c3c3c);
 }
 
 .ss-select-display:hover {
@@ -582,6 +603,28 @@
 .ss-select-item-group {
   font-size: 11px;
   color: var(--vscode-descriptionForeground, #999);
+}
+
+.ss-select-item-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.ss-select-item-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ss-select-item-suffix {
+  margin-left: auto;
+  padding-left: 8px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #999);
+  opacity: 0.8;
 }
 
 .ss-select-empty {
@@ -709,4 +752,37 @@
   font-size: 11px;
   line-height: 1.45;
   color: var(--vscode-descriptionForeground, #999);
+}
+
+/* Advisory note under the branch field. Deliberately not an error colour: the
+   dialog still creates the worktree, it is only telling you where the branch
+   is already checked out. */
+.worktree-setup-warning {
+  margin: -6px 0 0 118px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+/* Clears the chosen setup script — icon only, so it needs padding: 0 or the
+   global button rule squeezes the glyph out of the box. */
+.worktree-setup-clear {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--vscode-descriptionForeground, #999);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.worktree-setup-clear:hover {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+  color: var(--vscode-foreground, #cccccc);
 }

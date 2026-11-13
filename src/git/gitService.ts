@@ -2134,18 +2134,30 @@ export class GitService {
     worktreePath: string,
     branch: string,
     newBranch?: string,
+    force = false,
   ): Promise<void> {
+    // `--force` is what makes a second worktree on an already-checked-out
+    // branch possible: without it git aborts with "'<branch>' is already used
+    // by worktree at …". The caller only asks for it after warning the user.
+    const forceArgs = force ? ["--force"] : [];
     if (newBranch) {
       await this.execGit([
         "worktree",
         "add",
+        ...forceArgs,
         "-b",
         newBranch,
         worktreePath,
         branch,
       ]);
     } else {
-      await this.execGit(["worktree", "add", worktreePath, branch]);
+      await this.execGit([
+        "worktree",
+        "add",
+        ...forceArgs,
+        worktreePath,
+        branch,
+      ]);
     }
     this.invalidateCache();
   }

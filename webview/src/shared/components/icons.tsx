@@ -454,3 +454,71 @@ export function IconChevronRight({ style }: { style?: CSSProperties }) {
     </svg>
   );
 }
+
+/**
+ * Git Log tree glyphs — the branch, tag and "current branch" markers, shared
+ * with the New Worktree dropdown so both draw the same shapes.
+ */
+export function IconTreeBranch({ style }: { style?: CSSProperties }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ verticalAlign: "middle", ...style }}
+    >
+      <circle cx="4.5" cy="4" r="2" stroke="currentColor" />
+      <path
+        d="M4.5 11.5H8.5C9.60457 11.5 10.5 10.6046 10.5 9.5V9.5V8"
+        stroke="currentColor"
+      />
+      <path
+        d="M4.5 6.5L4.5 14.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="10.5" cy="6" r="2" stroke="currentColor" />
+    </svg>
+  );
+}
+
+/** The branch that is currently checked out — a filled tag in Git Log. */
+export function IconTreeCurrentBranch({ style }: { style?: CSSProperties }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ verticalAlign: "middle", ...style }}
+    >
+      <path d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z" stroke="currentColor" />
+      <circle cx="5.5" cy="5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** A tag: the same tag silhouette with a dashed outline. */
+export function IconTreeTag({ style }: { style?: CSSProperties }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ verticalAlign: "middle", ...style }}
+    >
+      <path
+        d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z"
+        stroke="currentColor"
+        strokeDasharray="2 1.5"
+      />
+      <circle cx="5.5" cy="5" r="1" fill="currentColor" />
+    </svg>
+  );
+}

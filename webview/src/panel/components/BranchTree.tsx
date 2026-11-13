@@ -10,6 +10,9 @@ import { ConfirmDialog } from "../../shared/components/ConfirmDialog";
 import {
   IconChevronDown,
   IconChevronRight,
+  IconTreeBranch,
+  IconTreeCurrentBranch,
+  IconTreeTag,
 } from "../../shared/components/icons";
 import { Tooltip } from "../../shared/components/Tooltip";
 import { useListKeyboardNavigation } from "../../shared/hooks/useListKeyboardNavigation";
@@ -45,68 +48,6 @@ function IconFolder({ style }: { style?: React.CSSProperties }) {
         fillOpacity={0.15}
         stroke="currentColor"
       />
-    </svg>
-  );
-}
-
-function IconBranch({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ verticalAlign: "middle", ...style }}
-    >
-      <circle cx="4.5" cy="4" r="2" stroke="currentColor" />
-      <path
-        d="M4.5 11.5H8.5C9.60457 11.5 10.5 10.6046 10.5 9.5V9.5V8"
-        stroke="currentColor"
-      />
-      <path
-        d="M4.5 6.5L4.5 14.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <circle cx="10.5" cy="6" r="2" stroke="currentColor" />
-    </svg>
-  );
-}
-
-function IconTag({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ verticalAlign: "middle", ...style }}
-    >
-      <path d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z" stroke="currentColor" />
-      <circle cx="5.5" cy="5" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
-function IconTagOutline({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ verticalAlign: "middle", ...style }}
-    >
-      <path
-        d="M3 2.5h4.5l6 6-4.5 4.5-6-6V2.5z"
-        stroke="currentColor"
-        strokeDasharray="2 1.5"
-      />
-      <circle cx="5.5" cy="5" r="1" fill="currentColor" />
     </svg>
   );
 }
@@ -1135,9 +1076,9 @@ function TreeNodeView({
       <BranchItem
         icon={
           isCurrent ? (
-            <IconTag style={{ color: "#d4a017" }} />
+            <IconTreeCurrentBranch style={{ color: "#d4a017" }} />
           ) : (
-            <IconBranch
+            <IconTreeBranch
               style={{
                 color: "var(--description-fg)",
               }}
@@ -1277,7 +1218,7 @@ function TagTreeNodeView({
           gap: 4,
         }}
       >
-        <IconTagOutline
+        <IconTreeTag
           style={{
             color: isSelected ? "var(--selected-fg)" : "var(--description-fg)",
           }}

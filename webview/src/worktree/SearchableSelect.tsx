@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 export interface SearchableSelectOption {
   value: string;
   label: string;
   group?: string;
+  /** Marker drawn before the label in the dropdown (branch, tag …). */
+  icon?: ReactNode;
+  /** Shown dimmed after the label, in the list and in the display box. */
+  suffix?: string;
 }
 
 interface Props {
@@ -11,6 +21,8 @@ interface Props {
   value: string;
   placeholder?: string;
   onChange: (value: string) => void;
+  /** Extra content after the selected label, dimmed (e.g. a worktree name). */
+  selectedSuffix?: string;
 }
 
 export function SearchableSelect({
@@ -18,6 +30,7 @@ export function SearchableSelect({
   value,
   placeholder = "Select...",
   onChange,
+  selectedSuffix,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -29,7 +42,9 @@ export function SearchableSelect({
     ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
     : options;
 
-  const selectedLabel = options.find((o) => o.value === value)?.label || "";
+  const selected = options.find((o) => o.value === value);
+  const selectedLabel = selected?.label || "";
+  const displaySuffix = selectedSuffix ?? selected?.suffix;
 
   const handleOpen = useCallback(() => {
     setOpen(true);
@@ -68,9 +83,15 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className="ss-select-root">
       <div className="ss-select-display" onClick={handleOpen}>
+        {selected?.icon && (
+          <span className="ss-select-display-icon">{selected.icon}</span>
+        )}
         <span className={selectedLabel ? "" : "ss-placeholder"}>
           {selectedLabel || placeholder}
         </span>
+        {selectedLabel && displaySuffix && (
+          <span className="ss-select-display-suffix">{displaySuffix}</span>
+        )}
       </div>
 
       {open && (
@@ -98,7 +119,13 @@ export function SearchableSelect({
                 {opt.group && (
                   <span className="ss-select-item-group">{opt.group}</span>
                 )}
-                {opt.label}
+                {opt.icon && (
+                  <span className="ss-select-item-icon">{opt.icon}</span>
+                )}
+                <span className="ss-select-item-label">{opt.label}</span>
+                {opt.suffix && (
+                  <span className="ss-select-item-suffix">{opt.suffix}</span>
+                )}
               </div>
             ))}
           </div>

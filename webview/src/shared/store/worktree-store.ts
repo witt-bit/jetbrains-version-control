@@ -13,7 +13,12 @@ interface WorktreeStore {
     path: string,
     branch: string,
     newBranch?: string,
-    setup?: { copyIncludes?: boolean; setupScript?: string },
+    setup?: {
+      copyIncludes?: boolean;
+      setupScript?: string;
+      /** Allows a second worktree on a branch that is already checked out. */
+      force?: boolean;
+    },
   ) => Promise<{
     success: boolean;
     error?: string;

@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import CodiconClose from "~icons/codicon/close";
 import CodiconFolderOpened from "~icons/codicon/folder-opened";
 import { bridge } from "../shared/bridge";
-import { IconChevronDown, IconChevronRight } from "../shared/components/icons";
+import {
+  IconChevronDown,
+  IconChevronRight,
+  IconTreeBranch,
+  IconTreeCurrentBranch,
+  IconTreeTag,
+} from "../shared/components/icons";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import {
   SearchableSelect,
@@ -10,6 +17,22 @@ import {
 
 const LOCATION_STORAGE_PREFIX = "jgc.worktree.lastLocation.";
 const SETUP_STORAGE_PREFIX = "jgc.worktree.setup.";
+
+/**
+ * Option icons mirror the Git Log branch tree: a filled tag for the branch that
+ * is currently checked out, a dashed tag for tags, a branch glyph otherwise.
+ */
+const BRANCH_ICON = <IconTreeBranch />;
+const CURRENT_BRANCH_ICON = (
+  <IconTreeCurrentBranch style={{ color: "#d4a017" }} />
+);
+const TAG_ICON = <IconTreeTag />;
+
+/** Directory name of a worktree path, used as its label. */
+function worktreeName(worktreePath: string): string {
+  const parts = worktreePath.split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] ?? worktreePath;
+}
 
 /** Remembered state of the "Copy local project setup" section. */
 interface SetupState {
@@ -49,41 +72,75 @@ export function NewWorktreeDialog({ onClose }: Props) {
   const [runSetupScript, setRunSetupScript] = useState(false);
   const [scriptPath, setScriptPath] = useState("");
   const [includePatternCount, setIncludePatternCount] = useState(0);
+  /** Branch name -> worktree holding it, so the dialog can warn about reuse. */
+  const [branchWorktrees, setBranchWorktrees] = useState<Map<string, string>>(
+    new Map(),
+  );
 
   useEffect(() => {
     const load = async () => {
-      const [branchResult, tagResult, rootResult] = await Promise.all([
-        bridge.request("getBranches"),
-        bridge.request("getTags"),
-        bridge.request("getWorkspaceRoot"),
-      ]);
+      const [branchResult, tagResult, rootResult, worktreeResult] =
+        await Promise.all([
+          bridge.request("getBranches"),
+          bridge.request("getTags"),
+          bridge.request("getWorkspaceRoot"),
+          bridge.request("getWorktrees"),
+        ]);
 
       const options: SearchableSelectOption[] = [];
       const existingNames = new Set<string>();
 
+      // Which worktree already holds each branch. `git worktree add` refuses a
+      // branch that is checked out anywhere, the main worktree included.
+      const owners = new Map<string, string>();
+      const list = (worktreeResult as { data?: unknown })?.data;
+      if (Array.isArray(list)) {
+        for (const wt of list as { path: string; branch?: string }[]) {
+          if (wt.branch) owners.set(wt.branch, worktreeName(wt.path));
+        }
+      }
+      setBranchWorktrees(owners);
+
       if (Array.isArray(branchResult)) {
-        // Local branches
-        for (const b of branchResult.filter((b) => !b.isRemote)) {
+        const branches = branchResult as {
+          name: string;
+          isRemote: boolean;
+          isCurrent?: boolean;
+        }[];
+
+        // Local branches. The icon carries the meaning — a filled tag for the
+        // branch that is currently checked out — so no "current"/"remote"/"tag"
+        // text is added next to the name.
+        for (const b of branches.filter((b) => !b.isRemote)) {
           existingNames.add(b.name);
           options.push({
             value: b.name,
             label: b.name,
-            group: b.isCurrent ? "(current)" : undefined,
+            icon: b.isCurrent ? CURRENT_BRANCH_ICON : BRANCH_ICON,
+            suffix: owners.get(b.name),
           });
         }
-        // origin/* remote branches
-        for (const b of branchResult.filter(
+        // origin/* remote branches — the `origin/` prefix is their marker.
+        for (const b of branches.filter(
           (b) => b.isRemote && b.name.startsWith("origin/"),
         )) {
           existingNames.add(b.name);
-          options.push({ value: b.name, label: b.name, group: "remote" });
+          options.push({
+            value: b.name,
+            label: b.name,
+            icon: BRANCH_ICON,
+          });
         }
       }
 
       if (Array.isArray(tagResult)) {
         for (const t of tagResult) {
           existingNames.add(t.name);
-          options.push({ value: t.name, label: t.name, group: "tag" });
+          options.push({
+            value: t.name,
+            label: t.name,
+            icon: TAG_ICON,
+          });
         }
       }
 
@@ -209,6 +266,20 @@ export function NewWorktreeDialog({ onClose }: Props) {
     }
   };
 
+  /**
+   * Forgetting the script also unticks the option: with nothing to run, leaving
+   * it on would only block Create for a setting that cannot do anything.
+   */
+  const handleClearScript = () => {
+    setScriptPath("");
+    setRunSetupScript(false);
+    rememberSetup({
+      copyIncludes,
+      runSetupScript: false,
+      scriptPath: "",
+    });
+  };
+
   const handleCreate = async () => {
     if (!selectedBranch || !projectName || !location) return;
     setCreating(true);
@@ -230,6 +301,9 @@ export function NewWorktreeDialog({ onClose }: Props) {
           setupExpanded && runSetupScript && scriptPath
             ? scriptPath
             : undefined,
+        // The warning above is advisory; git refuses a branch that is already
+        // checked out, so ask for --force exactly when we warned.
+        force: !!selectedWorktree,
       },
     );
     setCreating(false);
@@ -261,6 +335,15 @@ export function NewWorktreeDialog({ onClose }: Props) {
   const previewPath =
     location && projectName ? `${location}/${projectName}` : "";
   const settingsOn = (copyIncludes ? 1 : 0) + (runSetupScript ? 1 : 0);
+  // Which worktree, if any, already holds the selected branch. Used twice: the
+  // dimmed name after the field (always, it just says where the branch lives)
+  // and the advisory note below it (only when the branch would be checked out
+  // as-is — creating a new branch from it is unaffected).
+  const selectedBranchWorktree = selectedBranch
+    ? branchWorktrees.get(selectedBranch)
+    : undefined;
+  const selectedWorktree =
+    !useNewBranch && selectedBranch ? selectedBranchWorktree : undefined;
 
   return (
     <div className="worktree-dialog-overlay">
@@ -284,8 +367,15 @@ export function NewWorktreeDialog({ onClose }: Props) {
                   value={selectedBranch}
                   placeholder="Select branch..."
                   onChange={setSelectedBranch}
+                  selectedSuffix={selectedBranchWorktree}
                 />
               </div>
+
+              {selectedWorktree && (
+                <div className="worktree-setup-warning">
+                  Selected branch is already checked out in another worktree
+                </div>
+              )}
 
               <div className="worktree-dialog-field">
                 <label className="worktree-dialog-checkbox-label">
@@ -445,6 +535,20 @@ export function NewWorktreeDialog({ onClose }: Props) {
                           </span>
                         )}
                       </button>
+                      {scriptPath && (
+                        <button
+                          type="button"
+                          className="worktree-setup-clear"
+                          title="Clear"
+                          aria-label="Clear setup script"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleClearScript();
+                          }}
+                        >
+                          <CodiconClose />
+                        </button>
+                      )}
                     </label>
                     <div className="worktree-setup-hint">
                       The IDE runs the script once, with the new worktree path

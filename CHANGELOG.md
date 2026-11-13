@@ -19,7 +19,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 - **List multi-selection** — Branches, tags and files support Shift+click ranges, Cmd/Ctrl+click toggling and Shift+Arrow keyboard ranges.
 - **Copy local project setup when creating a worktree** — The New Worktree dialog gains a collapsible setup section, off by default, with two independent options.
   - **Copy files listed in .worktreeinclude** carries your local-only files — env files, editor settings, certificates — into the new worktree. The list is committed or kept private as you prefer, uses `.gitignore` syntax, is created when you open the section, and can be edited from the dialog.
-  - **Run setup script** runs the script you pick once, passing the new worktree path as its argument, before the project opens. The worktree is kept even if the script fails.
+  - **Run setup script** runs the script you pick once, passing the new worktree path as its argument, before the project opens. The worktree is kept even if the script fails, and the choice can be cleared again from the same row.
 - **Built-in Git prompt** — A first-run prompt offers to disable VS Code's built-in Git so two Git UIs do not duplicate the status bar and decorations. It applies to the current workspace only and can be switched back at any time.
 - **Changes view** — The branch context menu gains Show Diff with Working Tree: it lists everything that differs between that branch and the working tree, untracked files included, grouped by module and by directory (both on by default, switchable from the eye button) with Expand All / Collapse All. Double-click a file to open its diff against the branch; after that a single click replaces that same tab, so the editor keeps exactly one diff tab however many files you look at. The toolbar's ✕ closes the panel again — closing editor tabs never does.
 
@@ -28,6 +28,8 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 - **Consistent context menus** — Every menu in the app now looks and behaves the same: it stays inside the viewport, closes on outside click, Esc, scroll or window blur, and aligns icons and shortcuts. Text-only menus no longer leave an empty icon gutter.
 - **Menu shortcuts work** — Shortcuts shown in the Commit panel menus are real VS Code keybindings, labelled per platform (`⌘D`, `⌥⌘A` on macOS; `Ctrl + D`, `Alt + Ctrl + A` on Windows/Linux), and active only while the Commit panel has focus.
 - **Tag push picks a remote** — Pushing a tag asks which configured remote to use instead of assuming origin.
+- **Icons in the New Worktree branch list** — Branches, remote branches and tags are now marked with the same glyphs the Git Log branch tree uses: a filled tag for the branch that is currently checked out, a dashed tag for tags, a branch marker for everything else. The `(current)`, `remote` and `tag` words they replace are gone.
+- **Branches that are already checked out are flagged** — The picker and the field show, in light grey, which worktree already holds the selected branch. It is information only: creating the worktree still goes through.
 - **Show Tags actually works** — The sidebar's Show Tags toggle now really shows and hides the Tags section.
 - **Clearer HEAD row** — The sidebar's HEAD entry reads `HEAD (Current Branch)`.
 - **Simpler blame settings** — `jgc.blame.displayMode` and `jgc.blame.aroundLines` are gone: the line-number annotations always cover the whole file and only the end-of-line blame follows the caret.

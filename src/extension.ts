@@ -2341,6 +2341,9 @@ export function activate(context: vscode.ExtensionContext) {
     const worktreePath = params.path as string;
     const branch = params.branch as string;
     const newBranch = params.newBranch as string | undefined;
+    // Set when the dialog warned that the branch is already checked out: git
+    // refuses that by default, so the user's choice is honoured with --force.
+    const force = params.force === true;
     // "Copy local project setup": reproduce the local-only files listed in
     // .worktreeinclude (env files, editor settings …) that git does not carry
     // across because they are untracked.
@@ -2349,7 +2352,7 @@ export function activate(context: vscode.ExtensionContext) {
     // caller opens the project.
     const setupScript = (params.setupScript as string | undefined)?.trim();
     try {
-      await gitService.addWorktree(worktreePath, branch, newBranch);
+      await gitService.addWorktree(worktreePath, branch, newBranch, force);
 
       let copied = 0;
       let failed: string[] = [];
