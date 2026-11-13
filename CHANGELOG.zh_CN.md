@@ -30,6 +30,9 @@
 - **标签推送可选择 remote** — 不再固定推送到 origin，改为从已配置的 remote 中选择。
 - **New Worktree 分支列表加入图标** — 分支、远程分支与标签改用 Git Log 分支树同一套图形：当前检出的分支为实心标签，标签为虚线标签，其余为分支图标。原先的 `(current)`、`remote`、`tag` 文字随之去掉。
 - **已检出分支会被标出** — 下拉项与输入框以浅灰文字显示该分支已在哪个工作树中检出，字段下方给出一句说明。这只是提示，不影响创建。
+- **Commit 面板与 Git Control 面板互不干涉** — 点击 Commit 图标不再显示或聚焦 Git Control 面板，折叠 Commit 也不再关闭它；你关掉的面板会保持关闭，面板里打开的弹窗也不会被顺手关掉。
+- **状态栏品牌标记** — 分支指示器右侧新增一个独立图标，点击显示或隐藏 Git Control 面板；分支本身仍打开 Git 操作菜单。再次打开时面板恢复成上次的样子 —— 上次停在 Worktrees 就仍是 Worktrees，不会被强行切回 Git Log。状态栏 item 不支持图片，故使用与扩展图标同字形的 codicon。
+- **面板内的弹窗独占面板** — 打开 New Worktree 时隐藏 Git Log 视图，打开 Create Branch 时隐藏 Worktrees 视图，表单不再被压缩到面板的一部分；关闭后让出的视图复原。两个表单都可在任意空白处拖动，且始终不会移出面板范围；滚动分支列表时也不会再带动背后的弹窗滚动。
 - **Show Tags 真实生效** — 侧栏齿轮菜单的 Show Tags 现在真正控制 Tags 区块的显示与隐藏。
 - **HEAD 行更名** — 侧栏的 HEAD 入口显示为 `HEAD (Current Branch)`。
 - **简化 blame 配置** — 移除 `jgc.blame.displayMode` 与 `jgc.blame.aroundLines`，行号列 blame 固定全文件显示，只有行尾 blame 跟随光标。

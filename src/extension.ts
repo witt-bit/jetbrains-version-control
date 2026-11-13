@@ -1902,6 +1902,43 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
+  // A dialog open inside the panel needs room, so it borrows the sibling view's
+  // share: New Worktree (in Worktrees) hides Git Log, Create Branch (in Git Log)
+  // hides Worktrees. The borrowed view is handed back when the dialog closes.
+  //
+  // `git-brains.<view>.toggleVisibility` is a workbench command, not public API:
+  // it resolves to undefined whether it acted or not, and it silently does
+  // nothing unless the container is the active pane composite. So visibility is
+  // read back from the providers instead of from the return value — and the
+  // restore only happens if the view is still hidden, so re-opening it by hand
+  // while a dialog is up is respected.
+  /** The view a panel dialog is currently borrowing, if any. */
+  let hiddenForDialog: string | null = null;
+
+  const viewVisibility: Record<string, () => boolean> = {
+    [GitLogViewProvider.viewType]: () => logProvider.isVisible,
+    [WorktreeViewProvider.viewType]: () => worktreeProvider.isVisible,
+  };
+  messageRouter.handle("setPanelDialogOpen", async (params) => {
+    const open = params.open === true;
+    const hideViewId = params.hideViewId as string | undefined;
+    if (open) {
+      if (!hideViewId) return { success: false };
+      const isVisible = viewVisibility[hideViewId];
+      if (!isVisible?.()) return { success: true, changed: false };
+      await vscode.commands.executeCommand(`${hideViewId}.toggleVisibility`);
+      hiddenForDialog = hideViewId;
+      return { success: true, changed: true };
+    }
+    if (!hiddenForDialog) return { success: true, changed: false };
+    const restoreViewId = hiddenForDialog;
+    hiddenForDialog = null;
+    if (viewVisibility[restoreViewId]?.())
+      return { success: true, changed: false };
+    await vscode.commands.executeCommand(`${restoreViewId}.toggleVisibility`);
+    return { success: true, changed: true };
+  });
+
   // Reveals the Changes view (its activity-bar container), which the branch
   // context menu calls "Show Diff with Working Tree". The container is gated
   // by a context key, so it is not in the activity bar until asked for.
@@ -2592,7 +2629,11 @@ export function activate(context: vscode.ExtensionContext) {
   gutterMarkers = new GutterMarkers(repos, trace, (uri, doc) =>
     blameManager.padFor(uri, doc),
   );
-  const statusBar = new StatusBarController();
+  // The status bar logo toggles the panel, so it needs to know whether that
+  // container is on screen; its two views answer that from their own state.
+  const statusBar = new StatusBarController(
+    () => logProvider.isVisible || worktreeProvider.isVisible,
+  );
   const fileDecorations = repos.map(
     (repo) => new FileDecorationController(repo.root, repo.service, trace),
   );

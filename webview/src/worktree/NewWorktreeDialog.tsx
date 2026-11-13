@@ -9,6 +9,7 @@ import {
   IconTreeCurrentBranch,
   IconTreeTag,
 } from "../shared/components/icons";
+import { useDialogDrag } from "../shared/hooks/useDialogDrag";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import {
   SearchableSelect,
@@ -65,6 +66,7 @@ export function NewWorktreeDialog({ onClose }: Props) {
   const [existingBranchNames, setExistingBranchNames] = useState<Set<string>>(
     new Set(),
   );
+  const drag = useDialogDrag();
   // Collapsible on purpose: most worktrees need neither setting, and the
   // dialog already carries four fields.
   const [setupExpanded, setSetupExpanded] = useState(false);
@@ -76,6 +78,18 @@ export function NewWorktreeDialog({ onClose }: Props) {
   const [branchWorktrees, setBranchWorktrees] = useState<Map<string, string>>(
     new Map(),
   );
+
+  // Give Git Log's height to this panel while the dialog is up, and hand it
+  // back on close. The cleanup covers every way out (button, unmount).
+  useEffect(() => {
+    void bridge.request("setPanelDialogOpen", {
+      open: true,
+      hideViewId: "git-brains.gitLog",
+    });
+    return () => {
+      void bridge.request("setPanelDialogOpen", { open: false });
+    };
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -347,7 +361,13 @@ export function NewWorktreeDialog({ onClose }: Props) {
 
   return (
     <div className="worktree-dialog-overlay">
-      <div className="worktree-dialog" onClick={(e) => e.stopPropagation()}>
+      <div
+        ref={drag.ref}
+        className="worktree-dialog"
+        style={drag.style}
+        onClick={(e) => e.stopPropagation()}
+        {...drag.handlers}
+      >
         <div className="worktree-dialog-header">
           <span className="worktree-dialog-title">New Worktree</span>
           <button className="worktree-dialog-close" onClick={onClose}>

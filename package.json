@@ -149,6 +149,12 @@
         "category": "JGC"
       },
       {
+        "command": "git-brains.status.openPanel",
+        "title": "Open Git Control Panel",
+        "icon": "$(git-commit)",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.refreshLog",
         "title": "Refresh Git Log",
         "icon": "$(refresh)",

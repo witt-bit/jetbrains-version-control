@@ -133,6 +133,7 @@ export type CommandType =
   | "saveMergedContent"
   | "setContext"
   | "setRemoteUrl"
+  | "setPanelDialogOpen"
   | "setSingleClickAction"
   | "shelveChanges"
   | "closeChangesView"

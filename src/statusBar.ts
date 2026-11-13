@@ -32,19 +32,46 @@ const LOG_ITEM = "log";
  */
 export class StatusBarController implements vscode.Disposable {
   private readonly item: vscode.StatusBarItem;
+  /**
+   * The brand mark, as its own item so it is its own click target: the branch
+   * item opens the Git actions menu, this one opens the Git Control panel. A
+   * status bar item can only render text and codicons, so the glyph is the
+   * codicon whose shape matches images/commit-icon.svg (a node on a line).
+   */
+  private readonly logoItem: vscode.StatusBarItem;
   private readonly menuDisposable: vscode.Disposable;
+  private readonly openPanelDisposable: vscode.Disposable;
   private repos: RepoEntry[] = [];
   private current: RepoEntry | undefined;
 
-  constructor() {
+  /**
+   * @param isPanelVisible Whether the Git Control panel container is on screen.
+   *   There is no API for "is this pane composite active", so the providers of
+   *   its two views answer instead; the toggle below needs it to decide between
+   *   opening and closing.
+   */
+  constructor(private readonly isPanelVisible: () => boolean = () => false) {
     this.item = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       100,
     );
     this.item.command = "git-brains.status.menu";
+    // Left alignment, lower priority than the branch item => sits just to its
+    // right.
+    this.logoItem = vscode.window.createStatusBarItem(
+      vscode.StatusBarAlignment.Left,
+      99,
+    );
+    this.logoItem.text = "$(git-commit)";
+    this.logoItem.tooltip = "Show or hide JetBrains Git Control";
+    this.logoItem.command = "git-brains.status.openPanel";
     this.menuDisposable = vscode.commands.registerCommand(
       "git-brains.status.menu",
       () => this.showMenu(),
+    );
+    this.openPanelDisposable = vscode.commands.registerCommand(
+      "git-brains.status.openPanel",
+      () => this.togglePanel(),
     );
   }
 
@@ -57,6 +84,7 @@ export class StatusBarController implements vscode.Disposable {
     this.current = repo;
     if (!repo) {
       this.item.hide();
+      this.logoItem.hide();
       return;
     }
 
@@ -68,6 +96,7 @@ export class StatusBarController implements vscode.Disposable {
       const detached = await repo.service.headCommit().catch(() => null);
       if (!detached) {
         this.item.hide();
+        this.logoItem.hide();
         return;
       }
       this.item.text = "$(git-commit) detached HEAD";
@@ -78,6 +107,7 @@ export class StatusBarController implements vscode.Disposable {
         )}\`\n\nClick for Git actions`,
       );
       this.item.show();
+      this.logoItem.show();
       return;
     }
 
@@ -107,6 +137,7 @@ export class StatusBarController implements vscode.Disposable {
       }\n\nClick for Git actions`,
     );
     this.item.show();
+    this.logoItem.show();
   }
 
   /** Repo of the active editor, else the first repository available. */
@@ -128,6 +159,29 @@ export class StatusBarController implements vscode.Disposable {
       if (best) return best;
     }
     return this.repos[0];
+  }
+
+  /**
+   * Shows or hides the Git Control panel, whichever it is not right now.
+   *
+   * Re-opening goes through the container command rather than a view id, so the
+   * panel comes back exactly as it was left — Git Log, or Worktrees with its
+   * expanded rows — instead of being forced onto one view. Hiding closes the
+   * panel part itself; `togglePanel` cannot be used for that because it would
+   * reveal whichever container happens to be active when the panel is closed.
+   */
+  private async togglePanel(): Promise<void> {
+    if (this.isPanelVisible()) {
+      await vscode.commands.executeCommand("workbench.action.closePanel");
+      return;
+    }
+    try {
+      await vscode.commands.executeCommand(
+        "workbench.view.extension.git-brains-panel",
+      );
+    } catch {
+      await vscode.commands.executeCommand("git-brains.gitLog.focus");
+    }
   }
 
   private async showMenu(): Promise<void> {
@@ -297,6 +351,8 @@ export class StatusBarController implements vscode.Disposable {
 
   dispose(): void {
     this.item.dispose();
+    this.logoItem.dispose();
+    this.openPanelDisposable.dispose();
     this.menuDisposable.dispose();
   }
 }

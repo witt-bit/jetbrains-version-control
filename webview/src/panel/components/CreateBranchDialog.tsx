@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { bridge } from "../../shared/bridge";
+import { useDialogDrag } from "../../shared/hooks/useDialogDrag";
 
 export interface CreateBranchDialogProps {
   /** Title shown at top, e.g. "Create Branch from dev" */
@@ -70,6 +72,21 @@ export function CreateBranchDialog({
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const drag = useDialogDrag();
+
+  // Same arrangement as the New Worktree dialog, mirrored: this dialog lives in
+  // Git Log, so it borrows the Worktrees view's height while it is open and
+  // gives it back on close. The cleanup covers Escape, the backdrop and
+  // unmounting alike.
+  useEffect(() => {
+    void bridge.request("setPanelDialogOpen", {
+      open: true,
+      hideViewId: "git-brains.worktrees",
+    });
+    return () => {
+      void bridge.request("setPanelDialogOpen", { open: false });
+    };
+  }, []);
 
   useEffect(() => {
     // Focus and select input on mount
@@ -134,7 +151,10 @@ export function CreateBranchDialog({
       }}
     >
       <div
+        ref={drag.ref}
+        {...drag.handlers}
         style={{
+          ...drag.style,
           background: "var(--vscode-editorWidget-background, #252526)",
           border: "1px solid var(--border)",
           borderRadius: 8,

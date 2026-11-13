@@ -96,10 +96,11 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
 
     this.scheduleBadgeRefresh();
 
-    // First time opening: focus git log panel after a delay
+    // Refresh on first open. The Commit panel and the Git Control panel are
+    // independent: opening this one never reveals or focuses that one, because
+    // a panel the user closed must stay closed.
     setTimeout(() => {
       if (webviewView.visible) {
-        void vscode.commands.executeCommand("git-brains.gitLog.focus");
         for (const cache of this.caches) {
           cache.invalidate();
         }
@@ -108,25 +109,19 @@ export class CommitViewProvider implements vscode.WebviewViewProvider {
       }
     }, 200);
 
-    // When commit panel becomes visible, also show the Git Log panel and refresh both
-    // When hidden (clicked again to collapse), hide the Git Log panel too
+    // Refresh whenever the panel comes back, and do nothing else: collapsing
+    // this view must not close the Git Control panel, which is a separate
+    // piece of UI with its own dialogs in it.
     webviewView.onDidChangeVisibility(() => {
-      if (webviewView.visible) {
-        // Small delay to ensure panels are ready
-        setTimeout(() => {
-          void vscode.commands.executeCommand("git-brains.gitLog.focus");
-          // Invalidate all git caches to ensure fresh data
-          for (const cache of this.caches) {
-            cache.invalidate();
-          }
-          this.messageRouter.broadcastEvent("commitStateChanged", {});
-          this.messageRouter.broadcastEvent("gitStateChanged", {
-            scope: "all",
-          });
-        }, 100);
-      } else {
-        void vscode.commands.executeCommand("workbench.action.closePanel");
-      }
+      if (!webviewView.visible) return;
+      // Small delay to ensure the webview is ready to receive events.
+      setTimeout(() => {
+        for (const cache of this.caches) {
+          cache.invalidate();
+        }
+        this.messageRouter.broadcastEvent("commitStateChanged", {});
+        this.messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
+      }, 100);
     });
   }
 

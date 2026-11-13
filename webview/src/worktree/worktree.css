@@ -264,11 +264,22 @@
   background: var(--vscode-editorWidget-background, #252526);
   border: 1px solid var(--vscode-widget-border, #3c3c3c);
   border-radius: 6px;
-  width: 480px;
+  /* Never wider than the panel it lives in — the dialog cannot escape it. */
+  width: min(480px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   position: relative;
+  /* The whole card is a drag handle except its controls, which set their own
+     cursor; `translate` on drag is clamped to the panel in the component. */
+  cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.worktree-dialog-dragging {
+  cursor: grabbing;
 }
 
 .worktree-dialog-header {
@@ -311,6 +322,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .worktree-dialog-field {
@@ -554,6 +567,7 @@
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 3000;
+  overscroll-behavior: contain;
 }
 
 .ss-select-search {
@@ -580,6 +594,9 @@
 .ss-select-list {
   max-height: 200px;
   overflow-y: auto;
+  /* Reaching the top or bottom of the list must not scroll the dialog behind
+     it: without this the wheel keeps travelling up the ancestor chain. */
+  overscroll-behavior: contain;
 }
 
 .ss-select-item {
