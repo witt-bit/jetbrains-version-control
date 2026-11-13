@@ -13,7 +13,14 @@ interface WorktreeStore {
     path: string,
     branch: string,
     newBranch?: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+    setup?: { copyIncludes?: boolean; setupScript?: string },
+  ) => Promise<{
+    success: boolean;
+    error?: string;
+    copied?: number;
+    failed?: string[];
+    scriptError?: string | null;
+  }>;
   removeWorktree: (
     path: string,
   ) => Promise<{ success: boolean; error?: string }>;
@@ -44,12 +51,19 @@ export const useWorktreeStore = create<WorktreeStore>((set, _get) => ({
     set({ selectedPath: path });
   },
 
-  addWorktree: async (path, branch, newBranch) => {
+  addWorktree: async (path, branch, newBranch, setup) => {
     const result = (await bridge.request("addWorktree", {
       path,
       branch,
       newBranch,
-    })) as { success: boolean; error?: string };
+      ...setup,
+    })) as {
+      success: boolean;
+      error?: string;
+      copied?: number;
+      failed?: string[];
+      scriptError?: string | null;
+    };
     if (result.success) {
       await _get().fetchWorktrees();
     }

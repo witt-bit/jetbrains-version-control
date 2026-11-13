@@ -150,9 +150,26 @@ Menu components:
 Dialog style reference is the New Worktree dialog (`webview/src/worktree/NewWorktreeDialog.tsx` + `worktree.css`):
 - Title centered at top
 - Field rows: right-aligned label (fixed width) on the left, `flex: 1` input on the right, same row
-- Footer: right-aligned Cancel (transparent + border) and OK (`--vscode-button-background`); disabled OK uses `opacity: 0.5`, not a different background color
+- Footer: Cancel on the **left edge**, the primary action on the right edge (`justify-content: space-between`); Cancel is transparent + border, OK is `--vscode-button-background`; disabled OK uses `opacity: 0.5`, not a different background color
 - Inputs: `--vscode-input-background/border/foreground`
 - Primary/secondary buttons must look different: OK = filled blue, Cancel = transparent. Use `--vscode-button-*` variables directly, not `--buttonBackground` (unreliable)
+
+### Worktree setup (`.worktreeinclude` + setup script)
+
+Mirrors the IDEA New Worktree dialog: a collapsible **Copy local project setup** section (collapsed by default, header reads `N of 2 settings on`) with two independent options.
+
+**Copy files listed in `.worktreeinclude`.** A new worktree is a clean checkout, so every gitignored local file — `.env`, `.vscode/settings.json`, certificates — is missing from it. `.worktreeinclude` lists those files at the repository root using `.gitignore` syntax, and they are copied across. Rules that matter:
+
+- The file is created **only when the section is expanded**, never for users who leave it collapsed, and it is created as a plain file — **not** added to `.gitignore`, not `git add`-ed. Whether it is committed is the user's decision; committing it shares the pattern list with the team.
+- Matching is delegated to git (`git ls-files -z --others --ignored --exclude-from=.worktreeinclude`), so `!` negation, `dir/` and every other `.gitignore` subtlety behaves natively. Do not hand-roll a glob matcher.
+- `--others --ignored` means **untracked only**, which is the point: tracked files already travel with the worktree and copying them would overwrite the clean checkout with local edits.
+- Git aborts with `fatal: cannot use … as an exclude file` when the file is missing, so `listWorktreeIncludeFiles` stats it first.
+- `parseIncludePatterns` drops comments and blank lines — a blank pattern would match everything.
+- Copies recreate directories and overwrite the destination, and refuse absolute or `..` paths so a pattern cannot escape either root.
+
+**Run setup script.** The user picks the script with the folder-icon button; the IDE runs it once, with the new worktree path as its only argument and as the working directory, **before** the project opens. A failing script never removes the worktree and never fails the creation — the result carries `scriptError` and the dialog reports it while still opening the project. `runSetupScript` distinguishes "never started" (`ENOENT`/`EACCES`, e.g. missing execute bit) from "ran and failed", because the two need different messages.
+
+Both choices plus the script path are remembered per workspace in `localStorage`; nothing is written to settings.
 
 ### Shortcut Labels
 

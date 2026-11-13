@@ -15,7 +15,13 @@ import { createMarkerPopup } from "./decorations/markerPopup";
 import { registerAiProbe } from "./dev/aiProbe";
 import { patchFileName } from "./git/exportFileName";
 import { GitService } from "./git/gitService";
+import { runSetupScript } from "./git/setupScript";
 import type { DiffFile, LaneSnapshot } from "./git/types";
+import {
+  buildIncludeFileContent,
+  copyIncludedFiles,
+  parseIncludePatterns,
+} from "./git/worktreeInclude";
 import { MessageRouter } from "./messages/messageRouter";
 import { ErrorCode } from "./messages/protocol";
 import { StatusBarController } from "./statusBar";
@@ -2335,14 +2341,90 @@ export function activate(context: vscode.ExtensionContext) {
     const worktreePath = params.path as string;
     const branch = params.branch as string;
     const newBranch = params.newBranch as string | undefined;
+    // "Copy local project setup": reproduce the local-only files listed in
+    // .worktreeinclude (env files, editor settings …) that git does not carry
+    // across because they are untracked.
+    const copyIncludes = params.copyIncludes === true;
+    // "Run setup script": executed once after the worktree exists, before the
+    // caller opens the project.
+    const setupScript = (params.setupScript as string | undefined)?.trim();
     try {
       await gitService.addWorktree(worktreePath, branch, newBranch);
+
+      let copied = 0;
+      let failed: string[] = [];
+      if (copyIncludes) {
+        const relativePaths = await gitService.listWorktreeIncludeFiles();
+        const result = await copyIncludedFiles(
+          gitService.root,
+          worktreePath,
+          relativePaths,
+        );
+        copied = result.copied;
+        failed = result.failed;
+      }
+
+      let scriptError: string | null = null;
+      if (setupScript) {
+        const scriptResult = await runSetupScript(setupScript, worktreePath);
+        if (!scriptResult.ok) {
+          scriptError = scriptResult.started
+            ? scriptResult.output || "The setup script failed."
+            : `Could not run ${setupScript}.`;
+        }
+      }
+
       messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
-      return { success: true };
+      // A worktree that was created but copied nothing, or whose setup script
+      // failed, is not a failure: the worktree stays and the caller reports
+      // what happened.
+      return { success: true, copied, failed, scriptError };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       return { success: false, error: message };
     }
+  });
+
+  messageRouter.handle("getWorktreeIncludeState", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const includePath = gitService.worktreeIncludePath;
+    let content: string | null = null;
+    try {
+      content = await nodefs.readFile(includePath, "utf-8");
+    } catch {
+      content = null;
+    }
+    // `create` is what the New Worktree dialog sends when its setup section is
+    // expanded: the file is expected to exist from then on, so the Edit button
+    // always has something to open.
+    if (content === null && params.create === true) {
+      content = buildIncludeFileContent();
+      await nodefs.writeFile(includePath, content, "utf-8");
+    }
+    if (content === null) {
+      return { exists: false, patternCount: 0, path: includePath };
+    }
+    return {
+      exists: true,
+      patternCount: parseIncludePatterns(content).length,
+      path: includePath,
+    };
+  });
+
+  // The dialog creates the file when the section is expanded, and the Edit
+  // button opens it. Both go through here so the starter content is written
+  // once and never overwritten.
+  messageRouter.handle("openWorktreeIncludeFile", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    const includePath = gitService.worktreeIncludePath;
+    try {
+      await nodefs.stat(includePath);
+    } catch {
+      await nodefs.writeFile(includePath, buildIncludeFileContent(), "utf-8");
+    }
+    const document = await vscode.workspace.openTextDocument(includePath);
+    await vscode.window.showTextDocument(document, { preview: false });
+    return { success: true, path: includePath };
   });
 
   messageRouter.handle("removeWorktree", async (params) => {
@@ -2437,6 +2519,24 @@ export function activate(context: vscode.ExtensionContext) {
 
   messageRouter.handle("getWorkspaceRoot", async () => {
     return { root: workspaceRoot || null };
+  });
+
+  // Chooses the setup script for a new worktree. Any file is accepted: the
+  // script can be a shell script, a batch file or an executable.
+  messageRouter.handle("pickFile", async (params) => {
+    const defaultUri = params.defaultUri as string | undefined;
+    const title = params.title as string | undefined;
+    const uri = await vscode.window.showOpenDialog({
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      openLabel: title ?? "Select",
+      defaultUri: defaultUri ? vscode.Uri.file(defaultUri) : undefined,
+    });
+    if (uri?.[0]) {
+      return { success: true, path: uri[0].fsPath };
+    }
+    return { success: false };
   });
 
   messageRouter.handle("pickFolder", async (params) => {

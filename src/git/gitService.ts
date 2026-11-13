@@ -29,6 +29,7 @@ import type {
   WorkingTreeFile,
   WorktreeInfo,
 } from "./types";
+import { WORKTREE_INCLUDE_FILE } from "./worktreeInclude";
 
 const execFileAsync = promisify(execFile);
 
@@ -2147,6 +2148,37 @@ export class GitService {
       await this.execGit(["worktree", "add", worktreePath, branch]);
     }
     this.invalidateCache();
+  }
+
+  /** Absolute path of the repository's `.worktreeinclude` file. */
+  get worktreeIncludePath(): string {
+    return path.join(this.cwd, WORKTREE_INCLUDE_FILE);
+  }
+
+  /**
+   * Local-only files matched by `.worktreeinclude`, relative to the repo root.
+   *
+   * Git does the matching through `--exclude-from`, so `.gitignore` syntax,
+   * `!` negation and `dir/` behave as users expect. `--others --ignored`
+   * restricts the result to untracked files — tracked ones already travel with
+   * the worktree — and `-z` keeps non-ASCII paths byte-exact.
+   */
+  async listWorktreeIncludeFiles(): Promise<string[]> {
+    try {
+      await fs.stat(this.worktreeIncludePath);
+    } catch {
+      // No file: git would abort with "cannot use … as an exclude file".
+      return [];
+    }
+    const output = await this.execGit([
+      "ls-files",
+      "-z",
+      "--others",
+      "--ignored",
+      "--exclude-from",
+      WORKTREE_INCLUDE_FILE,
+    ]);
+    return output.split("\0").filter(Boolean);
   }
 
   async removeWorktree(worktreePath: string): Promise<void> {

@@ -455,7 +455,8 @@
 .worktree-dialog-footer {
   padding: 12px 20px 16px;
   display: flex;
-  justify-content: flex-end;
+  /* Cancel on the left edge, the primary action on the right edge. */
+  justify-content: space-between;
   gap: 8px;
   border-top: 1px solid var(--vscode-widget-border, #3c3c3c);
 }
@@ -588,4 +589,124 @@
   text-align: center;
   color: var(--vscode-descriptionForeground, #999);
   font-size: 12px;
+}
+
+/* ─── Copy local project setup (collapsible) ─────────────────────── */
+
+.worktree-setup {
+  border: 1px solid var(--vscode-widget-border, #3c3c3c);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.worktree-setup-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-foreground, #cccccc);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.worktree-setup-header:hover {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.worktree-setup-chevron {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  opacity: 0.75;
+}
+
+.worktree-setup-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.worktree-setup-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.worktree-setup-body {
+  padding: 0 8px 8px 8px;
+  border-top: 1px solid var(--vscode-widget-border, #3c3c3c);
+}
+
+.worktree-setup-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.worktree-setup-option input[type="checkbox"] {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.worktree-setup-option-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.worktree-setup-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--vscode-badge-background, #4d4d4d);
+  color: var(--vscode-badge-foreground, #ffffff);
+  font-size: 10px;
+}
+
+.worktree-setup-action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--vscode-button-border, #3c3c3c);
+  border-radius: 3px;
+  color: var(--vscode-foreground, #cccccc);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.worktree-setup-action:hover {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.worktree-setup-script {
+  max-width: 190px;
+}
+
+.worktree-setup-script-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.worktree-setup-hint {
+  padding: 0 0 4px 22px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--vscode-descriptionForeground, #999);
 }
