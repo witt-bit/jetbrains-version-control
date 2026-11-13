@@ -58,6 +58,11 @@
           "id": "git-brains-commit",
           "title": "Commit",
           "icon": "images/commit-icon.svg"
+        },
+        {
+          "id": "git-brains-changes",
+          "title": "Changes",
+          "icon": "images/changes.svg"
         }
       ]
     },
@@ -72,6 +77,14 @@
           "type": "webview",
           "id": "git-brains.worktrees",
           "name": "Worktrees"
+        }
+      ],
+      "git-brains-changes": [
+        {
+          "type": "webview",
+          "id": "git-brains.changes",
+          "name": "Changes",
+          "when": "jgc.changesViewVisible"
         }
       ],
       "git-brains-commit": [

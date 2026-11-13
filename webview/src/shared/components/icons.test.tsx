@@ -22,11 +22,15 @@ import {
   IconApply,
   IconBranch,
   IconCherryPick,
+  IconChevronDown,
+  IconChevronRight,
   IconClipboardImport,
+  IconCollapseAll,
   IconCopyPath,
   IconDelete,
   IconDiff,
   IconEdit,
+  IconExpandAll,
   IconFolderOpen,
   IconHelp,
   IconImport,
@@ -40,6 +44,7 @@ import {
   IconSparkle,
   IconTag,
   IconUnshelve,
+  IconViewOptions,
 } from "./icons";
 
 /**
@@ -58,10 +63,12 @@ const SHARED = {
   IconBranch,
   IconCherryPick,
   IconClipboardImport,
+  IconCollapseAll,
   IconCopyPath,
   IconDelete,
   IconDiff,
   IconEdit,
+  IconExpandAll,
   IconFolderOpen,
   IconHelp,
   IconImport,
@@ -74,6 +81,13 @@ const SHARED = {
   IconShelve,
   IconTag,
   IconUnshelve,
+  IconViewOptions,
+};
+
+/** Section chevrons: 14×14, shared by the sidebar and the Changes tree. */
+const SECTION = {
+  IconChevronDown,
+  IconChevronRight,
 };
 
 /** Panel-only inline variants (their original shapes differ). */
@@ -93,7 +107,7 @@ function normalize(svg: string): string {
   return svg
     .replace(/>\s+</g, "><")
     .replace(/\s*\/>/g, ">")
-    .replace(/<\/(path|rect|circle|g)>/g, "");
+    .replace(/<\/(path|rect|circle|g|polyline)>/g, "");
 }
 
 function markup(Icon: () => React.ReactElement): string {
@@ -130,6 +144,14 @@ const ORIGINALS: Record<string, string> = {
     '<path fill-rule="evenodd" clip-rule="evenodd" d="M4 4H1V15H11V12H4V4Z" fill="currentColor" fill-opacity="0.2" /> <path d="M5 1H15V11H5V1Z" stroke="currentColor" stroke-linejoin="round" /> <path d="M1 4.5V15H11.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />',
   IconDelete:
     '<path fill-rule="evenodd" clip-rule="evenodd" d="M7 2H9C9.55228 2 10 2.44772 10 3H6C6 2.44772 6.44772 2 7 2ZM5 3C5 1.89543 5.89543 1 7 1H9C10.1046 1 11 1.89543 11 3H13C13.5523 3 14 3.44772 14 4V5V6H13V13C13 14.1046 12.1046 15 11 15H5C3.89543 15 3 14.1046 3 13V6H2V5V4C2 3.44772 2.44772 3 3 3H5ZM11 4H10H6H5H3V5H4H12H13V4H11ZM4 6H12V13C12 13.5523 11.5523 14 11 14H5C4.44772 14 4 13.5523 4 13V6ZM6.5 7C6.22386 7 6 7.22386 6 7.5V11.5C6 11.7761 6.22386 12 6.5 12C6.77614 12 7 11.7761 7 11.5V7.5C7 7.22386 6.77614 7 6.5 7ZM9 7.5C9 7.22386 9.22386 7 9.5 7C9.77614 7 10 7.22386 10 7.5V11.5C10 11.7761 9.77614 12 9.5 12C9.22386 12 9 11.7761 9 11.5V7.5Z" fill="currentColor" />',
+  IconChevronDown: '<polyline points="4,6 8,10 12,6" />',
+  IconChevronRight: '<polyline points="6,4 10,8 6,12" />',
+  IconCollapseAll:
+    '<path d="M4.5 2.5L8 6L11.5 2.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" /> <path d="M4.5 13.5L8 10L11.5 13.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />',
+  IconExpandAll:
+    '<path d="M4.5 5.5L8 2L11.5 5.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" /> <path d="M4.5 10.5L8 14L11.5 10.5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" />',
+  IconViewOptions:
+    '<path d="M8 4C4.5 4 2 8 2 8C2 8 4.5 12 8 12C11.5 12 14 8 14 8C14 8 11.5 4 8 4Z" stroke="currentColor" stroke-linejoin="round" /> <circle cx="8" cy="8" r="2" stroke="currentColor" />',
   IconDiff:
     '<path fill-rule="evenodd" clip-rule="evenodd" d="M5.85355 8.14645C5.65829 7.95118 5.34171 7.95118 5.14645 8.14645C4.95118 8.34171 4.95118 8.65829 5.14645 8.85355L7.29289 11H0.5C0.223858 11 0 11.2239 0 11.5C0 11.7761 0.223858 12 0.5 12H7.29289L5.14645 14.1464C4.95118 14.3417 4.95118 14.6583 5.14645 14.8536C5.34171 15.0488 5.65829 15.0488 5.85355 14.8536L8.85355 11.8536L9.20711 11.5L8.85355 11.1464L5.85355 8.14645Z" fill="currentColor" /> <path fill-rule="evenodd" clip-rule="evenodd" d="M10.1464 1.14645C10.3417 0.951185 10.6583 0.951185 10.8536 1.14645C11.0488 1.34171 11.0488 1.65829 10.8536 1.85355L8.70711 4H15.5C15.7761 4 16 4.22386 16 4.5C16 4.77614 15.7761 5 15.5 5H8.70711L10.8536 7.14645C11.0488 7.34171 11.0488 7.65829 10.8536 7.85355C10.6583 8.04882 10.3417 8.04882 10.1464 7.85355L7.14645 4.85355L6.79289 4.5L7.14645 4.14645L10.1464 1.14645Z" fill="currentColor" />',
   IconEdit:
@@ -161,7 +183,8 @@ describe("menu icons match the original v1.1.3 glyphs", () => {
     it(`${name} matches the original inline SVG`, () => {
       const Icon =
         (SHARED as Record<string, () => React.ReactElement>)[name] ??
-        (INLINE as Record<string, () => React.ReactElement>)[name];
+        (INLINE as Record<string, () => React.ReactElement>)[name] ??
+        (SECTION as Record<string, () => React.ReactElement>)[name];
       expect(normalize(markup(Icon))).toBe(normalize(expected));
     });
   }
@@ -173,6 +196,16 @@ describe("menu icons match the original v1.1.3 glyphs", () => {
     expect(html).toContain("url(#jgc-sparkle-gold)");
     // Two paths: the star and its small companion.
     expect(html.match(/<path/g)?.length).toBe(2);
+  });
+
+  it("section chevrons are 14×14", () => {
+    for (const Icon of Object.values(SECTION)) {
+      const html = renderToStaticMarkup(createElement(Icon));
+      expect(html).toContain('width="14"');
+      expect(html).toContain('height="14"');
+      expect(html).toContain('viewBox="0 0 16 16"');
+      expect(html).toContain('stroke="currentColor"');
+    }
   });
 
   it("every icon renders a 16×16 svg", () => {

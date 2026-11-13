@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { ChangesApp } from "./changes/App";
 import { CommitApp } from "./commit/App";
 import { ConflictsApp } from "./conflicts/App";
 import { MergeStandaloneApp } from "./conflicts/MergeStandaloneApp";
@@ -30,6 +31,7 @@ const mode = root.dataset.mode as
   | "push"
   | "rollback"
   | "worktree"
+  | "changes"
   | undefined;
 
 createRoot(root).render(
@@ -46,6 +48,8 @@ createRoot(root).render(
       <RollbackApp />
     ) : mode === "worktree" ? (
       <WorktreeApp />
+    ) : mode === "changes" ? (
+      <ChangesApp />
     ) : (
       <PanelApp />
     )}

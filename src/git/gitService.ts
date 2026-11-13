@@ -26,6 +26,7 @@ import type {
   MergeState,
   RefInfo,
   TagInfo,
+  WorkingTreeFile,
   WorktreeInfo,
 } from "./types";
 
@@ -40,6 +41,23 @@ const FMT_RECORD_SEP = "%x00%x00%x01";
 // For git branch/tag --format (ref-format / for-each-ref): %00 produces null byte
 const REF_FMT_FIELD_SEP = "%00";
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+
+/** Diff-status of a file -> the status the file list renders. */
+function toWorkingTreeStatus(
+  status: DiffFile["status"],
+): WorkingTreeFile["status"] {
+  switch (status) {
+    case "added":
+    case "copied":
+      return "added";
+    case "deleted":
+      return "deleted";
+    case "renamed":
+      return "renamed";
+    default:
+      return "modified";
+  }
+}
 
 const LOG_FORMAT = [
   "%H", // hash
@@ -395,6 +413,41 @@ export class GitService {
     } catch {
       return Buffer.alloc(0);
     }
+  }
+
+  /**
+   * Files that differ between `ref` and the working tree — what "Show Diff with
+   * Working Tree" means for a branch.
+   *
+   * Untracked files are included on purpose: `git diff <ref>` never lists them,
+   * but a file that does not exist in `ref` is exactly the kind of difference
+   * the caller is asking about.
+   */
+  async getChangesAgainstRef(ref: string): Promise<WorkingTreeFile[]> {
+    const [trackedOutput, statusOutput] = await Promise.all([
+      this.execGit(["diff", "--name-status", "-M", ref]),
+      this.execGit(["status", "--porcelain=v1", "-uall"]),
+    ]);
+
+    const files: WorkingTreeFile[] = parseDiffNameStatus(trackedOutput).map(
+      (file) => ({
+        path: file.newPath,
+        oldPath: file.oldPath === file.newPath ? undefined : file.oldPath,
+        status: toWorkingTreeStatus(file.status),
+        staged: false,
+      }),
+    );
+
+    for (const line of statusOutput.split("\n")) {
+      if (!line.startsWith("?? ")) continue;
+      files.push({
+        path: unquoteGitPath(line.substring(3)),
+        status: "untracked",
+        staged: false,
+      });
+    }
+
+    return files;
   }
 
   async getCommitFiles(hash: string): Promise<DiffFile[]> {

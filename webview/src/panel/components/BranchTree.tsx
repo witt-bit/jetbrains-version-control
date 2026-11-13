@@ -4,8 +4,13 @@ import {
   bridge,
   bridgeWithProgress,
   reportActionError,
+  runMenuAction,
 } from "../../shared/bridge";
 import { ConfirmDialog } from "../../shared/components/ConfirmDialog";
+import {
+  IconChevronDown,
+  IconChevronRight,
+} from "../../shared/components/icons";
 import { Tooltip } from "../../shared/components/Tooltip";
 import { useListKeyboardNavigation } from "../../shared/hooks/useListKeyboardNavigation";
 import { useModifierClickSelection } from "../../shared/hooks/useModifierClickSelection";
@@ -23,38 +28,6 @@ import { TagContextMenu } from "./TagContextMenu";
 // ---------------------------------------------------------------------------
 // Inline SVG Icons (stroke-based, IDEA style)
 // ---------------------------------------------------------------------------
-
-function IconChevronDown({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      style={{ verticalAlign: "middle", ...style }}
-    >
-      <polyline points="4,6 8,10 12,6" />
-    </svg>
-  );
-}
-
-function IconChevronRight({ style }: { style?: React.CSSProperties }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      style={{ verticalAlign: "middle", ...style }}
-    >
-      <polyline points="6,4 10,8 6,12" />
-    </svg>
-  );
-}
 
 function IconFolder({ style }: { style?: React.CSSProperties }) {
   return (
@@ -1718,6 +1691,11 @@ function BranchContextMenu({
     }
   };
 
+  const handleShowDiffWithWorkingTree = () =>
+    runMenuAction(onClose, "Show diff with working tree", () =>
+      bridge.request("showChangesView", { baseRef: branch.name }),
+    );
+
   const items: {
     label: string;
     action: () => void;
@@ -1738,6 +1716,12 @@ function BranchContextMenu({
       action: handleCheckoutAndRebase,
     });
   }
+
+  items.push({ label: "", action: () => {}, separator: true });
+  items.push({
+    label: "Show Diff with Working Tree",
+    action: handleShowDiffWithWorkingTree,
+  });
 
   if (!isCurrent) {
     items.push({ label: "", action: () => {}, separator: true });

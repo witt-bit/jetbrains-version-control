@@ -24,7 +24,7 @@ webview/                Webview Frontend (React 19 + Vite)
       ├── panel/          Git Log panel (Graph, CommitList, BranchTree, DetailPanel)
       ├── conflicts/      Conflict list page + extra = 13-Way Merge Editor
       ├── shared/         Shared modules (bridge, store, hooks, components, theme)
-      └── main.tsx        Router entry (mode: panel | merge | conflicts)
+      └── main.tsx        Router entry (mode: panel | merge | conflicts | commit | push | rollback | worktree | changes)
 ```
 
 ## Architecture
@@ -43,6 +43,7 @@ webview/                      Webview Frontend (React 19 + Vite)
     ├── panel/                Git Log panel (Graph, CommitList, BranchTree, DetailPanel)
     ├── commit/               Commit panel (CommitTab, FileItem, Toolbar, context menus)
     ├── conflicts/            Conflict list + 13-way merge editor
+    ├── changes/              Changes view (working-tree list, opens file diffs)
     ├── shared/               Shared modules
     │   ├── bridge/           postMessage wrapper (types.ts, bridge.ts)
     │   ├── store/            Zustand stores (panel-store, commit-store)
@@ -51,7 +52,7 @@ webview/                      Webview Frontend (React 19 + Vite)
     │   ├── components/       Reusable UI (Tooltip, FileTree)
     │   ├── theme/            CSS variables (variables.css)
     │   └── types/git.ts      Shared git types (BranchInfo, TagInfo, Commit, etc.)
-    └── main.tsx              Router entry (mode: panel | merge | conflicts)
+    └── main.tsx              Router entry (mode: panel | merge | conflicts | commit | push | rollback | worktree | changes)
 ```
 
 ## Communication Protocol
@@ -164,6 +165,31 @@ All keybindings use `jgc.commitPanelFocused` as the `when` clause.
 ### Caret Blame
 
 End-of-line blame showing `Who, date * summary` after the code on the caret line. Follows `jgc.blame.dateFormat` setting. Snapshot cached per document version.
+
+### The Changes view (on-demand container)
+
+VS Code cannot hide a contributed `viewsContainers` entry conditionally. The way to get a container that only exists while it is in use is to gate its **view** and let the container follow:
+
+```jsonc
+// package.json
+"git-brains-changes": [
+  { "type": "webview", "id": "git-brains.changes", "name": "Changes",
+    "when": "jgc.changesViewVisible" }
+]
+```
+
+A container whose views are all hidden is not contributed to the activity bar, so the icon appears only while `jgc.changesViewVisible` is true. `ChangesViewProvider` owns that key: `reveal()` sets it true (then waits a tick — the container does not exist until the `when` clause re-evaluates — and opens `workbench.view.extension.git-brains-changes`), `hide()` sets it false again.
+
+**Hiding is explicit, and `closeChangesView` (the panel's toolbar ✕) is its only caller.** Three automatic triggers were tried and all were wrong:
+
+- `onDidChangeVisibility(false)` cannot tell "Close All" from "the user switched the sidebar" — both deactivate the container, so closing editor tabs took the panel with it. Discriminators all failed too: an empty-editor-area check fires before the editors are actually gone, `tabGroups.onDidChangeTabs` timestamps re-selected a sidebar the user had just left, and a debounce only moved the race.
+- `onDidDispose` is **not** a close either. VS Code disposes a webview view whenever it stops being shown, so hiding from there removed the container on any switch and left the activity bar with nothing selected.
+
+An explicit close has no ambiguity. The cost, by design: switching the sidebar away leaves the container in place until the user closes it.
+
+**The list is a tree.** Group By → Module (each workspace folder, the IDEA notion of a module, annotated host-side in `getChangesViewFiles`) and Group By → Directory are both on by default and combine into module → directory → file. The eye button is the shared `IconViewOptions` glyph; the Expand All / Collapse All button is a single toggle that flips both the icon and the whole `collapsed` set. Folder rows carry the same chevrons the Git Log sidebar uses (`IconChevronDown` / `IconChevronRight`), and file rows keep an empty chevron-width spacer so names stay aligned.
+
+**Clicks: the double click opens, the single click only replaces.** `showDiffForWorkingFile` gets `singleTab` from this view, and since VS Code gives a diff editor a brand-new tab per call (a `preview: true` diff is *not* reused the way text previews are), the host closes the tab it opened last — after opening the new one, never before, or the editor area goes empty and the whole window flashes. The single click also sends `requireExistingTab` and is refused when that tab is gone, which makes the first open necessarily a double click. The tab is tracked by its title, not by "some git-brains diff exists", so a Commit-panel diff is never mistaken for it.
 
 ## Workflow rules (from repeated feedback)
 

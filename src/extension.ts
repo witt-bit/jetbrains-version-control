@@ -19,6 +19,7 @@ import type { DiffFile, LaneSnapshot } from "./git/types";
 import { MessageRouter } from "./messages/messageRouter";
 import { ErrorCode } from "./messages/protocol";
 import { StatusBarController } from "./statusBar";
+import { ChangesViewProvider } from "./views/changesViewProvider";
 import { CommitViewProvider } from "./views/commitViewProvider";
 import { ConflictsManager } from "./views/conflictsManager";
 import { DiffEditorManager } from "./views/diffEditorManager";
@@ -175,6 +176,19 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerWebviewViewProvider(
       WorktreeViewProvider.viewType,
       worktreeProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
+    ),
+  );
+
+  // 2e. ChangesViewProvider (always registered)
+  const changesProvider = new ChangesViewProvider(
+    context.extensionUri,
+    messageRouter,
+  );
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      ChangesViewProvider.viewType,
+      changesProvider,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
   );
@@ -1417,20 +1431,60 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
-  messageRouter.handle("getWorkingTreeChanges", async () => {
-    if (allGitServices.length === 0) return NOT_GIT_REPO;
-
-    // Aggregate changes from all workspace folders
+  // Aggregates the working-tree status of every workspace folder. Folders that
+  // are not Git repositories are skipped.
+  const collectWorkingTreeChanges = async (): Promise<
+    import("./git/types").WorkingTreeFile[]
+  > => {
     const allChanges: import("./git/types").WorkingTreeFile[] = [];
     for (const svc of allGitServices) {
       try {
-        const changes = await svc.getWorkingTreeChanges();
-        allChanges.push(...changes);
+        allChanges.push(...(await svc.getWorkingTreeChanges()));
       } catch {
         // Skip folders that aren't git repos
       }
     }
     return allChanges;
+  };
+
+  messageRouter.handle("getWorkingTreeChanges", async () => {
+    if (allGitServices.length === 0) return NOT_GIT_REPO;
+    return collectWorkingTreeChanges();
+  });
+
+  // Feeds the Changes view. With a base ref it lists what the branch
+  // context menu asked for — everything that differs between that ref and the
+  // working tree — instead of `git status`, which is empty on a clean tree even
+  // when the selected branch is far away from it.
+  messageRouter.handle("getChangesViewFiles", async () => {
+    const baseRef = changesProvider.getBaseRef();
+    if (allGitServices.length === 0) return NOT_GIT_REPO;
+
+    // Every file carries the workspace folder it came from, so the view can
+    // group by module the way IDEA does. `allGitServices` is built in
+    // workspace-folder order, so the indexes line up.
+    const files: (import("./git/types").WorkingTreeFile & {
+      module: string;
+    })[] = [];
+    let lastError: unknown = null;
+    for (let i = 0; i < allGitServices.length; i++) {
+      const svc = allGitServices[i];
+      const root = allWorkspaceRoots[i] ?? "";
+      const moduleName = path.basename(root) || root;
+      try {
+        const changed = baseRef
+          ? await svc.getChangesAgainstRef(baseRef)
+          : await svc.getWorkingTreeChanges();
+        for (const file of changed) {
+          files.push({ ...file, module: moduleName });
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    // A bad ref must not look like a clean tree.
+    if (baseRef && files.length === 0 && lastError) throw lastError;
+    return { baseRef, files };
   });
 
   messageRouter.handle("unstageFile", async (params) => {
@@ -1735,10 +1789,49 @@ export function activate(context: vscode.ExtensionContext) {
     return { success: true };
   });
 
+  // Title of the diff tab the Changes view opened last. A single click there is
+  // only allowed to *replace* that tab, never to create one: the list shows
+  // file diffs as preview tabs, so a first single click with no tab open would
+  // silently become the thing that creates the tab, which is the double click's
+  // job. Tracking the title (rather than "a git-brains diff exists") keeps the
+  // gate to our own tab, not to a diff opened from the Commit panel.
+  let changesDiffTabTitle: string | null = null;
+
+  const findChangesDiffTab = (): vscode.Tab | undefined => {
+    if (!changesDiffTabTitle) return undefined;
+    for (const group of vscode.window.tabGroups.all) {
+      const tab = group.tabs.find((t) => t.label === changesDiffTabTitle);
+      if (tab) return tab;
+    }
+    return undefined;
+  };
+
   messageRouter.handle("showDiffForWorkingFile", async (params) => {
     if (!gitService || !workspaceRoot) return NOT_GIT_REPO;
     const filePath = params.filePath as string;
     const staged = params.staged as boolean | undefined;
+    // The Changes view asks for `singleTab`: the editor keeps exactly one diff
+    // tab, so a single click replaces what the previous click opened. VS Code
+    // does not do that for diff editors on its own — a `preview: true` diff got a
+    // new tab every time — so the previous tab is closed here instead, and the
+    // tab is opened as a normal (non-preview) one that VS Code will not replace
+    // behind our back.
+    const singleTab = params.singleTab === true;
+    const preview = (params.preview as boolean | undefined) ?? false;
+    // The tab opened last, if it is still there. In single-tab mode it is
+    // replaced by the new one — but only *after* the new diff is on screen:
+    // closing first leaves the editor area empty for a moment and the whole
+    // window flashes.
+    const previousTab = singleTab ? findChangesDiffTab() : undefined;
+    if (singleTab && params.requireExistingTab === true && !previousTab) {
+      // A single click never creates the tab; the first open is the double click.
+      return { success: true, skipped: true };
+    }
+    // The Changes view compares against the branch it was opened for; every
+    // other caller keeps the HEAD ↔ working tree comparison.
+    const leftRef = (params.leftRef as string | undefined) ?? "HEAD";
+    // A renamed file exists under its old name in the base ref.
+    const leftPath = (params.oldPath as string | undefined) ?? filePath;
 
     const diskUri = vscode.Uri.joinPath(
       vscode.Uri.file(workspaceRoot),
@@ -1765,14 +1858,49 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     const leftUri = vscode.Uri.parse(
-      `${GIT_BRAINS_SCHEME}:/${filePath}?ref=HEAD`,
+      `${GIT_BRAINS_SCHEME}:/${leftPath}?ref=${leftRef}`,
     );
+    const title = `${filePath} (${leftRef} ↔ ${rightLabel})`;
     await vscode.commands.executeCommand(
       "vscode.diff",
       leftUri,
       rightUri,
-      `${filePath} (HEAD ↔ ${rightLabel})`,
+      title,
+      { preview },
     );
+    // Remember the tab for the next single click, in both modes: the single-tab
+    // list needs it to find what to replace, and the preview mode uses it as the
+    // "a tab is already open" gate.
+    if (singleTab || preview) {
+      changesDiffTabTitle = title;
+    }
+    if (previousTab && previousTab.label !== title) {
+      // Opened first, closed after: the editor area never goes empty, which is
+      // what made the whole window flash. `preserveFocus` keeps the caret in the
+      // diff that was just opened.
+      await vscode.window.tabGroups.close(previousTab, true);
+    }
+    if (!preview) {
+      // Re-opening an editor that is currently a preview does not reliably
+      // promote it to a persistent tab; Keep Editor is what actually does.
+      await vscode.commands.executeCommand("workbench.action.keepEditor");
+    }
+    return { success: true };
+  });
+
+  // Reveals the Changes view (its activity-bar container), which the branch
+  // context menu calls "Show Diff with Working Tree". The container is gated
+  // by a context key, so it is not in the activity bar until asked for.
+  messageRouter.handle("showChangesView", async (params) => {
+    const baseRef = (params.baseRef as string | undefined) ?? null;
+    await changesProvider.reveal(baseRef);
+    return { success: true };
+  });
+
+  // The panel's own ✕. Hiding is explicit on purpose: tying it to visibility
+  // made "Close All" on a diff tab close the panel as a side effect.
+  messageRouter.handle("closeChangesView", async () => {
+    await ChangesViewProvider.hide();
     return { success: true };
   });
 

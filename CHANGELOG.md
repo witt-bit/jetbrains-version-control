@@ -18,6 +18,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 - **AI-generated commit messages** — The sparkle next to **Commit** writes a message for the checked files only, streams it into the input box, and can be edited or cancelled at any point. It uses any model configured in VS Code; with several installed it asks once and remembers, and the chevron reopens the picker.
 - **List multi-selection** — Branches, tags and files support Shift+click ranges, Cmd/Ctrl+click toggling and Shift+Arrow keyboard ranges.
 - **Built-in Git prompt** — A first-run prompt offers to disable VS Code's built-in Git so two Git UIs do not duplicate the status bar and decorations. It applies to the current workspace only and can be switched back at any time.
+- **Changes view** — The branch context menu gains Show Diff with Working Tree: it lists everything that differs between that branch and the working tree, untracked files included, grouped by module and by directory (both on by default, switchable from the eye button) with Expand All / Collapse All. Double-click a file to open its diff against the branch; after that a single click replaces that same tab, so the editor keeps exactly one diff tab however many files you look at. The toolbar's ✕ closes the panel again — closing editor tabs never does.
 
 ### Improved
 

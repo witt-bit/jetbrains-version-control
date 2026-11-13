@@ -7,6 +7,11 @@ import {
   useContextMenuDismiss,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
+import {
+  IconCollapseAll,
+  IconExpandAll,
+  IconViewOptions,
+} from "../../shared/components/icons";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useToggleGroupByDirectoryShortcutLabel } from "../../shared/shortcuts";
@@ -120,7 +125,7 @@ export function Toolbar({
             className="commit-toolbar-btn"
             onClick={() => setShowViewMenu(!showViewMenu)}
           >
-            <ViewOptionsIcon />
+            <IconViewOptions />
           </button>
         </Tooltip>
         {showViewMenu && (
@@ -133,7 +138,7 @@ export function Toolbar({
           className="commit-toolbar-btn"
           onClick={handleExpandAll}
         >
-          <ExpandAllIcon />
+          <IconExpandAll />
         </button>
       </Tooltip>
       <Tooltip text="Collapse All">
@@ -142,7 +147,7 @@ export function Toolbar({
           className="commit-toolbar-btn"
           onClick={handleCollapseAll}
         >
-          <CollapseAllIcon />
+          <IconCollapseAll />
         </button>
       </Tooltip>
     </div>
@@ -273,58 +278,6 @@ function DiffIcon() {
         clipRule="evenodd"
         d="M10.1464 1.14645C10.3417 0.951185 10.6583 0.951185 10.8536 1.14645C11.0488 1.34171 11.0488 1.65829 10.8536 1.85355L8.70711 4H15.5C15.7761 4 16 4.22386 16 4.5C16 4.77614 15.7761 5 15.5 5H8.70711L10.8536 7.14645C11.0488 7.34171 11.0488 7.65829 10.8536 7.85355C10.6583 8.04882 10.3417 8.04882 10.1464 7.85355L7.14645 4.85355L6.79289 4.5L7.14645 4.14645L10.1464 1.14645Z"
         fill="currentColor"
-      />
-    </svg>
-  );
-}
-
-/** Eye icon — View Options (from JetBrains expui/general/show.svg style) */
-function ViewOptionsIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 4C4.5 4 2 8 2 8C2 8 4.5 12 8 12C11.5 12 14 8 14 8C14 8 11.5 4 8 4Z"
-        stroke="currentColor"
-        strokeLinejoin="round"
-      />
-      <circle cx="8" cy="8" r="2" stroke="currentColor" />
-    </svg>
-  );
-}
-
-function ExpandAllIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M4.5 5.5L8 2L11.5 5.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4.5 10.5L8 14L11.5 10.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CollapseAllIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M4.5 2.5L8 6L11.5 2.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M4.5 13.5L8 10L11.5 13.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
       />
     </svg>
   );

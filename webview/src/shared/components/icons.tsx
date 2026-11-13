@@ -1,3 +1,5 @@
+import type { CSSProperties } from "react";
+
 /**
  * IntelliJ-style menu icons shared by several context menus, preserved
  * byte-for-byte from the pre-refactor inline components (v1.1.3).
@@ -359,6 +361,96 @@ export function IconSparkle() {
         d="M12.5 9 Q12.95 11.05 15 11.5 Q12.95 11.95 12.5 14 Q12.05 11.95 10 11.5 Q12.05 11.05 12.5 9 Z"
         fill="#FF8A65"
       />
+    </svg>
+  );
+}
+
+/** View Options (eye) — moved verbatim from the Commit panel toolbar. */
+export function IconViewOptions() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M8 4C4.5 4 2 8 2 8C2 8 4.5 12 8 12C11.5 12 14 8 14 8C14 8 11.5 4 8 4Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+      />
+      <circle cx="8" cy="8" r="2" stroke="currentColor" />
+    </svg>
+  );
+}
+
+/** Expand All — moved verbatim from the Commit panel toolbar. */
+export function IconExpandAll() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M4.5 5.5L8 2L11.5 5.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 10.5L8 14L11.5 10.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/** Collapse All — moved verbatim from the Commit panel toolbar. */
+export function IconCollapseAll() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path
+        d="M4.5 2.5L8 6L11.5 2.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4.5 13.5L8 10L11.5 13.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+/**
+ * Section chevrons — the same glyphs the Git Log sidebar uses to expand and
+ * collapse sections, so trees elsewhere (the Changes view) match it.
+ */
+export function IconChevronDown({ style }: { style?: CSSProperties }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ verticalAlign: "middle", ...style }}
+    >
+      <polyline points="4,6 8,10 12,6" />
+    </svg>
+  );
+}
+
+export function IconChevronRight({ style }: { style?: CSSProperties }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      style={{ verticalAlign: "middle", ...style }}
+    >
+      <polyline points="6,4 10,8 6,12" />
     </svg>
   );
 }
