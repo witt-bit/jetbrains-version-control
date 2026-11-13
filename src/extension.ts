@@ -1797,11 +1797,16 @@ export function activate(context: vscode.ExtensionContext) {
   // gate to our own tab, not to a diff opened from the Commit panel.
   let changesDiffTabTitle: string | null = null;
 
+  /**
+   * The tab this view opened last, if VS Code can still replace it in place.
+   * A pinned tab sits outside the group's preview slot, so it cannot be
+   * replaced — treat it as absent and let the double click open a fresh one.
+   */
   const findChangesDiffTab = (): vscode.Tab | undefined => {
     if (!changesDiffTabTitle) return undefined;
     for (const group of vscode.window.tabGroups.all) {
       const tab = group.tabs.find((t) => t.label === changesDiffTabTitle);
-      if (tab) return tab;
+      if (tab) return tab.isPreview ? tab : undefined;
     }
     return undefined;
   };
@@ -1811,19 +1816,25 @@ export function activate(context: vscode.ExtensionContext) {
     const filePath = params.filePath as string;
     const staged = params.staged as boolean | undefined;
     // The Changes view asks for `singleTab`: the editor keeps exactly one diff
-    // tab, so a single click replaces what the previous click opened. VS Code
-    // does not do that for diff editors on its own — a `preview: true` diff got a
-    // new tab every time — so the previous tab is closed here instead, and the
-    // tab is opened as a normal (non-preview) one that VS Code will not replace
-    // behind our back.
+    // tab, so a single click replaces what the previous click opened.
+    //
+    // That is done with a *preview* editor, which is the only way VS Code
+    // replaces a tab without ever showing two. `EditorGroupModel.openEditor`
+    // routes a `pinned: false` open through `replaceEditor(preview, editor, …)`,
+    // one change event that swaps the group's preview slot in place — no second
+    // tab is ever laid out. Opening normally and closing the old tab afterwards
+    // (tried first) always paints a frame with both tabs.
+    //
+    // So this path never pins the tab: `workbench.action.keepEditor` would turn
+    // it into a pinned editor, which the preview slot never replaces again.
     const singleTab = params.singleTab === true;
-    const preview = (params.preview as boolean | undefined) ?? false;
-    // The tab opened last, if it is still there. In single-tab mode it is
-    // replaced by the new one — but only *after* the new diff is on screen:
-    // closing first leaves the editor area empty for a moment and the whole
-    // window flashes.
-    const previousTab = singleTab ? findChangesDiffTab() : undefined;
-    if (singleTab && params.requireExistingTab === true && !previousTab) {
+    const preview =
+      singleTab || ((params.preview as boolean | undefined) ?? false);
+    if (
+      singleTab &&
+      params.requireExistingTab === true &&
+      !findChangesDiffTab()
+    ) {
       // A single click never creates the tab; the first open is the double click.
       return { success: true, skipped: true };
     }
@@ -1868,21 +1879,18 @@ export function activate(context: vscode.ExtensionContext) {
       title,
       { preview },
     );
-    // Remember the tab for the next single click, in both modes: the single-tab
-    // list needs it to find what to replace, and the preview mode uses it as the
-    // "a tab is already open" gate.
+    // Remember the tab: the single-tab list uses its title to tell whether a
+    // preview slot to replace still exists, and the Changes view uses the fact
+    // that a diff tab is open to recognise "Close All" (see changesViewProvider).
     if (singleTab || preview) {
       changesDiffTabTitle = title;
     }
-    if (previousTab && previousTab.label !== title) {
-      // Opened first, closed after: the editor area never goes empty, which is
-      // what made the whole window flash. `preserveFocus` keeps the caret in the
-      // diff that was just opened.
-      await vscode.window.tabGroups.close(previousTab, true);
+    if (singleTab) {
+      changesProvider.noteDiffTabOpened(title);
     }
     if (!preview) {
-      // Re-opening an editor that is currently a preview does not reliably
-      // promote it to a persistent tab; Keep Editor is what actually does.
+      // Pinning is only for callers that asked for a normal tab (the Commit
+      // panel). Single-tab callers must never pin — see above.
       await vscode.commands.executeCommand("workbench.action.keepEditor");
     }
     return { success: true };

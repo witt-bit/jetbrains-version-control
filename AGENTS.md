@@ -187,9 +187,31 @@ A container whose views are all hidden is not contributed to the activity bar, s
 
 An explicit close has no ambiguity. The cost, by design: switching the sidebar away leaves the container in place until the user closes it.
 
+**"Close All" collapses the sidebar, and that is VS Code's doing — the damage is repaired, never prevented.** Closing every editor tab collapses the sidebar *part* (activity bar keeps all its icons, nothing lit) even though nothing in our code ran: verified with a timestamped trace where `hide()` was called zero times. What VS Code *does* have is `LayoutService`'s per-part `onDidVisibilityChange` feedback loop whose sidebar branch is **unguarded**, while the panel branch is guarded with `PANEL_HIDDEN === f` — so any visibility blip on the sidebar part becomes a full `setSideBarHidden(true)`, which hides the part, calls `hideActivePaneComposite(0)` (nothing lit) and moves focus. That matches the symptom exactly. (Which layout event supplies the blip is still not proven; see the note below.)
+
+Prevention is impossible from an extension, and this was measured, not assumed:
+
+- The collapse happens **synchronously inside the command's own task**, so it is painted before the frame ends.
+- `tabGroups.onDidChangeTabs` is a **cross-process IPC** event, so it always arrives after that paint; our restore command is yet another round trip. **At least one frame of collapse is always rendered.**
+- There is no `setPartVisible` API, `hideIfEmpty` is forced `true` for every contributed container, and the built-in `workbench.action.closeAllEditors` cannot be intercepted.
+
+So the repair is as tight as the host allows: `ChangesViewProvider` records the diff tab it opened (`noteDiffTabOpened(title)`) and restores on **`tabGroups.onDidChangeTabs`**, immediately, with one 400 ms retry for the turn where the host's tab model lags. Reacting to `onDidChangeVisibility` instead (the first attempt) meant a flat 400 ms of visible collapse. The guard is deliberately narrow — only when *our own* tab is in `e.closed` **and** the editor area is now empty; editors still open means the user switched the sidebar, and then nothing happens.
+
+The restore command matters: `<viewId>.focus` with `{ preserveFocus: true }` is the only one that re-selects the container, *unhides* the sidebar part (`doOpenPaneComposite` → `setPartHidden(false, …)`) **and** leaves focus in the editor. `workbench.view.extension.<id>` always steals focus.
+
+The only zero-flicker fix is a user setting, not code: `"workbench.editor.closeEmptyGroups": false` keeps the empty editor group, so `removeGroup` never runs and no re-layout happens. Not written automatically — it changes close behaviour for every editor in the window.
+
+Related, still unfixed: `mergeEditorManager` runs `workbench.action.maximizeEditorHideSidebar` and never restores it, which leaves the sidebar hidden for the rest of the session — the same visible symptom by a different route.
+
 **The list is a tree.** Group By → Module (each workspace folder, the IDEA notion of a module, annotated host-side in `getChangesViewFiles`) and Group By → Directory are both on by default and combine into module → directory → file. The eye button is the shared `IconViewOptions` glyph; the Expand All / Collapse All button is a single toggle that flips both the icon and the whole `collapsed` set. Folder rows carry the same chevrons the Git Log sidebar uses (`IconChevronDown` / `IconChevronRight`), and file rows keep an empty chevron-width spacer so names stay aligned.
 
-**Clicks: the double click opens, the single click only replaces.** `showDiffForWorkingFile` gets `singleTab` from this view, and since VS Code gives a diff editor a brand-new tab per call (a `preview: true` diff is *not* reused the way text previews are), the host closes the tab it opened last — after opening the new one, never before, or the editor area goes empty and the whole window flashes. The single click also sends `requireExistingTab` and is refused when that tab is gone, which makes the first open necessarily a double click. The tab is tracked by its title, not by "some git-brains diff exists", so a Commit-panel diff is never mistaken for it.
+**Clicks: the double click opens, the single click only replaces.** That is done with a *preview* editor — the only way VS Code replaces a tab without ever showing two. `EditorGroupModel.openEditor` routes a `pinned: false` open through `replaceEditor(preview, editor, …)`, a single change event that swaps the group's preview slot in place; no second tab is ever laid out. Consequences that are easy to get wrong:
+
+- **Never pin the tab.** `workbench.action.keepEditor` sets `pinned: true`, after which the `replaceEditor` branch never runs again and every open adds a tab. The single-tab path therefore never calls it. `findChangesDiffTab` treats a pinned tab as absent (`tab.isPreview`), so a stray pin cannot wedge the list.
+- Closing the old tab by hand and opening the new one (tried first) always paints a frame with both tabs, whichever order you pick.
+- `preview` is ignored entirely when the user sets `workbench.editor.enablePreview: false`; then nothing can replace in place.
+
+The single click also sends `requireExistingTab` and is refused when that tab is gone, which makes the first open necessarily a double click. The tab is tracked by its title, not by "some git-brains diff exists", so a Commit-panel diff is never mistaken for it.
 
 ## Workflow rules (from repeated feedback)
 

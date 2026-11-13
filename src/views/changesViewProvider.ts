@@ -1,17 +1,6 @@
-import * as nodefs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
 import * as vscode from "vscode";
 import type { MessageRouter } from "../messages/messageRouter";
 import { getWebviewHtml } from "./html";
-
-// TEMP DIAGNOSTIC — remove once the "Close All hides the panel" cause is known.
-const TRACE_FILE = path.join(os.tmpdir(), "jgc-changes-view.log");
-function trace(message: string): void {
-  const line = `${new Date().toISOString()} pid=${process.pid} ${message}
-`;
-  nodefs.appendFile(TRACE_FILE, line).catch(() => {});
-}
 
 /**
  * Context key that gates the whole Changes container. The view declares
@@ -20,6 +9,13 @@ function trace(message: string): void {
  * the branch context menu asks for it, and gone again once the user leaves.
  */
 export const CHANGES_VIEW_VISIBLE_KEY = "jgc.changesViewVisible";
+
+/**
+ * Grace period before deciding the sidebar really collapsed. The visibility
+ * event can arrive before VS Code has finished closing the editor tabs, so
+ * judging immediately still sees a non-empty editor area.
+ */
+const RESTORE_DELAY = 400;
 
 /**
  * The Changes view — a working-tree file list whose clicks open file diffs in
@@ -41,20 +37,34 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
    */
   private baseRef: string | null = null;
 
+  /**
+   * Set when this view opens a diff tab, cleared once the editor area is found
+   * empty again. It is the only reliable way to tell "Close All" apart from
+   * "the user switched the sidebar": closing our own diff is the one thing
+   * that empties the editor area while this view is on screen.
+   */
+  private diffTabOpen = false;
+
+  /** Title of the diff tab this view opened last, to recognise its closing. */
+  private diffTabTitle: string | null = null;
+
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly messageRouter: MessageRouter,
-  ) {
-    trace("provider constructed (host activated)");
-  }
+  ) {}
 
   getBaseRef(): string | null {
     return this.baseRef;
   }
 
+  /** Called after a diff tab was opened for this view. */
+  noteDiffTabOpened(title: string): void {
+    this.diffTabOpen = true;
+    this.diffTabTitle = title;
+  }
+
   /** Reveals the container and focuses the view, diffing against `baseRef`. */
   async reveal(baseRef: string | null = null): Promise<void> {
-    trace(`reveal baseRef=${baseRef}`);
     this.baseRef = baseRef;
     await vscode.commands.executeCommand(
       "setContext",
@@ -88,7 +98,6 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
 
   /** Un-contributes the container: icon and panel both disappear. */
   static async hide(): Promise<void> {
-    trace(`hide called from:\n${new Error().stack ?? ""}`);
     await vscode.commands.executeCommand(
       "setContext",
       CHANGES_VIEW_VISIBLE_KEY,
@@ -125,20 +134,91 @@ export class ChangesViewProvider implements vscode.WebviewViewProvider {
     nudge();
 
     // The container is hidden only when the user closes it explicitly (the
-    // toolbar ✕) — the single `hide()` caller is `closeChangesView`.
+    // toolbar ✕) — the single `hide()` caller is `closeChangesView`. Making
+    // `onDidChangeVisibility(false)` hide it was tried and abandoned: "Close
+    // All" deactivates the container exactly like switching the sidebar does,
+    // so closing editor tabs took the panel with it. `onDidDispose` is not a
+    // close either — VS Code disposes a webview view whenever it stops being
+    // shown.
     //
-    // Every automatic trigger was tried and abandoned. `onDidChangeVisibility`
-    // cannot tell "Close All" from "the user switched the sidebar": both
-    // deactivate the container. And `onDidDispose` is not a close either — VS
-    // Code disposes a webview view whenever it stops being shown, so hiding
-    // from there removed the container on any switch, which also left the
-    // activity bar with nothing selected.
-    webviewView.onDidDispose(() => {
-      trace("view disposed");
-      routerDisposable.dispose();
+    // Closing every editor tab still collapses the sidebar *part*, and that is
+    // a VS Code bug, not ours: LayoutService registers a per-part
+    // `onDidVisibilityChange` feedback loop whose sidebar branch is unguarded
+    // (`g === sidebar ? this.setSideBarHidden(!f)`), while the panel branch is
+    // guarded with `PANEL_HIDDEN === f`. Removing the last editor group
+    // re-lays out the grid, that re-layout calls `Part.setVisible(false)` on
+    // the sidebar, and the unguarded branch turns it into a real
+    // `setSideBarHidden(true)` — which hides the part, calls
+    // `hideActivePaneComposite(0)` (nothing lit) and moves focus. That is repaired here rather than
+    // prevented, and the trigger is deliberately narrow — our own diff tab was
+    // open and the editor area is now empty. Editors still open means the user
+    // switched the sidebar, and then nothing happens.
+    //
+    // The restore uses `<viewId>.focus` with `preserveFocus`: it re-selects the
+    // container, *unhides* the sidebar part (`doOpenPaneComposite` →
+    // `setPartHidden(false, …)`), and does not steal focus from the editor.
+    let restoreTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearRestoreTimer = () => {
+      if (restoreTimer !== null) {
+        clearTimeout(restoreTimer);
+        restoreTimer = null;
+      }
+    };
+
+    /** Re-selects the container and un-hides the sidebar, without focus. */
+    const restoreSidebar = () => {
+      if (webviewView.visible) return;
+      const editorAreaEmpty = vscode.window.tabGroups.all.every(
+        (group) => group.tabs.length === 0,
+      );
+      if (!editorAreaEmpty) return;
+      void vscode.commands.executeCommand(
+        `${ChangesViewProvider.viewType}.focus`,
+        { preserveFocus: true },
+      );
+    };
+
+    // React to our own diff tab being closed rather than to the sidebar
+    // collapsing: the collapse is a VS Code bug (see below) and by the time we
+    // could see it, it has already been painted. This fires on the real cause,
+    // immediately — and also keeps `diffTabOpen` honest, which the
+    // visibility-based fallback depends on.
+    const tabsListener = vscode.window.tabGroups.onDidChangeTabs((e) => {
+      if (!this.diffTabOpen) return;
+      const closedOurs = e.closed.some(
+        (tab) => tab.label === this.diffTabTitle,
+      );
+      if (!closedOurs) return;
+      this.diffTabOpen = false;
+      // Immediate attempt, plus one retry for the turn where the tab model in
+      // the extension host has not caught up with the renderer yet.
+      restoreSidebar();
+      clearRestoreTimer();
+      restoreTimer = setTimeout(() => {
+        restoreTimer = null;
+        restoreSidebar();
+      }, RESTORE_DELAY);
     });
     webviewView.onDidChangeVisibility(() => {
-      trace(`visibility visible=${webviewView.visible}`);
+      if (webviewView.visible) {
+        clearRestoreTimer();
+        nudge();
+        return;
+      }
+      // Fallback: only when the tab-close event did not arrive first.
+      clearRestoreTimer();
+      restoreTimer = setTimeout(() => {
+        restoreTimer = null;
+        if (!this.diffTabOpen) return;
+        this.diffTabOpen = false;
+        restoreSidebar();
+      }, RESTORE_DELAY);
+    });
+
+    webviewView.onDidDispose(() => {
+      clearRestoreTimer();
+      tabsListener.dispose();
+      routerDisposable.dispose();
     });
   }
 }
