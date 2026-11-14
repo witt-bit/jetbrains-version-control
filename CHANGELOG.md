@@ -4,7 +4,7 @@
 
 Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG-archive.md).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-14
 
 ### Added
 

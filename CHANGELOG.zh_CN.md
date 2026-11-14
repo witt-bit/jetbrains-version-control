@@ -4,7 +4,7 @@
 
 1.0.0 之前的版本已归档到 [CHANGELOG-archive.md](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG-archive.md)。
 
-## [Unreleased]
+## [1.2.0] - 2026-11-14
 
 ### 新增
 
