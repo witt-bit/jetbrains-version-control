@@ -181,7 +181,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 
 ### Improved
 
-- **Renamed to JetBrains Git Control** — Short brand JGC; the extension ID changed from `idea-like-git-graph` to `jetbrains-git-control`.
+- **Renamed to JetBrains Git** — Short brand JGC; the extension ID changed from `idea-like-git-graph` to `jetbrains-git-control`.
 
 ### Fixed
 

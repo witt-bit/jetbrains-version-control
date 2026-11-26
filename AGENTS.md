@@ -1,4 +1,4 @@
-# AGENTS.md — JetBrains Git Control
+# AGENTS.md — JetBrains Git
 
 AI agents working on this repo must read this file first.
 

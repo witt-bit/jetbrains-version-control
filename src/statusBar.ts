@@ -63,7 +63,7 @@ export class StatusBarController implements vscode.Disposable {
       99,
     );
     this.logoItem.text = "$(git-commit)";
-    this.logoItem.tooltip = "Show or hide JetBrains Git Control";
+    this.logoItem.tooltip = "Show or hide JetBrains Git";
     this.logoItem.command = "git-brains.status.openPanel";
     this.menuDisposable = vscode.commands.registerCommand(
       "git-brains.status.menu",
@@ -101,7 +101,7 @@ export class StatusBarController implements vscode.Disposable {
       }
       this.item.text = "$(git-commit) detached HEAD";
       this.item.tooltip = new vscode.MarkdownString(
-        `**JetBrains Git Control**\n\nDetached HEAD at \`${detached.slice(
+        `**JetBrains Git**\n\nDetached HEAD at \`${detached.slice(
           0,
           7,
         )}\`\n\nClick for Git actions`,
@@ -132,7 +132,7 @@ export class StatusBarController implements vscode.Disposable {
       behind > 0 ? `${behind} to pull` : "",
     ].filter(Boolean);
     this.item.tooltip = new vscode.MarkdownString(
-      `**JetBrains Git Control**\n\nBranch \`${branch}\`${
+      `**JetBrains Git**\n\nBranch \`${branch}\`${
         counts.length ? ` — ${counts.join(", ")}` : ""
       }\n\nClick for Git actions`,
     );
@@ -193,7 +193,7 @@ export class StatusBarController implements vscode.Disposable {
 
     const branch = (await repo.service.getCurrentBranch()) ?? "detached HEAD";
     const pick = vscode.window.createQuickPick();
-    pick.title = `JetBrains Git Control — ${branch}`;
+    pick.title = `JetBrains Git — ${branch}`;
     pick.placeholder = "Select a Git action";
 
     type Item = vscode.QuickPickItem & { id: string };

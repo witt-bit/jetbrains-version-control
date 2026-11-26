@@ -1,9 +1,9 @@
 {
-  "name": "jetbrains-git-control",
-  "displayName": "JetBrains Git Control",
-  "publisher": "witt-bit",
+  "name": "jetbrains-git",
+  "displayName": "JetBrains Git",
+  "publisher": "cscolley",
   "description": "Bring IntelliJ IDEA / JetBrains Git experience to VS Code & Cursor: Git graph visualization, IDEA-style commit panel with shelf/stash, branch management, cherry-pick, rebase, merge, 3-way merge editor, inline git blame annotations, and context menus. The best JetBrains Git alternative for Visual Studio Code.",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "license": "MIT",
   "icon": "images/icon.png",
   "repository": {
@@ -49,7 +49,7 @@
       "panel": [
         {
           "id": "git-brains-panel",
-          "title": "JetBrains Git Control",
+          "title": "JetBrains Git",
           "icon": "$(git-branch)"
         }
       ],
@@ -554,7 +554,7 @@
       }
     ],
     "configuration": {
-      "title": "JetBrains Git Control",
+      "title": "JetBrains Git",
       "properties": {
         "jgc.update.method": {
           "type": "string",

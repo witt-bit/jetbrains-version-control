@@ -4,7 +4,7 @@
 
 <img src="images/icon.png" width="128" />
 
-<h1>JetBrains Git Control</h1>
+<h1>JetBrains Git</h1>
 
 <strong>The IntelliJ IDEA / JetBrains Git experience for VS Code and Cursor</strong>
 
@@ -240,7 +240,7 @@ The six status colours are also exposed as `jgc.decoration.*` colour IDs, so the
 
 ## Installation
 
-**From the Marketplace** — search for **JetBrains Git Control**.
+**From the Marketplace** — search for **JetBrains Git**.
 
 **From a .vsix**
 

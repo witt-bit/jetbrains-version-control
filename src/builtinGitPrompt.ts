@@ -80,7 +80,7 @@ export class BuiltinGitPrompt implements vscode.Disposable {
     this.log?.("builtin git prompt: asking");
     try {
       const choice = await vscode.window.showInformationMessage(
-        "JetBrains Git Control can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
+        "JetBrains Git can replace the built-in Git UI. Disable VS Code's built-in Git extension (git.enabled = false)?",
         "Disable built-in Git",
         "Keep both",
       );

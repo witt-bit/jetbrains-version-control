@@ -181,7 +181,7 @@
 
 ### 优化
 
-- **插件更名** — 更名为 JetBrains Git Control（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`。
+- **插件更名** — 更名为 JetBrains Git（短标识 JGC），扩展 ID 由 `idea-like-git-graph` 改为 `jetbrains-git-control`。
 
 ### 修复
 

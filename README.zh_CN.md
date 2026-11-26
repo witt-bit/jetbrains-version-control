@@ -4,7 +4,7 @@
 
 <img src="images/icon.png" width="128" />
 
-<h1>JetBrains Git Control</h1>
+<h1>JetBrains Git</h1>
 
 <strong>在 VS Code 与 Cursor 中使用 IntelliJ IDEA / JetBrains 风格的 Git</strong>
 
@@ -240,7 +240,7 @@ JetBrains 风格的工作树管理面板，位于活动栏侧边栏。
 
 ## 安装
 
-**从 Marketplace 安装** — 在扩展中搜索 **JetBrains Git Control**。
+**从 Marketplace 安装** — 在扩展中搜索 **JetBrains Git**。
 
 **从 .vsix 安装**
 
