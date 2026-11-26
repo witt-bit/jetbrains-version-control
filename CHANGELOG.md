@@ -8,6 +8,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 
 ### Added
 
+- **Shelf toolbar** — The Shelf tab now has a toolbar like the JetBrains Shelf window: Unshelve, Restore (keeps the shelf), Create Patch, Copy as Patch to Clipboard, Delete, Import Patches and Import Patches from Clipboard. Click a shelf to select it; the shelf actions are disabled until one is selected.
 - **Update method** — `jgc.update.method` (`merge`, `rebase` or `branchDefault`) decides how Update Project, Pull and branch updates integrate upstream changes, and `jgc.update.saveChangesPolicy` (`stash` or `shelve`) decides how local changes are carried across the update.
 - **Smart checkout** — Checking out a branch, tag or commit, or creating a branch, no longer fails on a dirty working tree: a prompt offers Smart (stash, switch, restore), Force (discard, with a second confirmation) or Cancel. Untracked files that would be overwritten are explained instead of offering a destructive option.
 - **Stash options** — Stash Changes... (keep index, include untracked), Unstash As... (as a new branch, pop, reinstate index) and Clear All Stashes... from the Stash tab toolbar.

@@ -8,6 +8,7 @@
 
 ### 新增
 
+- **Shelf 工具栏** — Shelf 页新增类似 JetBrains Shelf 窗口的工具栏：Unshelve、Restore（保留 shelf）、Create Patch、Copy as Patch to Clipboard、Delete、Import Patches 与 Import Patches from Clipboard。点击 shelf 即可选中，未选中时相关按钮不可用。
 - **更新方式** — `jgc.update.method`（`merge`、`rebase` 或 `branchDefault`）决定 Update Project、Pull 与分支更新如何整合上游改动，`jgc.update.saveChangesPolicy`（`stash` 或 `shelve`）决定更新期间如何暂存本地改动。
 - **智能切换（Smart Checkout）** — 切换分支、标签、提交或新建分支时，工作区有改动不再直接失败：弹窗提供 Smart（暂存、切换、恢复）、Force（丢弃改动，需二次确认）或取消。会被覆盖的未跟踪文件只给出说明，不提供破坏性选项。
 - **Stash 选项** — Stash 页工具栏新增 Stash Changes...（保留暂存区、包含未跟踪文件）、Unstash As...（作为新分支、pop、恢复暂存区）与 Clear All Stashes...。

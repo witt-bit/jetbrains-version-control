@@ -490,6 +490,16 @@
   background: var(--vscode-list-hoverBackground);
 }
 
+.shelf-item-row.selected {
+  background: var(--vscode-list-inactiveSelectionBackground);
+}
+
+.shelf-item-row.selected:focus {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+  outline: none;
+}
+
 .shelf-item-chevron {
   width: 16px;
   height: 16px;

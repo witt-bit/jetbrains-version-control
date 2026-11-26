@@ -567,11 +567,11 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
   },
 
   highlightShelf(id: string) {
-    set({ highlightedShelfId: id });
+    set({ highlightedShelfId: id, highlightedIdeaShelfName: null });
   },
 
   highlightIdeaShelf(name: string) {
-    set({ highlightedIdeaShelfName: name });
+    set({ highlightedIdeaShelfName: name, highlightedShelfId: null });
   },
 
   async shelveChanges(message?: string, filePaths?: string[]) {
@@ -660,7 +660,15 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
         "getIdeaShelves",
       )) as IdeaShelfEntry[];
       if (Array.isArray(result)) {
-        set({ ideaShelves: result });
+        const { highlightedIdeaShelfName } = get();
+        set({
+          ideaShelves: result,
+          highlightedIdeaShelfName: result.some(
+            (shelf) => shelf.name === highlightedIdeaShelfName,
+          )
+            ? highlightedIdeaShelfName
+            : null,
+        });
       }
     } catch (err) {
       await reportActionError("fetchIdeaShelves", err);

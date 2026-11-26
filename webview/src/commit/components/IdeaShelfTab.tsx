@@ -1,12 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import CodiconClippy from "~icons/codicon/clippy";
 import CodiconDesktopDownload from "~icons/codicon/desktop-download";
-import { bridge } from "../../shared/bridge";
+import { bridge, reportActionError } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuItem,
 } from "../../shared/components/ContextMenu";
 import "../../shared/components/ContextMenu.css";
+import {
+  IconApply,
+  IconClipboardImport,
+  IconCopyPath,
+  IconDelete,
+  IconImport,
+  IconPatch,
+  IconUnshelve,
+} from "../../shared/components/icons";
+import { Tooltip } from "../../shared/components/Tooltip";
+import "../../shared/components/Tooltip.css";
+import {
+  useDeleteShortcutLabel,
+  useUnshelveShortcutLabel,
+} from "../../shared/shortcuts";
 import {
   type IdeaShelfEntry,
   useCommitStore,
@@ -14,9 +29,147 @@ import {
 import { getCommitFileIcon } from "../utils/file-icon";
 import { IdeaShelfContextMenu } from "./IdeaShelfContextMenu";
 import { IdeaShelfFileContextMenu } from "./IdeaShelfFileContextMenu";
+import "./stashDialog.css";
 
 export function IdeaShelfTab() {
-  const { ideaShelves, fetchIdeaShelves } = useCommitStore();
+  return (
+    <div className="stash-tab">
+      <IdeaShelfToolbar />
+      <IdeaShelfList />
+    </div>
+  );
+}
+
+function fire(what: string, fn: () => Promise<unknown> | unknown) {
+  void Promise.resolve()
+    .then(fn)
+    .catch((err) => reportActionError(what, err));
+}
+
+function IdeaShelfToolbar() {
+  const {
+    ideaShelves,
+    highlightedIdeaShelfName,
+    ideaUnshelveChanges,
+    deleteIdeaShelf,
+  } = useCommitStore();
+  const unshelveLabel = useUnshelveShortcutLabel();
+  const deleteLabel = useDeleteShortcutLabel();
+  const selected = ideaShelves.find(
+    (shelf) => shelf.name === highlightedIdeaShelfName,
+  );
+  const shelfName = selected?.name;
+
+  const run = useCallback(
+    (what: string, fn: (name: string) => Promise<unknown> | unknown) => {
+      if (shelfName) fire(what, () => fn(shelfName));
+    },
+    [shelfName],
+  );
+
+  return (
+    <div className="stash-toolbar" role="toolbar" aria-label="Shelf actions">
+      <Tooltip text={`Unshelve${unshelveLabel ? ` (${unshelveLabel})` : ""}`}>
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Unshelve"
+          disabled={!selected}
+          onClick={() => run("Unshelve", (n) => ideaUnshelveChanges(n, true))}
+        >
+          <IconUnshelve />
+        </button>
+      </Tooltip>
+      <Tooltip text="Restore (keep the shelf)">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Restore"
+          disabled={!selected}
+          onClick={() => run("Restore", (n) => ideaUnshelveChanges(n, false))}
+        >
+          <IconApply />
+        </button>
+      </Tooltip>
+      <Tooltip text="Create Patch...">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Create Patch"
+          disabled={!selected}
+          onClick={() =>
+            run("Create patch", (n) =>
+              bridge.request("createPatchFromShelf", { shelfName: n }),
+            )
+          }
+        >
+          <IconPatch />
+        </button>
+      </Tooltip>
+      <Tooltip text="Copy as Patch to Clipboard">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Copy as Patch to Clipboard"
+          disabled={!selected}
+          onClick={() =>
+            run("Copy patch", (n) =>
+              bridge.request("copyShelfPatchToClipboard", { shelfName: n }),
+            )
+          }
+        >
+          <IconCopyPath />
+        </button>
+      </Tooltip>
+      <span className="stash-toolbar-spacer" />
+      <Tooltip text="Import Patches...">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Import Patches"
+          onClick={() =>
+            fire("Import patches", () => bridge.request("importPatches"))
+          }
+        >
+          <IconImport />
+        </button>
+      </Tooltip>
+      <Tooltip text="Import Patches from Clipboard">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Import Patches from Clipboard"
+          onClick={() =>
+            fire("Import patch", () =>
+              bridge.request("importPatchFromClipboard"),
+            )
+          }
+        >
+          <IconClipboardImport />
+        </button>
+      </Tooltip>
+      <Tooltip text={`Delete...${deleteLabel ? ` (${deleteLabel})` : ""}`}>
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          aria-label="Delete"
+          disabled={!selected}
+          onClick={() => run("Delete shelf", (n) => deleteIdeaShelf(n))}
+        >
+          <IconDelete />
+        </button>
+      </Tooltip>
+    </div>
+  );
+}
+
+function IdeaShelfList() {
+  const {
+    ideaShelves,
+    fetchIdeaShelves,
+    highlightedIdeaShelfName,
+    highlightIdeaShelf,
+  } = useCommitStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -55,9 +208,10 @@ export function IdeaShelfTab() {
       e.preventDefault();
       e.stopPropagation();
       setFileContextMenu(null);
+      highlightIdeaShelf(entry.name);
       setContextMenu({ x: e.clientX, y: e.clientY, entry });
     },
-    [],
+    [highlightIdeaShelf],
   );
 
   const handleFileContextMenu = useCallback(
@@ -120,7 +274,11 @@ export function IdeaShelfTab() {
           key={entry.name}
           entry={entry}
           expanded={expandedIds.has(entry.name)}
-          onToggle={() => toggleExpand(entry.name)}
+          selected={entry.name === highlightedIdeaShelfName}
+          onToggle={() => {
+            highlightIdeaShelf(entry.name);
+            toggleExpand(entry.name);
+          }}
           onContextMenu={(e) => handleContextMenu(e, entry)}
           onFileContextMenu={handleFileContextMenu}
         />
@@ -156,6 +314,7 @@ export function IdeaShelfTab() {
 interface IdeaShelfItemProps {
   entry: IdeaShelfEntry;
   expanded: boolean;
+  selected: boolean;
   onToggle: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   onFileContextMenu: (
@@ -168,6 +327,7 @@ interface IdeaShelfItemProps {
 function IdeaShelfItem({
   entry,
   expanded,
+  selected,
   onToggle,
   onContextMenu,
   onFileContextMenu,
@@ -176,7 +336,19 @@ function IdeaShelfItem({
 
   return (
     <div className="shelf-item-container" onContextMenu={onContextMenu}>
-      <div className="shelf-item-row" onClick={onToggle}>
+      <div
+        className={`shelf-item-row ${selected ? "selected" : ""}`}
+        aria-selected={selected}
+        tabIndex={0}
+        style={{ userSelect: "none" }}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+      >
         <span className={`shelf-item-chevron ${expanded ? "" : "collapsed"}`}>
           <ChevronIcon />
         </span>
