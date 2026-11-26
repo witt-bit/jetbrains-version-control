@@ -171,6 +171,16 @@ Mirrors the IDEA New Worktree dialog: a collapsible **Copy local project setup**
 
 Both choices plus the script path are remembered per workspace in `localStorage`; nothing is written to settings.
 
+### Changelists (overlay model)
+
+An overlay on top of the index, **not** a replacement for it: the Staged group, Unversioned Files and Merge Conflicts behave exactly as without changelists, and only tracked, unstaged, non-conflicted changes belong to a list (`isListable` host-side, `isMovable` in the webview). Do not add an exclusive mode that hides the index.
+
+- Assignments live host-side in `jgc-changelists.json` under `git rev-parse --git-path` (one per worktree, never in the repo). `getWorkingTreeChanges` and `getChangesViewFiles` annotate each file with `changelist`; the webview never computes membership itself.
+- Any host path that makes changes vanish for good must forget them: commit paths go through `withChangelistCleanup`, rollbacks call `forgetResolvedPaths`. Shelve and stash deliberately do not — `reconcile` keeps an assignment for `STALE_AFTER_DAYS` (7) so a restored file returns to its list.
+- Group with `groupByChangelist` (Commit panel) / `groupFilesByChangelist` (Changes view). They share one visibility rule: the default list shows when it has files, or when it is active **and** a named list exists; named lists always show, even empty, because they are the only drop target.
+- Drag and drop carries paths under `CHANGELIST_DRAG_TYPE`. Only rows where `isMovable(file)` get an `onDragStart`; groups accept only drags that carry that type.
+- Mutating handlers broadcast `commitStateChanged`; every webview action goes through `runMenuAction` / `reportActionError`.
+
 ### Shortcut Labels
 
 Platform-aware labels in `webview/src/shared/shortcuts.ts`:

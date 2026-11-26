@@ -1,5 +1,7 @@
 import { useCallback } from "react";
-import { bridge } from "../../shared/bridge";
+import CodiconArrowRight from "~icons/codicon/arrow-right";
+import { bridge, runMenuAction } from "../../shared/bridge";
+import { movablePaths } from "../../shared/changelists";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -52,7 +54,17 @@ export function CommitFileContextMenu({
     shelveChanges,
     highlightedFiles,
     changes,
+    changelists,
+    promptMoveToChangelist,
   } = useCommitStore();
+
+  const moveTargets = movablePaths(file, changes, highlightedFiles);
+
+  const handleMoveToChangelist = useCallback(() => {
+    void runMenuAction(onClose, "Move to changelist", () =>
+      promptMoveToChangelist(moveTargets),
+    );
+  }, [moveTargets, promptMoveToChangelist, onClose]);
 
   const handleShowDiff = useCallback(() => {
     showDiff(file.path, file.staged);
@@ -161,6 +173,15 @@ export function CommitFileContextMenu({
       >
         Rollback...
       </ContextMenuItem>
+
+      {changelists?.enabled && moveTargets.length > 0 && (
+        <ContextMenuItem
+          onClick={handleMoveToChangelist}
+          icon={<CodiconArrowRight />}
+        >
+          Move to Another Changelist...
+        </ContextMenuItem>
+      )}
 
       <ContextMenuSeparator />
 

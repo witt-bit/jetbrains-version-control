@@ -15,6 +15,7 @@ import {
 } from "./branchCleanup.ts";
 import { parseRemoteBranchLines } from "./branchParsing.ts";
 import { GitCache } from "./cache.ts";
+import { CHANGELIST_FILE_NAME, ChangelistStore } from "./changelistStore.ts";
 import { type CherryMarks, computeCherryMarks } from "./cherryMarks.ts";
 import {
   type CherryPickOptions,
@@ -175,6 +176,7 @@ export class GitService {
   readonly cache = new GitCache();
 
   private readonly cwd: string;
+  private changelistStore: Promise<ChangelistStore> | undefined;
 
   constructor(cwd: string) {
     this.cwd = cwd;
@@ -183,6 +185,26 @@ export class GitService {
   /** The repository root every git command runs against. */
   get root(): string {
     return this.cwd;
+  }
+
+  /**
+   * This worktree's changelists. The file sits in the git dir, so it stays out
+   * of `git status` and a linked worktree has lists of its own.
+   */
+  changelists(): Promise<ChangelistStore> {
+    this.changelistStore ??= this.execGit([
+      "rev-parse",
+      "--git-path",
+      CHANGELIST_FILE_NAME,
+    ]).then(
+      (out) => new ChangelistStore(path.resolve(this.cwd, out.trim())),
+      (error) => {
+        // Do not cache a failure: the repository may be fixed later.
+        this.changelistStore = undefined;
+        throw error;
+      },
+    );
+    return this.changelistStore;
   }
 
   private async execGit(

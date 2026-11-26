@@ -25,6 +25,7 @@
 - **转到哈希 / 分支 / 标签** — ⌘⇧L（Ctrl+Shift+L）按哈希、分支或标签定位提交，会按需加载历史，并在过滤条件挡住目标时自动解除。Ctrl+L 聚焦过滤框。
 - **交互式变基** — 在任意提交上选择 Interactively Rebase from Here...，可逐个提交选择 pick / reword / edit / squash / fixup / drop、调整顺序，并支持 `--onto`、autosquash、保留空提交、update-refs、rebase-merges。
 - **编辑提交信息、Fixup 与 Squash Into** — 位于提交右键菜单。
+- **更改列表（Changelists）** — 与 IDEA 的 Changes 视图一样，可在 Commit 面板中把未暂存的改动分到命名列表里。通过列表右键菜单或工具栏的 New Changelist 按钮创建、重命名、删除并设为活动列表；新改动会进入活动列表。可把文件（或整个选区）拖到某个列表上，也可在文件或文件夹菜单中选择 Move to Another Changelist...。Shelve Changelist... 只搁置该列表中的文件。部分提交之后，会提示把未提交的文件移入一个新列表（`jgc.changelists.offerMoveOnPartialCommit`）。Changes 视图新增按 Changelist 分组。列表按工作树存放在 git 目录内，不会写入仓库；Staged 分组、Unversioned Files 与 Merge Conflicts 的行为不变。`jgc.changelists.enabled` 可关闭该功能。
 
 ### 优化
 

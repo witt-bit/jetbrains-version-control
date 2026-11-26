@@ -656,6 +656,16 @@
           "default": true,
           "markdownDescription": "Ask for confirmation before committing when Git `user.name` or `user.email` is not set."
         },
+        "jgc.changelists.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Group the working-tree changes in the Commit panel and the Changes view into named changelists, like IntelliJ IDEA and Rider. Changelists are stored in the repository's git directory and never touch the index, so the Staged group behaves exactly as it does without them. Turn this off to get a single *Changes* group."
+        },
+        "jgc.changelists.offerMoveOnPartialCommit": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "After committing only some of the files in a changelist, offer to move the files that were left behind to a new changelist."
+        },
         "jgc.decorations.gutterMarkers": {
           "type": "boolean",
           "default": true,

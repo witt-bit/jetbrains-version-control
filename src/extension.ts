@@ -11,6 +11,14 @@ import {
   promptSetUpstream,
 } from "./commands/branchExtras";
 import {
+  annotateWithChangelists,
+  changeChangelists,
+  forgetResolvedPaths,
+  readChangelistsInfo,
+  stringList,
+  withChangelistCleanup,
+} from "./commands/changelists";
+import {
   announceCherryPick,
   readCherryPickOptions,
 } from "./commands/cherryPickNotice";
@@ -29,6 +37,14 @@ import { loadMarkerIcons } from "./decorations/markerHover";
 import { registerMarkerHoverProvider } from "./decorations/markerHoverProvider";
 import { createMarkerPopup } from "./decorations/markerPopup";
 import { registerAiProbe } from "./dev/aiProbe";
+import {
+  createChangelist,
+  deleteChangelist,
+  epochDay,
+  moveToChangelist,
+  renameChangelist,
+  setActiveChangelist,
+} from "./git/changelists";
 import { commitOptionsFromSettings } from "./git/commitSettings";
 import { patchFileName } from "./git/exportFileName";
 import { type FetchOptions, readFetchSettings } from "./git/fetchOptions";
@@ -1830,7 +1846,14 @@ export function activate(context: vscode.ExtensionContext) {
     const allChanges: import("./git/types").WorkingTreeFile[] = [];
     for (const svc of allGitServices) {
       try {
-        allChanges.push(...(await svc.getWorkingTreeChanges()));
+        const changes = await svc.getWorkingTreeChanges();
+        // Changelists belong to the primary repository, like every other
+        // Commit panel action.
+        allChanges.push(
+          ...(svc === gitService
+            ? await annotateWithChangelists(svc, changes)
+            : changes),
+        );
       } catch {
         // Skip folders that aren't git repos
       }
@@ -1863,9 +1886,12 @@ export function activate(context: vscode.ExtensionContext) {
       const root = allWorkspaceRoots[i] ?? "";
       const moduleName = path.basename(root) || root;
       try {
-        const changed = baseRef
+        let changed = baseRef
           ? await svc.getChangesAgainstRef(baseRef)
           : await svc.getWorkingTreeChanges();
+        if (!baseRef && svc === gitService) {
+          changed = await annotateWithChangelists(svc, changed);
+        }
         for (const file of changed) {
           files.push({ ...file, module: moduleName });
         }
@@ -1875,7 +1901,75 @@ export function activate(context: vscode.ExtensionContext) {
     }
     // A bad ref must not look like a clean tree.
     if (baseRef && files.length === 0 && lastError) throw lastError;
-    return { baseRef, files };
+    // A comparison against a ref has no changelists: they describe what is
+    // changed in the working tree, not how it differs from another branch.
+    const changelists =
+      baseRef || !gitService
+        ? null
+        : await readChangelistsInfo(gitService).catch(() => null);
+    return { baseRef, files, changelists };
+  });
+
+  messageRouter.handle("getChangelists", async () => {
+    if (!gitService) return NOT_GIT_REPO;
+    return readChangelistsInfo(gitService);
+  });
+
+  messageRouter.handle("createChangelist", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const filePaths = stringList(params.filePaths);
+    const makeActive = params.makeActive === true;
+    const created = await changeChangelists(gitService, (state) => {
+      const result = createChangelist(state, params.name, { makeActive });
+      if (!result.ok || filePaths.length === 0) return result;
+      const moved = moveToChangelist(
+        result.state,
+        filePaths,
+        result.id,
+        epochDay(),
+      );
+      return moved.ok ? { ...result, state: moved.state } : moved;
+    });
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true, id: created.id };
+  });
+
+  messageRouter.handle("renameChangelist", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    await changeChangelists(gitService, (state) =>
+      renameChangelist(state, String(params.id), params.name),
+    );
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true };
+  });
+
+  messageRouter.handle("deleteChangelist", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    await changeChangelists(gitService, (state) =>
+      deleteChangelist(state, String(params.id)),
+    );
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true };
+  });
+
+  messageRouter.handle("setActiveChangelist", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    await changeChangelists(gitService, (state) =>
+      setActiveChangelist(state, String(params.id)),
+    );
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true };
+  });
+
+  messageRouter.handle("moveToChangelist", async (params) => {
+    if (!gitService) return NOT_GIT_REPO;
+    const filePaths = stringList(params.filePaths);
+    if (filePaths.length === 0) return { success: false };
+    await changeChangelists(gitService, (state) =>
+      moveToChangelist(state, filePaths, String(params.id), epochDay()),
+    );
+    messageRouter.broadcastEvent("commitStateChanged", {});
+    return { success: true };
   });
 
   messageRouter.handle("unstageFile", async (params) => {
@@ -1956,11 +2050,13 @@ export function activate(context: vscode.ExtensionContext) {
     ) {
       return { success: false, cancelled: true };
     }
-    await commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
-      gitService.commit(
-        message,
-        amend ?? false,
-        commitOptionsFromSettings(settings),
+    await withChangelistCleanup(gitService, () =>
+      commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
+        gitService.commit(
+          message,
+          amend ?? false,
+          commitOptionsFromSettings(settings),
+        ),
       ),
     );
     messageRouter.broadcastEvent("commitStateChanged", {});
@@ -1992,25 +2088,27 @@ export function activate(context: vscode.ExtensionContext) {
           assertForcePushAllowed(current, currentProtectedBranches());
         }
       }
-      await commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
-        gitService.commitAndPush(
-          message,
-          amend ?? false,
-          commitOptionsFromSettings(settings),
-          async (branch, force) => {
-            const remote = await gitService.getDefaultRemote(branch);
-            const result = await pushWithPrompts(gitService, {
-              branchName: branch,
-              remote,
-              targetBranch: branch,
-              force,
-            });
-            if (result.status === "cancelled") {
-              void vscode.window.showInformationMessage(
-                "Committed. The push was cancelled.",
-              );
-            }
-          },
+      await withChangelistCleanup(gitService, () =>
+        commitWithSelection(gitService, filePaths, keepStagedPaths, () =>
+          gitService.commitAndPush(
+            message,
+            amend ?? false,
+            commitOptionsFromSettings(settings),
+            async (branch, force) => {
+              const remote = await gitService.getDefaultRemote(branch);
+              const result = await pushWithPrompts(gitService, {
+                branchName: branch,
+                remote,
+                targetBranch: branch,
+                force,
+              });
+              if (result.status === "cancelled") {
+                void vscode.window.showInformationMessage(
+                  "Committed. The push was cancelled.",
+                );
+              }
+            },
+          ),
         ),
       );
       messageRouter.broadcastEvent("commitStateChanged", {});
@@ -2026,7 +2124,9 @@ export function activate(context: vscode.ExtensionContext) {
     if (!(await confirmCommit(gitService, settings))) {
       return { success: false, cancelled: true };
     }
-    await gitService.commit(message, true, commitOptionsFromSettings(settings));
+    await withChangelistCleanup(gitService, () =>
+      gitService.commit(message, true, commitOptionsFromSettings(settings)),
+    );
     messageRouter.broadcastEvent("commitStateChanged", {});
     messageRouter.broadcastEvent("gitStateChanged", { scope: "all" });
     return { success: true };
@@ -2192,6 +2292,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
     if (choice !== "Rollback") return { success: false };
     await gitService.rollbackFile(filePath);
+    await forgetResolvedPaths(gitService, [filePath]);
     messageRouter.broadcastEvent("commitStateChanged", {});
     return { success: true };
   });
@@ -2209,6 +2310,7 @@ export function activate(context: vscode.ExtensionContext) {
     for (const filePath of filePaths) {
       await gitService.rollbackFile(filePath);
     }
+    await forgetResolvedPaths(gitService, filePaths);
     messageRouter.broadcastEvent("commitStateChanged", {});
     return { success: true };
   });

@@ -25,6 +25,7 @@ Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/
 - **Go To Hash / Branch / Tag** — Cmd+Shift+L (Ctrl+Shift+L) finds a commit by hash, branch or tag, loading more history until it appears and lifting any filter that hides it. Ctrl+L focuses the filter box.
 - **Interactive rebase** — Interactively Rebase from Here... on any commit opens a dialog with per-commit pick / reword / edit / squash / fixup / drop, reordering, `--onto`, autosquash, keep-empty, update-refs and rebase-merges.
 - **Edit Commit Message, Fixup and Squash Into** — on a commit's context menu.
+- **Changelists** — Group unstaged changes into named lists in the Commit panel, like IDEA's Changes view. Create, rename, delete and Set Active from a list's right-click menu or the New Changelist toolbar button; new changes land in the active list. Drag files (or a whole selection) onto a list, or use Move to Another Changelist... from a file or folder menu. Shelve Changelist... shelves just that list's files. After a partial commit, an offer moves the files you left behind into a new list (`jgc.changelists.offerMoveOnPartialCommit`). The Changes view gets a Changelist grouping. Lists are stored per worktree inside the git directory, never in the repository, and the Staged group, Unversioned Files and Merge Conflicts behave as before. `jgc.changelists.enabled` turns the feature off.
 
 ### Improved
 

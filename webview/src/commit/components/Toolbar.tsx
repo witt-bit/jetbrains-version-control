@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import CodiconNewFolder from "~icons/codicon/new-folder";
 import { bridge } from "../../shared/bridge";
 import {
   ContextMenuHeader,
@@ -16,6 +17,7 @@ import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useToggleGroupByDirectoryShortcutLabel } from "../../shared/shortcuts";
 import { useCommitStore } from "../../shared/store/commit-store";
+import { DEFAULT_CHANGELIST_ID } from "../../shared/types/git";
 
 interface ToolbarProps {
   onRefresh: () => void;
@@ -31,7 +33,16 @@ export function Toolbar({
   hasChanges,
 }: ToolbarProps) {
   const [showViewMenu, setShowViewMenu] = useState(false);
-  const { expandedGroups, toggleGroup, expandAllDirs } = useCommitStore();
+  const {
+    expandedGroups,
+    toggleGroup,
+    expandAllDirs,
+    changelists,
+    expandAllChangelists,
+    collapseAllChangelists,
+    createChangelist,
+  } = useCommitStore();
+  const changelistsOn = changelists?.enabled === true;
 
   const handleExpandAll = useCallback(() => {
     // Expand file groups
@@ -41,9 +52,10 @@ export function Toolbar({
         toggleGroup(g);
       }
     }
+    expandAllChangelists();
     // Expand all directories in tree view
     expandAllDirs();
-  }, [expandedGroups, toggleGroup, expandAllDirs]);
+  }, [expandedGroups, toggleGroup, expandAllDirs, expandAllChangelists]);
 
   const handleCollapseAll = useCallback(() => {
     // Collapse file groups
@@ -53,7 +65,11 @@ export function Toolbar({
         toggleGroup(g);
       }
     }
-  }, [expandedGroups, toggleGroup]);
+    collapseAllChangelists([
+      DEFAULT_CHANGELIST_ID,
+      ...(changelists?.lists.map((list) => list.id) ?? []),
+    ]);
+  }, [expandedGroups, toggleGroup, changelists, collapseAllChangelists]);
 
   return (
     <div className="commit-toolbar">
@@ -86,6 +102,17 @@ export function Toolbar({
           <ShelveIcon />
         </button>
       </Tooltip>
+      {changelistsOn && (
+        <Tooltip text="New Changelist">
+          <button
+            type="button"
+            className="commit-toolbar-btn"
+            onClick={() => void createChangelist()}
+          >
+            <CodiconNewFolder />
+          </button>
+        </Tooltip>
+      )}
       <Tooltip text="Show Diff">
         <button
           type="button"

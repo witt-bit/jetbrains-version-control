@@ -101,8 +101,8 @@ Rider action ids are in the companion catalog. "Have" = found and working per RE
 
 | Rider feature | Observed detail | Extension |
 |---|---|---|
-| Commit tool window, amend, commit message history | `Vcs.ShowMessageHistory`, `Vcs.*` and `ChangesView.*` actions | Have: commit panel, `amendCommit`, `getRecentCommitMessages`. Changelists are a separate gap (5.6) |
-| **Staging area mode** | `Enable staging area` (disables changelists); Stage, Unstage, Stage Without Content, Stage All, Rollback; staged vs local virtual files | Partial: `stageFile`, `unstageFile`, `stageAll`, `unstageAll` |
+| Commit tool window, amend, commit message history | `Vcs.ShowMessageHistory`, `Vcs.*` and `ChangesView.*` actions | Have: commit panel, `amendCommit`, `getRecentCommitMessages`, changelists (5.6) |
+| **Staging area mode** | `Enable staging area` (disables changelists); Stage, Unstage, Stage Without Content, Stage All, Rollback; staged vs local virtual files | Partial: `stageFile`, `unstageFile`, `stageAll`, `unstageAll`. Changelists coexist with the index instead of replacing it, so there is no exclusive mode that disables them |
 | Partial commit by lines/chunks | Include/exclude lines into commit, split chunks | Partial: gutter hover card "Commit this change" |
 | Commit options | Sign-off (`shouldSignOffCommit`), *Do not run commit hooks* (`--no-verify`), author (`getCommitAuthors`), commit renames separately, amend | Partial: amend, sign-off, run-hooks switch (`src/git/commitSettings.ts`); no author override, no commit-renames-separately |
 | **GPG signing** | Per-root key chooser, GPG pinentry agent setup | Partial: key chooser and `jgc.commit.gpgSign` (`src/git/gpg.ts`); not applied to cherry-pick, revert, rebase or merge-continue commits; one key for the workspace, not per root |
@@ -143,7 +143,7 @@ Rider action ids are in the companion catalog. "Have" = found and working per RE
 | Rider feature | Observed detail | Extension |
 |---|---|---|
 | Changes view: group by Directory, Module, Repository; show ignored | | Have: Changes view with Module/Directory tree |
-| Changelists (create, move, set active, delete) | `ChangesView.*` | Missing |
+| Changelists (create, move, set active, delete) | `ChangesView.*` | Have, as an overlay on the index (gap 15): `getChangelists`, `createChangelist`, `renameChangelist`, `deleteChangelist`, `setActiveChangelist`, `moveToChangelist`; Commit panel groups, drag and drop, Shelve Changelist, partial-commit offer, Changes view grouping. No line-level changelists (`Vcs.MoveChangedLinesToChangelist`) |
 | Rollback, Rollback Lines | | Have: `rollbackFile(s)`, gutter `marker.rollbackLines` |
 | Diff viewer | Combined diff, three-way merge, align changes, open in editor tab | Partial: `openDiffEditor`, 3-way merge editor |
 | Annotate (blame) | `AnnotateDetectMovementsOption` `NONE / INNER / OUTER`, ignore-whitespace toggle (both app-level settings) | Have: `jgc.blame.ignoreWhitespace` and `jgc.blame.detectMovements` (`src/git/blameOptions.ts`); configurable columns/colours |
@@ -182,11 +182,11 @@ Rider action ids are in the companion catalog. "Have" = found and working per RE
 - **Branches**: sync across roots (`DvcsSyncSettings`), recent branches, show tags, filter by action/repository, swap sides in compare, branch cleanup symbol.
 - **Advanced settings** (23 total; documented ones): recurse submodules on clone, safe force push, incoming/outgoing info, auto-open Update Info, do not run commit hooks, read content with filters/textconv, Windows certificate store, branch cleanup symbol, show branch in recent projects, Git tab in Search Everywhere.
 
-The extension now exposes **36** settings: the original 14 (`jgc.decorations.*`, `jgc.blame.*` appearance, `jgc.caretBlame.*`, `jgc.worktree.openBehavior`, `jgc.onboarding.builtinGitPrompt`) plus 22 Git-behaviour settings under `jgc.update.*`, `jgc.fetch.*`, `jgc.push.*`, `jgc.protectedBranches`, `jgc.commit.*`, `jgc.cherryPick.*`, `jgc.blame.{ignoreWhitespace,detectMovements}` and `jgc.clone.recurseSubmodules`. Their **defaults were chosen, not read from Rider** (see §8).
+The extension now exposes **38** settings: the original 14 (`jgc.decorations.*`, `jgc.blame.*` appearance, `jgc.caretBlame.*`, `jgc.worktree.openBehavior`, `jgc.onboarding.builtinGitPrompt`) plus 22 Git-behaviour settings under `jgc.update.*`, `jgc.fetch.*`, `jgc.push.*`, `jgc.protectedBranches`, `jgc.commit.*`, `jgc.cherryPick.*`, `jgc.blame.{ignoreWhitespace,detectMovements}` and `jgc.clone.recurseSubmodules`, plus the two `jgc.changelists.*` settings (`enabled`, `offerMoveOnPartialCommit`). Their **defaults were chosen, not read from Rider** (see §8).
 
 ## 7. Gap analysis and suggested backlog
 
-Ranked by user value against implementation cost. Status is as of this branch: gaps 1–14 are implemented (uncommitted), gaps 15–17 are deliberately deferred. The extension's `CommandType` union now has 163 commands (139 when this catalog was written; the "132" in `AGENTS.md` is a historical figure from when the union was closed).
+Ranked by user value against implementation cost. Status is as of this branch: gaps 1–15 are implemented (uncommitted from gap 15 on), gaps 16–17 are deliberately deferred. The extension's `CommandType` union now has 169 commands (139 when this catalog was written; the "132" in `AGENTS.md` is a historical figure from when the union was closed).
 
 | # | Gap | Rider evidence | Cost | Status |
 |---|---|---|---|---|
@@ -204,7 +204,7 @@ Ranked by user value against implementation cost. Status is as of this branch: g
 | 12 | Annotate movement detection and whitespace toggle | `AnnotateDetectMovementsOption` | Low | Done. |
 | 13 | Clone, Init, submodules, sparse checkout, unshallow | `GitCommand` | Medium | Done. |
 | 14 | GPG signing | `settings.configure.sign.gpg.*` | Medium | Done for commits; see the limits below. |
-| 15 | Changelists | `ChangesView.*` | High | Deferred: they conflict with the staging model the extension already uses. |
+| 15 | Changelists | `ChangesView.*` | High | Done, as an overlay: the index and the Staged group are unchanged, so there is no exclusive mode. Lists group tracked, unstaged changes only. See the limits below. |
 | 16 | Local History | `intellij.platform.lvcs.impl` | High | Deferred: Git has no equivalent, and VS Code has its own Timeline. |
 | 17 | GitHub / GitLab integration | `vcs-github`, `vcs-gitlab` | Very high | Deferred: better as separate extensions, and the existing GitHub and GitLab extensions already cover most of it. |
 
@@ -219,6 +219,11 @@ Where the extension already matches or exceeds Rider: worktree `.worktreeinclude
 - `getRebaseState` is not worktree-safe, and `rebaseAction("continue")` throws when the rebase stops again on a second conflict (both pre-existing).
 - A `withProgress` modal leaves the panel progress bar visible while it runs.
 - The Log's "History: file ✕" chip was replaced by the Path filter.
+- Changelists cover the primary repository only; files from other workspace folders are untagged and show in the default list.
+- Changelists are file-level. IDEA's line-level `Vcs.MoveChangedLinesToChangelist` is not implemented, and the Changes view shows lists read-only (no drag and drop there).
+- A path that stops being changed keeps its list for 7 days (`STALE_AFTER_DAYS`), so a shelved or stashed file returns to its original list when restored in that time, and to the active list afterwards. Commit and rollback forget their paths at once.
+- New changelists are not made active on creation (the prompt is a plain input box, so there is no "make active" checkbox); use Set Active Changelist.
+- The partial-commit offer (`jgc.changelists.offerMoveOnPartialCommit`) approximates IDEA's `OFFER_MOVE_TO_ANOTHER_CHANGELIST_ON_PARTIAL_COMMIT`, which was reconstructed from memory rather than read from the bytecode, and it never fires for the default list.
 
 Where the extension already matches or exceeds Rider: worktree `.worktreeinclude` and setup script, three-way merge editor, AI commit message, caret blame, gutter markers with a hover card, Explorer colours.
 

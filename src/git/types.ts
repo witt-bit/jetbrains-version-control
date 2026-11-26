@@ -157,6 +157,18 @@ export interface WorkingTreeFile {
     | "untracked"
     | "conflicted";
   staged: boolean;
+  /** Id of the changelist the file belongs to; absent for unversioned and conflicted files. */
+  changelist?: string;
+}
+
+/** What the webviews need to render changelists. */
+export interface ChangelistsInfo {
+  /** `jgc.changelists.enabled`; when false the other fields are inert. */
+  enabled: boolean;
+  activeId: string;
+  lists: { id: string; name: string }[];
+  /** `jgc.changelists.offerMoveOnPartialCommit` */
+  offerMoveOnPartialCommit: boolean;
 }
 
 /** Shelf entry (git stash based) */

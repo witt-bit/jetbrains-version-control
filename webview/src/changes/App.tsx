@@ -3,6 +3,7 @@ import CodiconClose from "~icons/codicon/close";
 import { getCommitFileIcon } from "../commit/utils/file-icon";
 import { IconFolder, IconFolderOpen } from "../panel/utils/file-icons";
 import { bridge, reportActionError } from "../shared/bridge";
+import { isChangelistsInfo } from "../shared/changelists";
 import {
   ContextMenu,
   ContextMenuHeader,
@@ -18,6 +19,9 @@ import {
 import { Tooltip } from "../shared/components/Tooltip";
 import { useSuppressContextMenu } from "../shared/hooks/useSuppressContextMenu";
 import type { WorkingTreeFile } from "../shared/store/commit-store";
+import type { ChangelistsInfo } from "../shared/types/git";
+import { ChangelistRow } from "./ChangelistRow";
+import { groupFilesByChangelist } from "./changelistGroups";
 import "./changes.css";
 
 /** A changed file plus the workspace folder (IDEA's "module") it belongs to. */
@@ -26,7 +30,12 @@ type ChangesFile = WorkingTreeFile & { module?: string };
 /** What the view currently knows: a list, or the reason it has none. */
 type State =
   | { kind: "loading" }
-  | { kind: "list"; baseRef: string | null; files: ChangesFile[] }
+  | {
+      kind: "list";
+      baseRef: string | null;
+      files: ChangesFile[];
+      changelists: ChangelistsInfo | null;
+    }
   | { kind: "error"; message: string };
 
 /** The host's reply when the window has no Git repository to work with. */
@@ -43,9 +52,11 @@ function isNotGitRepo(value: unknown): value is NotGitRepo {
   );
 }
 
-function isChangesPayload(
-  value: unknown,
-): value is { baseRef: string | null; files: ChangesFile[] } {
+function isChangesPayload(value: unknown): value is {
+  baseRef: string | null;
+  files: ChangesFile[];
+  changelists?: unknown;
+} {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -68,10 +79,18 @@ interface DirNode {
 
 type TreeNode = FileNode | DirNode;
 
+/** A module level of the tree; `label` is empty when modules are not grouped. */
 interface Group {
   key: string;
   label: string;
   children: TreeNode[];
+}
+
+/** The top level: one per changelist, or a single header-less one when changelists are off. */
+interface Section {
+  key: string;
+  header: { label: string; count: number; active: boolean } | null;
+  groups: Group[];
 }
 
 /** File-name colours per Git status. The status letter itself is not shown —
@@ -99,6 +118,7 @@ export function ChangesApp() {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [groupByModule, setGroupByModule] = useState(true);
   const [groupByDirectory, setGroupByDirectory] = useState(true);
+  const [groupByChangelist, setGroupByChangelist] = useState(true);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
   const viewButtonRef = useRef<HTMLButtonElement>(null);
@@ -112,6 +132,9 @@ export function ChangesApp() {
           kind: "list",
           baseRef: result.baseRef,
           files: result.files,
+          changelists: isChangelistsInfo(result.changelists)
+            ? result.changelists
+            : null,
         });
       } else if (isNotGitRepo(result)) {
         setState({
@@ -152,6 +175,12 @@ export function ChangesApp() {
   }, [load]);
 
   const baseRef = state.kind === "list" ? state.baseRef : null;
+  // A comparison against another branch has no changelists (the host sends
+  // null), and a disabled feature falls back to the plain tree.
+  const changelists = state.kind === "list" ? state.changelists : null;
+  const changelistsAvailable =
+    baseRef === null && changelists?.enabled === true;
+  const showChangelists = changelistsAvailable && groupByChangelist;
 
   /**
    * Opens the file diff as a preview tab. `replaceOnly` refuses to create the
@@ -179,13 +208,34 @@ export function ChangesApp() {
     [baseRef],
   );
 
-  const groups = useMemo(
-    () =>
-      state.kind === "list"
-        ? buildGroups(state.files, groupByModule, groupByDirectory)
-        : [],
-    [state, groupByModule, groupByDirectory],
-  );
+  const sections = useMemo((): Section[] => {
+    if (state.kind !== "list") return [];
+    if (showChangelists && state.changelists) {
+      return groupFilesByChangelist(state.files, state.changelists).map(
+        (bucket) => ({
+          key: bucket.key,
+          header: {
+            label: bucket.label,
+            count: bucket.files.length,
+            active: bucket.active,
+          },
+          groups: buildGroups(
+            bucket.files,
+            groupByModule,
+            groupByDirectory,
+            bucket.key,
+          ),
+        }),
+      );
+    }
+    return [
+      {
+        key: "all",
+        header: null,
+        groups: buildGroups(state.files, groupByModule, groupByDirectory),
+      },
+    ];
+  }, [state, showChangelists, groupByModule, groupByDirectory]);
 
   // Every collapsible node, so Expand All / Collapse All has something to act
   // on without walking the tree twice.
@@ -199,12 +249,15 @@ export function ChangesApp() {
         }
       }
     };
-    for (const group of groups) {
-      keys.add(group.key);
-      walk(group.children);
+    for (const section of sections) {
+      if (section.header) keys.add(section.key);
+      for (const group of section.groups) {
+        if (group.label) keys.add(group.key);
+        walk(group.children);
+      }
     }
     return keys;
-  }, [groups]);
+  }, [sections]);
 
   const allExpanded =
     allKeys.size > 0 && [...allKeys].every((key) => !collapsed.has(key));
@@ -287,7 +340,7 @@ export function ChangesApp() {
         </Tooltip>
       </div>
 
-      {state.files.length === 0 ? (
+      {state.files.length === 0 && sections.length <= 1 ? (
         <div className="changes-empty">
           {baseLabel && <div className="changes-group-title">{baseLabel}</div>}
           <div>No changes</div>
@@ -295,27 +348,52 @@ export function ChangesApp() {
       ) : (
         <div className="changes-list">
           {baseLabel && <div className="changes-group-title">{baseLabel}</div>}
-          {groups.map((group) => {
-            const isCollapsed = collapsed.has(group.key);
+          {sections.map((section) => {
+            const header = section.header;
+            const sectionCollapsed = header
+              ? collapsed.has(section.key)
+              : false;
             return (
-              <div key={group.key}>
-                {group.label && (
-                  <NodeRow
+              <div key={section.key}>
+                {header && (
+                  <ChangelistRow
                     depth={0}
-                    label={group.label}
-                    collapsed={isCollapsed}
-                    onToggle={() => toggleCollapsed(group.key)}
+                    label={header.label}
+                    count={header.count}
+                    active={header.active}
+                    collapsed={sectionCollapsed}
+                    onToggle={() => toggleCollapsed(section.key)}
                   />
                 )}
-                {!isCollapsed && (
-                  <NodeList
-                    nodes={group.children}
-                    depth={group.label ? 1 : 0}
-                    collapsed={collapsed}
-                    onToggle={toggleCollapsed}
-                    onOpen={openDiff}
-                  />
-                )}
+                {!sectionCollapsed &&
+                  section.groups.map((group) => {
+                    const isCollapsed = group.label
+                      ? collapsed.has(group.key)
+                      : false;
+                    const groupDepth = header ? 1 : 0;
+                    return (
+                      <div key={group.key}>
+                        {group.label && (
+                          <NodeRow
+                            depth={groupDepth}
+                            label={group.label}
+                            collapsed={isCollapsed}
+                            onToggle={() => toggleCollapsed(group.key)}
+                          />
+                        )}
+                        {!isCollapsed && (
+                          <NodeList
+                            nodes={group.children}
+                            depth={groupDepth + (group.label ? 1 : 0)}
+                            flatDepth={groupDepth}
+                            collapsed={collapsed}
+                            onToggle={toggleCollapsed}
+                            onOpen={openDiff}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
             );
           })}
@@ -330,6 +408,17 @@ export function ChangesApp() {
           onClose={() => setMenuAt(null)}
         >
           <ContextMenuHeader>Group By</ContextMenuHeader>
+          {changelistsAvailable && (
+            <ContextMenuItem
+              checked={groupByChangelist}
+              onClick={() => {
+                setGroupByChangelist((v) => !v);
+                setMenuAt(null);
+              }}
+            >
+              Changelist
+            </ContextMenuItem>
+          )}
           <ContextMenuItem
             checked={groupByModule}
             onClick={() => {
@@ -359,12 +448,15 @@ export function ChangesApp() {
 function NodeList({
   nodes,
   depth,
+  flatDepth,
   collapsed,
   onToggle,
   onOpen,
 }: {
   nodes: TreeNode[];
   depth: number;
+  /** The depth of a list with no folder rows above it; only there is the file's own directory not on screen. */
+  flatDepth: number;
   collapsed: Set<string>;
   onToggle: (key: string) => void;
   onOpen: (file: ChangesFile, replaceOnly: boolean) => Promise<void>;
@@ -384,6 +476,7 @@ function NodeList({
               <NodeList
                 nodes={node.children}
                 depth={depth + 1}
+                flatDepth={flatDepth}
                 collapsed={collapsed}
                 onToggle={onToggle}
                 onOpen={onOpen}
@@ -395,6 +488,7 @@ function NodeList({
             key={`${node.file.staged ? "staged" : "worktree"}:${node.file.path}`}
             file={node.file}
             depth={depth}
+            showDirPath={depth === flatDepth}
             onOpen={onOpen}
           />
         ),
@@ -435,10 +529,12 @@ function NodeRow({
 function FileRow({
   file,
   depth,
+  showDirPath,
   onOpen,
 }: {
   file: ChangesFile;
   depth: number;
+  showDirPath: boolean;
   onOpen: (file: ChangesFile, replaceOnly: boolean) => Promise<void>;
 }) {
   const parts = file.path.split("/");
@@ -477,7 +573,7 @@ function FileRow({
       </span>
       {/* Only in a flat list: inside the tree the parent directories are
           already on screen. */}
-      {dirPath && depth === 0 && (
+      {dirPath && showDirPath && (
         <Tooltip text={dirPath}>
           <span className="changes-dir">{dirPath}</span>
         </Tooltip>
@@ -488,11 +584,14 @@ function FileRow({
 
 /* ─── Tree building ──────────────────────────────────────────────── */
 
+/** `scope` keeps keys unique per changelist, so one list's collapsed folders never leak into another's. */
 function buildGroups(
   files: ChangesFile[],
   byModule: boolean,
   byDirectory: boolean,
+  scope = "",
 ): Group[] {
+  const scoped = (key: string) => (scope ? `${scope}/${key}` : key);
   const buckets = new Map<string, ChangesFile[]>();
   for (const file of files) {
     const key = byModule ? (file.module ?? "") : "";
@@ -503,13 +602,16 @@ function buildGroups(
 
   return [...buckets.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([module, moduleFiles]) => ({
-      key: byModule ? `m:${module}` : "root",
-      label: byModule ? module : "",
-      children: byDirectory
-        ? buildDirTree(moduleFiles, byModule ? `m:${module}` : "root")
-        : moduleFiles.map((file): TreeNode => ({ kind: "file", file })),
-    }));
+    .map(([module, moduleFiles]) => {
+      const key = scoped(byModule ? `m:${module}` : "root");
+      return {
+        key,
+        label: byModule ? module : "",
+        children: byDirectory
+          ? buildDirTree(moduleFiles, key)
+          : moduleFiles.map((file): TreeNode => ({ kind: "file", file })),
+      };
+    });
 }
 
 function buildDirTree(files: ChangesFile[], prefix: string): TreeNode[] {

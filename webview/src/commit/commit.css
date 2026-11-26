@@ -726,3 +726,29 @@ button.commit-dropdown-item:hover:not(:disabled) {
   color: var(--vscode-textLink-activeForeground, #3794ff);
   text-decoration: none;
 }
+
+/* ─── Changelists ──────────────────────────────────────────────── */
+.commit-changelist-active {
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  letter-spacing: 0;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.commit-group.drop-target {
+  outline: 1px dashed var(--vscode-focusBorder);
+  outline-offset: -1px;
+  background: var(--vscode-list-dropBackground, rgba(55, 148, 255, 0.12));
+}
+
+.commit-group-empty {
+  padding: 6px 8px 8px 28px;
+  font-size: 11px;
+  opacity: 0.55;
+  user-select: none;
+}

@@ -11,6 +11,8 @@ export interface FileItemProps {
   onShowDiff: () => void;
   onJumpToSource: () => void;
   onClick: (e: React.MouseEvent) => void;
+  /** Set when the row can be dragged onto a changelist header. */
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
 export function FileItem({
@@ -22,6 +24,7 @@ export function FileItem({
   onShowDiff,
   onJumpToSource,
   onClick,
+  onDragStart,
 }: FileItemProps) {
   const parts = file.path.split("/");
   const fileName = parts.pop() || parts.pop() || file.path;
@@ -41,6 +44,8 @@ export function FileItem({
     <div
       className={`commit-file-item ${highlighted ? "highlighted" : ""}`}
       tabIndex={0}
+      draggable={onDragStart !== undefined}
+      onDragStart={onDragStart}
       onClick={handleClick}
       onContextMenu={(e) => {
         e.preventDefault();

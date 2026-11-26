@@ -128,3 +128,21 @@ export interface WorktreeInfo {
   locked: boolean; // `git worktree lock` 保护中
   lockReason?: string; // 锁定原因（未提供则为空）
 }
+
+export interface Changelist {
+  id: string;
+  name: string;
+}
+
+/** What the host reports about changelists (`getChangelists`, `getChangesViewFiles`). */
+export interface ChangelistsInfo {
+  /** `jgc.changelists.enabled`; when false, render a single "Changes" group. */
+  enabled: boolean;
+  activeId: string;
+  lists: Changelist[];
+  /** `jgc.changelists.offerMoveOnPartialCommit` */
+  offerMoveOnPartialCommit: boolean;
+}
+
+/** The id the host gives the list that cannot be deleted. */
+export const DEFAULT_CHANGELIST_ID = "default";

@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CodiconArrowRight from "~icons/codicon/arrow-right";
 import CodiconDiscard from "~icons/codicon/discard";
 import CodiconFolderActive from "~icons/codicon/folder-active";
 import CodiconTrash from "~icons/codicon/trash";
-import { bridge } from "../../shared/bridge";
+import { bridge, runMenuAction } from "../../shared/bridge";
+import {
+  CHANGELIST_DRAG_TYPE,
+  groupByChangelist,
+  isMovable,
+  movablePaths,
+} from "../../shared/changelists";
 import {
   ContextMenu,
   ContextMenuItem,
@@ -19,6 +26,7 @@ import {
   useCommitStore,
   type WorkingTreeFile,
 } from "../../shared/store/commit-store";
+import { ChangelistContextMenu } from "./ChangelistContextMenu";
 import { CommitFileContextMenu } from "./CommitFileContextMenu";
 import { CommitMessageArea } from "./CommitMessageArea";
 import { FileItem } from "./FileItem";
@@ -27,6 +35,8 @@ import { Toolbar } from "./Toolbar";
 export function CommitTab() {
   const {
     changes,
+    changelists,
+    collapsedChangelists,
     selectedFiles,
     highlightedFiles,
     expandedGroups,
@@ -34,6 +44,8 @@ export function CommitTab() {
     showUnversioned,
     collapsedDirs,
     toggleGroup,
+    toggleChangelistGroup,
+    moveToChangelist,
     toggleFileSelection,
     setFileKeys,
     highlightFile,
@@ -54,6 +66,12 @@ export function CommitTab() {
     y: number;
     files: WorkingTreeFile[];
     dirName: string;
+  } | null>(null);
+
+  const [changelistMenu, setChangelistMenu] = useState<{
+    x: number;
+    y: number;
+    id: string;
   } | null>(null);
 
   // Group files: staged (Changes) vs unstaged/untracked (Unversioned Files)
@@ -83,20 +101,38 @@ export function CommitTab() {
       };
     }, [changes]);
 
+  // One group per changelist when they are on; otherwise `null` and the single
+  // "Changes" group renders exactly as it did before changelists existed.
+  const changelistGroups = useMemo(
+    () =>
+      changelists?.enabled
+        ? groupByChangelist(changedFiles, changelists)
+        : null,
+    [changedFiles, changelists],
+  );
+
   // Flat list of every visible file key, in the exact order the rows render.
   // Shared by Shift range selection and (via FileGroup) keyboard navigation so
   // the two can never drift apart.
   const orderedKeys = useMemo(() => {
     const base = { groupByDirectory, collapsedDirs };
+    const changeKeys = changelistGroups
+      ? changelistGroups.flatMap((group) =>
+          collectVisibleKeys(group.files, {
+            ...base,
+            expanded: !collapsedChangelists.has(group.id),
+          }),
+        )
+      : collectVisibleKeys(changedFiles, {
+          ...base,
+          expanded: expandedGroups.has("changes"),
+        });
     return [
       ...collectVisibleKeys(conflictedFiles, {
         ...base,
         expanded: expandedGroups.has("conflicts"),
       }),
-      ...collectVisibleKeys(changedFiles, {
-        ...base,
-        expanded: expandedGroups.has("changes"),
-      }),
+      ...changeKeys,
       ...collectVisibleKeys(stagedFiles, {
         ...base,
         expanded: expandedGroups.has("staged"),
@@ -111,6 +147,8 @@ export function CommitTab() {
   }, [
     conflictedFiles,
     changedFiles,
+    changelistGroups,
+    collapsedChangelists,
     stagedFiles,
     untrackedFiles,
     expandedGroups,
@@ -134,6 +172,44 @@ export function CommitTab() {
       void openSourceFile(filePath);
     },
     [openSourceFile],
+  );
+
+  // Dragging a row that is part of the highlight drags the whole highlight.
+  const handleFileDragStart = useCallback(
+    (e: React.DragEvent, file: WorkingTreeFile) => {
+      const paths = movablePaths(file, changes, highlightedFiles);
+      if (paths.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      e.dataTransfer.setData(CHANGELIST_DRAG_TYPE, JSON.stringify(paths));
+      e.dataTransfer.effectAllowed = "move";
+    },
+    [changes, highlightedFiles],
+  );
+
+  const handleDropOnChangelist = useCallback(
+    (id: string, paths: string[]) => {
+      const alreadyThere = new Set(
+        changes.filter((f) => f.changelist === id).map((f) => f.path),
+      );
+      void moveToChangelist(
+        id,
+        paths.filter((path) => !alreadyThere.has(path)),
+      );
+    },
+    [changes, moveToChangelist],
+  );
+
+  const handleChangelistContextMenu = useCallback(
+    (e: React.MouseEvent, id: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setChangelistMenu({ x: e.clientX, y: e.clientY, id });
+      setContextMenu(null);
+      setDirContextMenu(null);
+    },
+    [],
   );
 
   // Jump to Source (F4 / Cmd+Down). Subscribed from a component rather than at
@@ -177,6 +253,7 @@ export function CommitTab() {
     (e: React.MouseEvent, file: WorkingTreeFile) => {
       setContextMenu({ x: e.clientX, y: e.clientY, file });
       setDirContextMenu(null);
+      setChangelistMenu(null);
     },
     [],
   );
@@ -187,6 +264,7 @@ export function CommitTab() {
       e.stopPropagation();
       setDirContextMenu({ x: e.clientX, y: e.clientY, files, dirName });
       setContextMenu(null);
+      setChangelistMenu(null);
     },
     [],
   );
@@ -197,6 +275,10 @@ export function CommitTab() {
 
   const closeDirContextMenu = useCallback(() => {
     setDirContextMenu(null);
+  }, []);
+
+  const closeChangelistMenu = useCallback(() => {
+    setChangelistMenu(null);
   }, []);
 
   return (
@@ -268,27 +350,65 @@ export function CommitTab() {
           />
         )}
 
-        {/* Changes (tracked, modified) */}
-        {changedFiles.length > 0 && (
-          <FileGroup
-            label="Changes"
-            files={changedFiles}
-            count={changedFiles.length}
-            expanded={expandedGroups.has("changes")}
-            groupByDirectory={groupByDirectory}
-            onToggle={() => toggleGroup("changes")}
-            selectedFiles={selectedFiles}
-            highlightedFiles={highlightedFiles}
-            onToggleFile={toggleFileSelection}
-            onSetFileKeys={setFileKeys}
-            onHighlightFile={handleHighlightFile}
-            onFileClick={handleFileClick}
-            onJumpToSource={handleJumpToSource}
-            onShowDiff={showDiff}
-            onContextMenu={handleContextMenu}
-            onDirContextMenu={handleDirContextMenu}
-          />
-        )}
+        {/* Changes (tracked, modified): one group per changelist when enabled */}
+        {changelistGroups
+          ? changelistGroups.map((group) => (
+              <FileGroup
+                key={group.id}
+                label={group.name}
+                files={group.files}
+                count={group.files.length}
+                expanded={!collapsedChangelists.has(group.id)}
+                groupByDirectory={groupByDirectory}
+                onToggle={() => toggleChangelistGroup(group.id)}
+                selectedFiles={selectedFiles}
+                highlightedFiles={highlightedFiles}
+                onToggleFile={toggleFileSelection}
+                onSetFileKeys={setFileKeys}
+                onHighlightFile={handleHighlightFile}
+                onFileClick={handleFileClick}
+                onJumpToSource={handleJumpToSource}
+                onShowDiff={showDiff}
+                onContextMenu={handleContextMenu}
+                onDirContextMenu={handleDirContextMenu}
+                onFileDragStart={handleFileDragStart}
+                onDropFiles={(paths) => handleDropOnChangelist(group.id, paths)}
+                onHeaderContextMenu={(e) =>
+                  handleChangelistContextMenu(e, group.id)
+                }
+                emptyHint="Drag files here to move them to this changelist"
+                action={
+                  group.active ? (
+                    <span
+                      className="commit-changelist-active"
+                      title="New changes go to this changelist"
+                    >
+                      Active
+                    </span>
+                  ) : undefined
+                }
+              />
+            ))
+          : changedFiles.length > 0 && (
+              <FileGroup
+                label="Changes"
+                files={changedFiles}
+                count={changedFiles.length}
+                expanded={expandedGroups.has("changes")}
+                groupByDirectory={groupByDirectory}
+                onToggle={() => toggleGroup("changes")}
+                selectedFiles={selectedFiles}
+                highlightedFiles={highlightedFiles}
+                onToggleFile={toggleFileSelection}
+                onSetFileKeys={setFileKeys}
+                onHighlightFile={handleHighlightFile}
+                onFileClick={handleFileClick}
+                onJumpToSource={handleJumpToSource}
+                onShowDiff={showDiff}
+                onContextMenu={handleContextMenu}
+                onDirContextMenu={handleDirContextMenu}
+              />
+            )}
 
         {/* Staged files */}
         {stagedFiles.length > 0 && (
@@ -358,6 +478,14 @@ export function CommitTab() {
           onClose={closeDirContextMenu}
         />
       )}
+      {changelistMenu && (
+        <ChangelistContextMenu
+          x={changelistMenu.x}
+          y={changelistMenu.y}
+          id={changelistMenu.id}
+          onClose={closeChangelistMenu}
+        />
+      )}
     </div>
   );
 }
@@ -384,6 +512,26 @@ interface FileGroupProps {
     dirName: string,
   ) => void;
   action?: React.ReactNode;
+  /** Starts a changelist drag; only called for rows that can be moved. */
+  onFileDragStart?: (e: React.DragEvent, file: WorkingTreeFile) => void;
+  /** Makes the whole group a drop target for dragged changelist files. */
+  onDropFiles?: (paths: string[]) => void;
+  onHeaderContextMenu?: (e: React.MouseEvent) => void;
+  /** Shown instead of rows when an expanded group has no files. */
+  emptyHint?: string;
+}
+
+function readDraggedPaths(e: React.DragEvent): string[] {
+  try {
+    const parsed: unknown = JSON.parse(
+      e.dataTransfer.getData(CHANGELIST_DRAG_TYPE),
+    );
+    return Array.isArray(parsed)
+      ? parsed.filter((p): p is string => typeof p === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 function FileGroup({
@@ -404,13 +552,23 @@ function FileGroup({
   onContextMenu,
   onDirContextMenu,
   action,
+  onFileDragStart,
+  onDropFiles,
+  onHeaderContextMenu,
+  emptyHint,
 }: FileGroupProps) {
   const allKeys = useMemo(
     () => files.map((f) => `${f.path}:${f.staged}`),
     [files],
   );
-  const allSelected = allKeys.every((k) => selectedFiles.has(k));
+  const allSelected =
+    allKeys.length > 0 && allKeys.every((k) => selectedFiles.has(k));
   const someSelected = allKeys.some((k) => selectedFiles.has(k));
+  const [dropActive, setDropActive] = useState(false);
+
+  const acceptsDrag = (e: React.DragEvent) =>
+    onDropFiles !== undefined &&
+    Array.from(e.dataTransfer.types).includes(CHANGELIST_DRAG_TYPE);
 
   const handleGroupCheckbox = () => {
     if (allSelected) {
@@ -459,8 +617,31 @@ function FileGroup({
   );
 
   return (
-    <div className="commit-group">
-      <div className="commit-group-header" onClick={onToggle}>
+    <div
+      className={`commit-group${dropActive ? " drop-target" : ""}`}
+      onDragOver={(e) => {
+        if (!acceptsDrag(e)) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        if (!dropActive) setDropActive(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setDropActive(false);
+      }}
+      onDrop={(e) => {
+        setDropActive(false);
+        if (!acceptsDrag(e)) return;
+        e.preventDefault();
+        const paths = readDraggedPaths(e);
+        if (paths.length > 0) onDropFiles?.(paths);
+      }}
+    >
+      <div
+        className="commit-group-header"
+        onClick={onToggle}
+        onContextMenu={onHeaderContextMenu}
+      >
         <input
           type="checkbox"
           className="commit-group-checkbox"
@@ -483,7 +664,10 @@ function FileGroup({
         </span>
         {action}
       </div>
-      {expanded && (
+      {expanded && files.length === 0 && emptyHint && (
+        <div className="commit-group-empty">{emptyHint}</div>
+      )}
+      {expanded && files.length > 0 && (
         <div
           className="commit-group-files"
           tabIndex={0}
@@ -502,6 +686,7 @@ function FileGroup({
               onShowDiff={onShowDiff}
               onContextMenu={onContextMenu}
               onDirContextMenu={onDirContextMenu}
+              onFileDragStart={onFileDragStart}
             />
           ) : (
             files.map((file) => {
@@ -517,6 +702,11 @@ function FileGroup({
                   onJumpToSource={() => onJumpToSource(file.path)}
                   onContextMenu={(e) => onContextMenu(e, file)}
                   onClick={(e) => onFileClick(e, key)}
+                  onDragStart={
+                    onFileDragStart && isMovable(file)
+                      ? (e) => onFileDragStart(e, file)
+                      : undefined
+                  }
                 />
               );
             })
@@ -637,6 +827,7 @@ function DirectoryTree({
   onShowDiff,
   onContextMenu,
   onDirContextMenu,
+  onFileDragStart,
 }: {
   files: WorkingTreeFile[];
   selectedFiles: Set<string>;
@@ -653,6 +844,7 @@ function DirectoryTree({
     files: WorkingTreeFile[],
     dirName: string,
   ) => void;
+  onFileDragStart?: (e: React.DragEvent, file: WorkingTreeFile) => void;
 }) {
   const { collapsedDirs, toggleDir } = useCommitStore();
   const tree = useMemo(() => buildDirTree(files), [files]);
@@ -673,6 +865,7 @@ function DirectoryTree({
       onShowDiff={onShowDiff}
       onContextMenu={onContextMenu}
       onDirContextMenu={onDirContextMenu}
+      onFileDragStart={onFileDragStart}
     />
   );
 }
@@ -692,6 +885,7 @@ function DirNodeView({
   onShowDiff,
   onContextMenu,
   onDirContextMenu,
+  onFileDragStart,
 }: {
   node: DirNode;
   depth: number;
@@ -711,6 +905,7 @@ function DirNodeView({
     files: WorkingTreeFile[],
     dirName: string,
   ) => void;
+  onFileDragStart?: (e: React.DragEvent, file: WorkingTreeFile) => void;
 }) {
   return (
     <>
@@ -783,6 +978,7 @@ function DirNodeView({
                   onShowDiff={onShowDiff}
                   onContextMenu={onContextMenu}
                   onDirContextMenu={onDirContextMenu}
+                  onFileDragStart={onFileDragStart}
                 />
               )}
             </div>
@@ -802,6 +998,11 @@ function DirNodeView({
               onJumpToSource={() => onJumpToSource(file.path)}
               onContextMenu={(e) => onContextMenu(e, file)}
               onClick={(e) => onFileClick(e, key)}
+              onDragStart={
+                onFileDragStart && isMovable(file)
+                  ? (e) => onFileDragStart(e, file)
+                  : undefined
+              }
             />
           </div>
         );
@@ -842,6 +1043,20 @@ function DirContextMenu({
   onClose: () => void;
 }) {
   const deleteLabel = useDeleteShortcutLabel();
+  const changelistsEnabled = useCommitStore((s) => s.changelists?.enabled);
+  const promptMoveToChangelist = useCommitStore(
+    (s) => s.promptMoveToChangelist,
+  );
+  const movable = useMemo(
+    () => [...new Set(files.filter(isMovable).map((f) => f.path))],
+    [files],
+  );
+
+  const handleMoveToChangelist = useCallback(() => {
+    void runMenuAction(onClose, "Move to changelist", () =>
+      promptMoveToChangelist(movable),
+    );
+  }, [movable, promptMoveToChangelist, onClose]);
 
   const handleDelete = useCallback(() => {
     const paths = files.map((f) => f.path);
@@ -868,6 +1083,15 @@ function DirContextMenu({
       <ContextMenuItem onClick={handleRollback} icon={<CodiconDiscard />}>
         Rollback...
       </ContextMenuItem>
+
+      {changelistsEnabled && movable.length > 0 && (
+        <ContextMenuItem
+          onClick={handleMoveToChangelist}
+          icon={<CodiconArrowRight />}
+        >
+          Move to Another Changelist...
+        </ContextMenuItem>
+      )}
 
       <ContextMenuSeparator />
 
