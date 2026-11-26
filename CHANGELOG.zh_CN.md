@@ -4,6 +4,37 @@
 
 1.0.0 之前的版本已归档到 [CHANGELOG-archive.md](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG-archive.md)。
 
+## [Unreleased]
+
+### 新增
+
+- **更新方式** — `jgc.update.method`（`merge`、`rebase` 或 `branchDefault`）决定 Update Project、Pull 与分支更新如何整合上游改动，`jgc.update.saveChangesPolicy`（`stash` 或 `shelve`）决定更新期间如何暂存本地改动。
+- **智能切换（Smart Checkout）** — 切换分支、标签、提交或新建分支时，工作区有改动不再直接失败：弹窗提供 Smart（暂存、切换、恢复）、Force（丢弃改动，需二次确认）或取消。会被覆盖的未跟踪文件只给出说明，不提供破坏性选项。
+- **Stash 选项** — Stash 页工具栏新增 Stash Changes...（保留暂存区、包含未跟踪文件）、Unstash As...（作为新分支、pop、恢复暂存区）与 Clear All Stashes...。
+- **Blame 选项** — `jgc.blame.ignoreWhitespace` 与 `jgc.blame.detectMovements`（`none`、`inner`、`outer`）控制 blame 如何归属每一行。
+- **Cherry-pick 选项** — `jgc.cherryPick.emptyStrategy`（`ask`、`skip`、`createEmpty`）处理变为空的提交，`jgc.cherryPick.appendSourceHash` 追加 `-x`，Git Log 工具栏新增开关，用淡色显示已经 cherry-pick 到 HEAD 的提交。空 cherry-pick 之后继续操作现在会提交而不是报错。
+- **Fetch 选项** — `jgc.fetch.prune`、`jgc.fetch.tagsMode` 与后台自动 fetch（`jgc.fetch.autoFetch`、`jgc.fetch.autoFetchIntervalMinutes`）。
+- **分支扩展操作** — Clean Up Merged Branches...、分支菜单中的 Set / Unset Upstream，以及工作树的 Lock / Unlock（已锁定的工作树显示锁图标且不能删除）。
+- **推送被拒绝时就地恢复** — 分支菜单推送、Commit and Push 与 Push All up to Here 在被拒绝时可选择合并、变基或带租约强推，并自动重试一次。Push 面板新增带租约强推与"记住我的选择"。首次推送自动设置上游（`jgc.push.autoSetUpstream`、`jgc.push.rejectedAction`）。
+- **受保护分支** — `jgc.protectedBranches`（默认 `main`、`master`，支持 `*` 通配）禁止对这些分支强制推送，删除前需明确确认，并且不会出现在 Clean Up Merged Branches 中。
+- **提交选项与检查** — Commit 面板新增齿轮菜单，可切换签署（sign-off）与是否运行 Git 钩子；提交前会对大文件、CRLF 换行、游离 HEAD 或变基进行中、缺失 `user.name` / `user.email` 给出警告，并提供"仍然提交"确认。每项检查都可在设置（`jgc.commit.*`）中关闭。
+- **GPG 签名** — "Choose GPG Key..." 选择密钥并启用签名；`jgc.commit.gpgSign`（`auto`、`always`、`never`）可强制或禁用单次提交的签名。
+- **仓库命令** — 克隆仓库（带进度与取消，不会交互式询问凭据）、为尚非仓库的工作区创建 Git 仓库、子模块的列出 / 更新 / 同步 / 打开、稀疏检出管理，以及 Unshallow / Deepen。`jgc.clone.recurseSubmodules` 控制克隆时是否递归子模块。
+
+- **Git 日志的信息与路径过滤** — 信息过滤新增区分大小写与正则开关，新增的 Path 过滤可按文件或文件夹筛选。两者都由 git 在完整历史上执行，滚动加载和刷新时保持有效。文本框不再匹配哈希片段，请改用 Go To。
+- **转到哈希 / 分支 / 标签** — ⌘⇧L（Ctrl+Shift+L）按哈希、分支或标签定位提交，会按需加载历史，并在过滤条件挡住目标时自动解除。Ctrl+L 聚焦过滤框。
+- **交互式变基** — 在任意提交上选择 Interactively Rebase from Here...，可逐个提交选择 pick / reword / edit / squash / fixup / drop、调整顺序，并支持 `--onto`、autosquash、保留空提交、update-refs、rebase-merges。
+- **编辑提交信息、Fixup 与 Squash Into** — 位于提交右键菜单。
+
+### 优化
+
+- 继续变基时不再弹出编辑器。
+
+### 修复
+
+- 钩子拒绝的推送不再被当作"被拒绝的推送"而提供合并 / 变基。
+- Amend 并推送会在改写提交之前先检查是否为受保护分支。
+
 ## [1.2.0] - 2026-11-14
 
 ### 新增

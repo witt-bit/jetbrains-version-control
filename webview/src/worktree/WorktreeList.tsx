@@ -2,17 +2,25 @@ import { useCallback, useRef, useState } from "react";
 import CodiconAdd from "~icons/codicon/add";
 import CodiconChevronLeft from "~icons/codicon/chevron-left";
 import CodiconChevronRight from "~icons/codicon/chevron-right";
+import CodiconLock from "~icons/codicon/lock";
 import CodiconRefresh from "~icons/codicon/refresh";
 import CodiconTrash from "~icons/codicon/trash";
-import { bridge } from "../shared/bridge";
+import { bridge, reportActionError } from "../shared/bridge";
 import { Tooltip } from "../shared/components/Tooltip";
 import { useWorktreeStore } from "../shared/store/worktree-store";
 import type { WorktreeInfo } from "../shared/types/git";
 import { NewWorktreeDialog } from "./NewWorktreeDialog";
 
 export function WorktreeList() {
-  const { worktrees, loading, removeWorktree, pruneWorktrees, fetchWorktrees } =
-    useWorktreeStore();
+  const {
+    worktrees,
+    loading,
+    removeWorktree,
+    pruneWorktrees,
+    fetchWorktrees,
+    lockWorktree,
+    unlockWorktree,
+  } = useWorktreeStore();
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -84,6 +92,12 @@ export function WorktreeList() {
 
   const handleDeleteSelected = async () => {
     if (selectedPaths.size === 0 || hasMainSelected()) return;
+    if (worktrees.some((w) => selectedPaths.has(w.path) && w.locked)) {
+      await bridge.request("showWarningMessage", {
+        message: "Unlock the locked worktrees before deleting them.",
+      });
+      return;
+    }
     const confirmed = await bridge.request("showConfirmMessage", {
       message: `Delete ${selectedPaths.size} worktree(s)?`,
       detail:
@@ -105,6 +119,12 @@ export function WorktreeList() {
       });
       return;
     }
+    if (wt.locked) {
+      await bridge.request("showWarningMessage", {
+        message: "Unlock the worktree before deleting it.",
+      });
+      return;
+    }
     const confirmed = await bridge.request("showConfirmMessage", {
       message: `Delete worktree "${wt.path}"?`,
       detail:
@@ -122,6 +142,30 @@ export function WorktreeList() {
 
   const handleRefresh = () => {
     fetchWorktrees();
+  };
+
+  const handleLock = async (wt: WorktreeInfo) => {
+    setContextMenu(null);
+    try {
+      const answer = (await bridge.request("showInputBox", {
+        prompt: `Lock worktree "${wt.path}"`,
+        placeHolder: "Reason (optional)",
+      })) as { value: string | null };
+      // null is a cancelled prompt; an empty string locks without a reason.
+      if (answer.value === null) return;
+      await lockWorktree(wt.path, answer.value);
+    } catch (err) {
+      await reportActionError("Lock worktree", err);
+    }
+  };
+
+  const handleUnlock = async (wt: WorktreeInfo) => {
+    setContextMenu(null);
+    try {
+      await unlockWorktree(wt.path);
+    } catch (err) {
+      await reportActionError("Unlock worktree", err);
+    }
   };
 
   const handlePrune = async () => {
@@ -209,6 +253,16 @@ export function WorktreeList() {
                     <span className="worktree-check">&#10003;</span>
                   )}
                   {wt.path.split("/").pop()}
+                  {wt.locked && (
+                    <span
+                      className="worktree-lock"
+                      title={
+                        wt.lockReason ? `Locked: ${wt.lockReason}` : "Locked"
+                      }
+                    >
+                      <CodiconLock />
+                    </span>
+                  )}
                 </span>
                 <span className="worktree-col-branch">{wt.branch}</span>
                 <span className="worktree-col-path" title={wt.path}>
@@ -243,6 +297,22 @@ export function WorktreeList() {
             >
               Open as a Project
             </button>
+            {!contextMenu.worktree.isMain &&
+              (contextMenu.worktree.locked ? (
+                <button
+                  className="worktree-context-item"
+                  onClick={() => handleUnlock(contextMenu.worktree)}
+                >
+                  Unlock
+                </button>
+              ) : (
+                <button
+                  className="worktree-context-item"
+                  onClick={() => handleLock(contextMenu.worktree)}
+                >
+                  Lock...
+                </button>
+              ))}
             <button
               className="worktree-context-item danger"
               onClick={() => handleDeleteSingle(contextMenu.worktree)}

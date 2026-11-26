@@ -1,0 +1,291 @@
+/* ─── Interactive Rebase / Reword dialogs ───────────────────────────
+   Same look as the New Worktree dialog: centered title, right-aligned
+   110px labels, Cancel on the left edge and the primary action on the right. */
+
+.irb-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.irb-dialog {
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-widget-border, #3c3c3c);
+  border-radius: 6px;
+  width: min(720px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  position: relative;
+  color: var(--vscode-foreground, #cccccc);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.irb-dialog.narrow {
+  width: min(520px, calc(100% - 16px));
+}
+
+.irb-title {
+  padding: 12px 16px 4px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.irb-subtitle {
+  padding: 0 20px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.irb-body {
+  padding: 8px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.irb-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.irb-field > label {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: 110px;
+  text-align: right;
+}
+
+.irb-field input[type="text"],
+.irb-field textarea,
+.irb-action {
+  background: var(--vscode-input-background, #3c3c3c);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  color: var(--vscode-input-foreground, var(--vscode-foreground, #cccccc));
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+.irb-field input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.irb-field input[type="text"]:focus,
+.irb-field textarea:focus,
+.irb-action:focus,
+.irb-message:focus {
+  border-color: var(--vscode-focusBorder, #007fd4);
+}
+
+.irb-message {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: var(--vscode-input-background, #3c3c3c);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  color: var(--vscode-input-foreground, var(--vscode-foreground, #cccccc));
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.irb-message.inline {
+  min-height: 64px;
+  margin-top: 4px;
+}
+
+.irb-list {
+  border: 1px solid var(--vscode-widget-border, #3c3c3c);
+  border-radius: 3px;
+  max-height: 280px;
+  overflow-y: auto;
+  cursor: default;
+}
+
+.irb-row {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--vscode-widget-border, #3c3c3c);
+}
+
+.irb-row:last-child {
+  border-bottom: none;
+}
+
+.irb-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.irb-action {
+  width: 84px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.irb-hash {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  flex-shrink: 0;
+}
+
+.irb-subject {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.irb-meld .irb-subject {
+  padding-left: 14px;
+}
+
+.irb-dropped .irb-subject,
+.irb-dropped .irb-hash {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.irb-move {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.irb-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--vscode-foreground, #cccccc);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.irb-icon-btn:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.irb-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.irb-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+  padding-left: 118px;
+}
+
+.irb-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.irb-option input {
+  margin: 0;
+}
+
+.irb-option.disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.irb-note {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  line-height: 1.4;
+}
+
+.irb-error {
+  font-size: 12px;
+  color: var(--vscode-errorForeground, #f48771);
+  line-height: 1.4;
+}
+
+.irb-command {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.15));
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.irb-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--vscode-widget-border, #3c3c3c);
+}
+
+.irb-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--vscode-button-border, #3c3c3c);
+  color: var(--vscode-foreground, #cccccc);
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.irb-btn-cancel:hover {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.irb-btn-primary {
+  background: var(--vscode-button-background, #0e639c);
+  border: none;
+  color: var(--vscode-button-foreground, #ffffff);
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.irb-btn-primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.irb-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

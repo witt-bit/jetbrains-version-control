@@ -1,0 +1,227 @@
+/* Stash dialogs. Same look as the New Worktree dialog (worktree.css): centred
+   card, right-aligned fixed-width labels, Cancel on the left edge and the
+   primary action on the right edge. */
+.stash-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.stash-dialog {
+  background: var(--vscode-editorWidget-background, #252526);
+  border: 1px solid var(--vscode-widget-border, #3c3c3c);
+  border-radius: 6px;
+  width: min(440px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stash-dialog-dragging {
+  cursor: grabbing;
+}
+
+.stash-dialog-title {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--vscode-widget-border, #3c3c3c);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--vscode-foreground, #cccccc);
+}
+
+.stash-dialog-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.stash-dialog-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stash-dialog-field > label,
+.stash-dialog-label {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: 110px;
+  text-align: right;
+}
+
+.stash-dialog-field input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--vscode-input-background, #3c3c3c);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  color: var(--vscode-input-foreground, var(--vscode-foreground, #cccccc));
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 13px;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.stash-dialog-field input[type="text"]:focus {
+  border-color: var(--vscode-focusBorder, #007fd4);
+}
+
+.stash-dialog-field input[type="text"].input-error {
+  border-color: var(--vscode-errorForeground, #f48771);
+}
+
+.stash-dialog-field-error {
+  width: 100%;
+  font-size: 11px;
+  color: var(--vscode-errorForeground, #f48771);
+  padding-left: 118px;
+  box-sizing: border-box;
+}
+
+.stash-dialog-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vscode-foreground, #cccccc);
+}
+
+.stash-dialog-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: 110px;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.stash-dialog-checkbox-label.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.stash-dialog-checkbox-label input[type="checkbox"] {
+  margin: 0;
+}
+
+.stash-dialog-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, #999);
+}
+
+.stash-dialog-footer {
+  padding: 12px 20px 16px;
+  display: flex;
+  /* Cancel on the left edge, the primary action on the right edge. */
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--vscode-widget-border, #3c3c3c);
+}
+
+.stash-dialog-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--vscode-button-border, #3c3c3c);
+  color: var(--vscode-foreground, #cccccc);
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.stash-dialog-btn-cancel:hover {
+  background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+}
+
+.stash-dialog-btn-primary {
+  background: var(--vscode-button-background, #0e639c);
+  border: none;
+  color: var(--vscode-button-foreground, #ffffff);
+  padding: 6px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.stash-dialog-btn-primary:hover:not(:disabled) {
+  background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
+.stash-dialog-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Stash tab toolbar */
+.stash-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  border-bottom: 1px solid
+    var(--vscode-panel-border, var(--vscode-widget-border));
+  flex-shrink: 0;
+}
+
+.stash-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.stash-toolbar-btn:hover:not(:disabled) {
+  background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+}
+
+.stash-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.stash-toolbar-spacer {
+  flex: 1;
+}
+
+.stash-tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}

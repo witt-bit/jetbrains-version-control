@@ -1,5 +1,6 @@
 import { Tooltip } from "../../shared/components/Tooltip";
 import { usePreventSelect } from "../../shared/hooks/usePreventSelect";
+import { useCherryPickStore } from "../../shared/store/cherry-pick-store";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit, LaneInfo, RefInfo } from "../../shared/types/git";
 
@@ -179,6 +180,9 @@ export function CommitRow({
   const rowRef = usePreventSelect<HTMLDivElement>();
 
   const isSelected = selectedCommitHashes.includes(commit.hash);
+  const alreadyCherryPicked = useCherryPickStore(
+    (s) => s.enabled && s.cherryPicked.has(commit.hash),
+  );
   const col = lane?.column ?? 0;
   const refItems = buildRefDisplayItems(commit.refs);
 
@@ -211,6 +215,7 @@ export function CommitRow({
           GRAPH_PADDING + (rowMaxColumn + 1) * COLUMN_WIDTH + NODE_TEXT_GAP,
         paddingRight: 8,
         color: isSelected ? "var(--selected-fg)" : "inherit",
+        opacity: alreadyCherryPicked && !isSelected ? 0.45 : undefined,
       }}
     >
       {/* Subject + refs column (flex) */}

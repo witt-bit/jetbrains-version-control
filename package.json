@@ -161,6 +161,11 @@
         "category": "JGC"
       },
       {
+        "command": "git-brains.cleanUpBranches",
+        "title": "Clean Up Merged Branches…",
+        "category": "JGC"
+      },
+      {
         "command": "git-brains.openMergeEditor",
         "title": "Open Merge Editor",
         "category": "JGC"
@@ -175,6 +180,71 @@
         "command": "git-brains.openMergeEditorFromSCM",
         "title": "Open in JGC Merge Editor",
         "icon": "$(git-merge)",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.repo.clone",
+        "title": "Clone Repository…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.repo.init",
+        "title": "Create Git Repository…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.repo.unshallow",
+        "title": "Unshallow Repository (Fetch Full History)",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.repo.deepen",
+        "title": "Deepen Shallow History…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.submodules.list",
+        "title": "Show Submodules…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.submodules.update",
+        "title": "Initialize and Update Submodules",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.submodules.sync",
+        "title": "Sync Submodule URLs",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.submodules.open",
+        "title": "Open Submodule…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.sparseCheckout.status",
+        "title": "Sparse Checkout…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.sparseCheckout.enable",
+        "title": "Enable Sparse Checkout…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.sparseCheckout.set",
+        "title": "Set Sparse Checkout Directories…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.sparseCheckout.add",
+        "title": "Add Sparse Checkout Directories…",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.sparseCheckout.disable",
+        "title": "Disable Sparse Checkout",
         "category": "JGC"
       },
       {
@@ -229,6 +299,11 @@
         "command": "git-brains.commit.jumpToSource",
         "title": "Jump to Source",
         "icon": "$(go-to-file)",
+        "category": "JGC"
+      },
+      {
+        "command": "git-brains.chooseGpgKey",
+        "title": "Choose GPG Signing Key...",
         "category": "JGC"
       },
       {
@@ -481,6 +556,49 @@
     "configuration": {
       "title": "JetBrains Git Control",
       "properties": {
+        "jgc.update.method": {
+          "type": "string",
+          "enum": ["branchDefault", "merge", "rebase"],
+          "enumDescriptions": [
+            "Follow the branch's own `branch.<name>.rebase` or the repository's `pull.rebase` (merge when neither is set).",
+            "Always merge the upstream changes into the current branch.",
+            "Always rebase the current branch onto its upstream."
+          ],
+          "default": "branchDefault",
+          "markdownDescription": "How *Update* integrates upstream changes into the current branch."
+        },
+        "jgc.update.saveChangesPolicy": {
+          "type": "string",
+          "enum": ["stash", "shelve"],
+          "enumDescriptions": [
+            "Stash tracked local changes before updating and restore them afterwards.",
+            "Shelve tracked local changes before updating and restore them afterwards."
+          ],
+          "default": "stash",
+          "markdownDescription": "Where local changes are parked while an update, rebase or checkout runs, then restored."
+        },
+        "jgc.push.autoSetUpstream": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Push a branch that has no upstream with `--set-upstream`, so it tracks the remote branch from then on. Turn this off to push without setting tracking."
+        },
+        "jgc.push.rejectedAction": {
+          "type": "string",
+          "enum": ["ask", "merge", "rebase"],
+          "enumDescriptions": [
+            "Ask each time a push is rejected because the remote has new commits.",
+            "Merge the remote changes into the current branch, then push again.",
+            "Rebase the current branch onto the remote changes, then push again."
+          ],
+          "default": "ask",
+          "markdownDescription": "What to do when a push is rejected because the remote has commits you do not have. Force push with lease is never remembered; it is always an explicit choice."
+        },
+        "jgc.protectedBranches": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["main", "master"],
+          "markdownDescription": "Branch names that are protected. Force pushing to them (including with lease) is refused, and deleting them asks for explicit confirmation. `*` matches any run of characters, e.g. `release/*`. Matching is case-sensitive and applies to the whole branch name."
+        },
         "jgc.decorations.enabled": {
           "type": "boolean",
           "default": true,
@@ -491,10 +609,90 @@
           "default": true,
           "markdownDescription": "Color file names in the Explorer by Git status. Colors are the `jgc.decoration.*` entries under **Color Customizations**."
         },
+        "jgc.commit.signOff": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Add a `Signed-off-by` trailer to every commit made from the Commit panel (`git commit --signoff`)."
+        },
+        "jgc.commit.runHooks": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Run Git hooks (`pre-commit`, `commit-msg`) when committing from the Commit panel. Turn this off to commit with `--no-verify`."
+        },
+        "jgc.commit.gpgSign": {
+          "type": "string",
+          "enum": ["auto", "always", "never"],
+          "enumDescriptions": [
+            "Follow Git config: sign when `commit.gpgsign` is true.",
+            "Always sign commits made from the Commit panel (`git commit --gpg-sign`).",
+            "Never sign commits made from the Commit panel (`git commit --no-gpg-sign`)."
+          ],
+          "default": "auto",
+          "markdownDescription": "Whether commits made from the Commit panel are signed with GPG. Use the **JGC: Choose GPG Signing Key...** command to pick the key for a repository."
+        },
+        "jgc.commit.warnLargeFiles": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ask for confirmation before committing files larger than `#jgc.commit.largeFileThresholdMB#`."
+        },
+        "jgc.commit.largeFileThresholdMB": {
+          "type": "number",
+          "default": 10,
+          "minimum": 0.1,
+          "markdownDescription": "Size in megabytes above which a file is reported by `#jgc.commit.warnLargeFiles#`."
+        },
+        "jgc.commit.warnCrlf": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ask for confirmation before committing files whose CRLF line separators would be stored as they are (not converted by `core.autocrlf` or `.gitattributes`)."
+        },
+        "jgc.commit.warnDetachedHead": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ask for confirmation before committing while HEAD is detached or a rebase is in progress."
+        },
+        "jgc.commit.warnMissingIdentity": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Ask for confirmation before committing when Git `user.name` or `user.email` is not set."
+        },
         "jgc.decorations.gutterMarkers": {
           "type": "boolean",
           "default": true,
           "markdownDescription": "Draw a colored marker in the line-number gutter for every added, modified or deleted line."
+        },
+        "jgc.fetch.prune": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Remove remote-tracking branches that no longer exist on the remote when fetching (`git fetch --prune`)."
+        },
+        "jgc.fetch.tagsMode": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "pruneTags",
+            "allTags",
+            "noTags"
+          ],
+          "enumDescriptions": [
+            "Git's default: fetch only tags that point into the fetched history.",
+            "Also delete local tags that no longer exist on the remote (`--prune --prune-tags`). This removes local-only tags too.",
+            "Fetch every tag from the remote (`--tags`).",
+            "Do not fetch any tags (`--no-tags`)."
+          ],
+          "markdownDescription": "Which tags a fetch brings along. Applies to **Fetch**, **Fetch All** and auto-fetch."
+        },
+        "jgc.fetch.autoFetch": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Fetch all remotes in the background at the interval set by `jgc.fetch.autoFetchIntervalMinutes`. It is skipped while another operation runs or a merge, rebase, cherry-pick or revert is in progress, and the views only refresh when something new arrived."
+        },
+        "jgc.fetch.autoFetchIntervalMinutes": {
+          "type": "number",
+          "default": 15,
+          "minimum": 1,
+          "markdownDescription": "Minutes between background fetches when `jgc.fetch.autoFetch` is on."
         },
         "jgc.blame.columns": {
           "type": "array",
@@ -584,6 +782,46 @@
           "default": 50,
           "description": "Maximum number of characters of the commit summary (${message}); longer summaries end with an ellipsis. Other parts of the template are never truncated."
         },
+        "jgc.blame.ignoreWhitespace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ignore whitespace changes when attributing lines in blame (`git blame -w`), so re-indenting or reformatting does not take over a line's author. Applies to the blame annotations and the caret blame."
+        },
+        "jgc.blame.detectMovements": {
+          "type": "string",
+          "enum": [
+            "none",
+            "inner",
+            "outer"
+          ],
+          "enumDescriptions": [
+            "Do not follow moved or copied lines: a moved line belongs to the commit that moved it",
+            "Follow lines moved within the same file back to where they came from (`git blame -M`)",
+            "Also follow lines moved or copied from other files changed in the same commit (`git blame -M -C`)"
+          ],
+          "default": "inner",
+          "description": "How blame follows moved lines. `outer` is the slowest on large files."
+        },
+        "jgc.cherryPick.emptyStrategy": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "skip",
+            "createEmpty"
+          ],
+          "enumDescriptions": [
+            "Stop, leaving the cherry-pick in progress, and offer to skip it or create an empty commit",
+            "Drop the commit and carry on; nothing is committed",
+            "Record an empty commit that keeps the original message and author"
+          ],
+          "default": "ask",
+          "description": "What to do when a cherry-picked commit is empty because its changes are already in the current branch. Every choice is reported in a message."
+        },
+        "jgc.cherryPick.appendSourceHash": {
+          "type": "boolean",
+          "default": false,
+          "description": "Append `(cherry picked from commit <hash>)` to the message of each cherry-picked commit (`git cherry-pick -x`). Git adds it only to picks that apply without conflicts."
+        },
         "jgc.worktree.openBehavior": {
           "type": "string",
           "enum": [
@@ -598,6 +836,11 @@
           ],
           "default": "ask",
           "description": "Controls how projects are opened from Git worktrees."
+        },
+        "jgc.clone.recurseSubmodules": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also clone submodules (git clone --recurse-submodules) when using JGC: Clone Repository."
         },
         "jgc.onboarding.builtinGitPrompt": {
           "type": "string",

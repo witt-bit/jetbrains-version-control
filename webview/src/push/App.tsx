@@ -13,20 +13,60 @@ import "./push.css";
 
 interface PushRejectedState {
   show: boolean;
-  branchName: string;
+  kind: string;
+  canIntegrate: boolean;
+}
+
+const NO_REJECTION: PushRejectedState = {
+  show: false,
+  kind: "",
+  canIntegrate: true,
+};
+
+interface PushResult {
+  success?: boolean;
+  cancelled?: boolean;
+  data?: {
+    output?: string;
+    isUpToDate?: boolean;
+    setUpstream?: boolean;
+    integrated?: "merge" | "rebase";
+    forced?: boolean;
+  };
+  rejected?: { kind: string; canIntegrate: boolean };
+}
+
+interface PushOptions {
+  force?: boolean;
+  rejectedAction?: "merge" | "rebase";
+  remember?: boolean;
+}
+
+function rejectionMessage(branchName: string, state: PushRejectedState) {
+  if (!state.canIntegrate) {
+    return `Push of "${branchName}" was rejected. It is not the checked-out branch, so it cannot be merged or rebased from here. Check it out first, or force push with lease.`;
+  }
+  return `Push of the current branch "${branchName}" was rejected. Remote changes need to be merged before pushing.`;
 }
 
 function PushRejectedDialog({
   branchName,
+  state,
+  forceBlocked,
   onRebase,
   onMerge,
+  onForce,
   onCancel,
 }: {
   branchName: string;
-  onRebase: () => void;
-  onMerge: () => void;
+  state: PushRejectedState;
+  forceBlocked: boolean;
+  onRebase: (remember: boolean) => void;
+  onMerge: (remember: boolean) => void;
+  onForce: () => void;
   onCancel: () => void;
 }) {
+  const [remember, setRemember] = useState(false);
   return (
     <div className="push-rejected-overlay">
       <div className="push-rejected-dialog">
@@ -35,9 +75,18 @@ function PushRejectedDialog({
           <span className="push-rejected-title">Push Rejected</span>
         </div>
         <p className="push-rejected-message">
-          Push of the current branch "{branchName}" was rejected. Remote changes
-          need to be merged before pushing.
+          {rejectionMessage(branchName, state)}
         </p>
+        {state.canIntegrate && (
+          <label className="push-rejected-remember">
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+            />
+            Remember my choice (Merge or Rebase)
+          </label>
+        )}
         <div className="push-rejected-actions">
           <button
             type="button"
@@ -46,17 +95,33 @@ function PushRejectedDialog({
           >
             Cancel
           </button>
+          <span style={{ flex: 1 }} />
+          <button
+            type="button"
+            className="push-btn push-btn-secondary"
+            onClick={onForce}
+            disabled={forceBlocked}
+            title={
+              forceBlocked
+                ? "Force push is refused for protected branches"
+                : "Overwrite the remote branch, unless it changed since your last fetch"
+            }
+          >
+            Force with lease
+          </button>
           <button
             type="button"
             className="push-btn push-btn-rebase"
-            onClick={onRebase}
+            onClick={() => onRebase(remember)}
+            disabled={!state.canIntegrate}
           >
             Rebase
           </button>
           <button
             type="button"
             className="push-btn push-btn-merge"
-            onClick={onMerge}
+            onClick={() => onMerge(remember)}
+            disabled={!state.canIntegrate}
           >
             Merge
           </button>
@@ -77,10 +142,9 @@ export function PushApp() {
   const [pushing, setPushing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPushMenu, setShowPushMenu] = useState(false);
-  const [pushRejected, setPushRejected] = useState<PushRejectedState>({
-    show: false,
-    branchName: "",
-  });
+  const [pushRejected, setPushRejected] =
+    useState<PushRejectedState>(NO_REJECTION);
+  const [targetProtected, setTargetProtected] = useState(false);
 
   // Editable remote branch target state
   const [targetRemote, setTargetRemote] = useState(remoteName);
@@ -114,6 +178,25 @@ export function PushApp() {
   }, [branchName, targetRemote]);
 
   useEffect(() => {
+    let stale = false;
+    async function load() {
+      try {
+        const result = (await bridge.request("getProtectedBranches", {
+          names: [targetBranch],
+        })) as { protectedNames?: string[] } | null;
+        if (!stale)
+          setTargetProtected((result?.protectedNames ?? []).length > 0);
+      } catch (err) {
+        await reportActionError("Failed to read protected branches", err);
+      }
+    }
+    load();
+    return () => {
+      stale = true;
+    };
+  }, [targetBranch]);
+
+  useEffect(() => {
     if (!selectedHash) {
       setFiles([]);
       return;
@@ -131,8 +214,9 @@ export function PushApp() {
     load();
   }, [selectedHash]);
 
-  const handlePush = useCallback(
-    async (force = false) => {
+  const runPush = useCallback(
+    async (options: PushOptions = {}) => {
+      setPushRejected(NO_REJECTION);
       setPushing(true);
       setError(null);
       try {
@@ -140,13 +224,29 @@ export function PushApp() {
           branchName,
           remote: targetRemote,
           targetBranch: targetBranch,
-          force,
-        })) as { data?: { output?: string; isUpToDate?: boolean } };
+          force: options.force ?? false,
+          rejectedAction: options.rejectedAction,
+          remember: options.remember,
+        })) as PushResult;
         setPushing(false);
-        const isUpToDate = result?.data?.isUpToDate;
-        const message = isUpToDate
-          ? "Everything is up to date"
-          : `Pushed ${commits.length} commit${commits.length !== 1 ? "s" : ""} to ${targetRemote}/${targetBranch}`;
+        if (result?.rejected) {
+          setPushRejected({ show: true, ...result.rejected });
+          return;
+        }
+        if (!result?.data) return;
+        const { isUpToDate, integrated, forced, setUpstream } = result.data;
+        const destination = `${targetRemote}/${targetBranch}`;
+        let message: string;
+        if (isUpToDate) {
+          message = "Everything is up to date";
+        } else if (integrated) {
+          message = `${integrated === "rebase" ? "Rebased" : "Merged"} and pushed to ${destination}`;
+        } else if (forced) {
+          message = `Force pushed to ${destination}`;
+        } else {
+          message = `Pushed ${commits.length} commit${commits.length !== 1 ? "s" : ""} to ${destination}`;
+        }
+        if (setUpstream) message += " (upstream set)";
         // Show VS Code native notification then close
         bridge.request("showInfoNotification", { message }).catch(() => {});
         setTimeout(() => {
@@ -154,79 +254,30 @@ export function PushApp() {
         }, 500);
       } catch (err) {
         setPushing(false);
-        const msg = err instanceof Error ? err.message : String(err);
-        // Detect push rejected due to non-fast-forward
-        if (
-          msg.includes("non-fast-forward") ||
-          msg.includes("[rejected]") ||
-          msg.includes("failed to push some refs")
-        ) {
-          setPushRejected({ show: true, branchName });
-          setError(msg);
-        } else {
-          setError(msg);
-          bridge
-            .request("showErrorNotification", { message: msg })
-            .catch(() => {});
-        }
+        setError(err instanceof Error ? err.message : String(err));
+        await reportActionError("Push", err);
       }
     },
     [branchName, targetRemote, targetBranch, commits.length],
   );
 
-  const handleRebaseAndPush = useCallback(async () => {
-    setPushRejected({ show: false, branchName: "" });
-    setError(null);
-    setPushing(true);
-    try {
-      await bridge.request("pullRebase", { branchName });
-      // After successful rebase, retry push
-      await bridge.request("executePush", {
-        branchName,
-        remote: targetRemote,
-        targetBranch: targetBranch,
-        force: false,
-      });
-      setPushing(false);
-      const message = `Rebased and pushed to ${targetRemote}/${targetBranch}`;
-      bridge.request("showInfoNotification", { message }).catch(() => {});
-      setTimeout(() => {
-        bridge.request("closePushPanel");
-      }, 500);
-    } catch (err) {
-      setPushing(false);
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      bridge.request("showErrorNotification", { message: msg }).catch(() => {});
-    }
-  }, [branchName, targetRemote, targetBranch]);
+  const handlePush = useCallback(
+    (force = false) => runPush({ force }),
+    [runPush],
+  );
 
-  const handleMergeAndPush = useCallback(async () => {
-    setPushRejected({ show: false, branchName: "" });
-    setError(null);
-    setPushing(true);
+  // Never remembered, never silent: always behind an explicit confirmation.
+  const handleForceWithLease = useCallback(async () => {
     try {
-      await bridge.request("pullMerge", { branchName });
-      // After successful merge, retry push
-      await bridge.request("executePush", {
-        branchName,
-        remote: targetRemote,
-        targetBranch: targetBranch,
-        force: false,
-      });
-      setPushing(false);
-      const message = `Merged and pushed to ${targetRemote}/${targetBranch}`;
-      bridge.request("showInfoNotification", { message }).catch(() => {});
-      setTimeout(() => {
-        bridge.request("closePushPanel");
-      }, 500);
+      const result = (await bridge.request("showConfirmMessage", {
+        message: `Force push "${branchName}" to ${targetRemote}/${targetBranch} with lease? This overwrites commits on the remote that you do not have locally. It is refused if the remote changed since your last fetch.`,
+        confirmLabel: "Force Push",
+      })) as { confirmed?: boolean };
+      if (result?.confirmed) await runPush({ force: true });
     } catch (err) {
-      setPushing(false);
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      bridge.request("showErrorNotification", { message: msg }).catch(() => {});
+      await reportActionError("Force push", err);
     }
-  }, [branchName, targetRemote, targetBranch]);
+  }, [branchName, targetRemote, targetBranch, runPush]);
 
   const handleBranchSelect = useCallback((branch: string) => {
     setTargetBranch(branch);
@@ -478,6 +529,12 @@ export function PushApp() {
                 <button
                   type="button"
                   className="push-menu-item"
+                  disabled={targetProtected}
+                  title={
+                    targetProtected
+                      ? `"${targetBranch}" is a protected branch: force push is refused`
+                      : undefined
+                  }
                   onClick={() => {
                     setShowPushMenu(false);
                     handlePush(true);
@@ -526,10 +583,15 @@ export function PushApp() {
       {/* Push Rejected Dialog */}
       {pushRejected.show && (
         <PushRejectedDialog
-          branchName={pushRejected.branchName}
-          onRebase={handleRebaseAndPush}
-          onMerge={handleMergeAndPush}
-          onCancel={() => setPushRejected({ show: false, branchName: "" })}
+          branchName={branchName}
+          state={pushRejected}
+          forceBlocked={targetProtected}
+          onRebase={(remember) =>
+            runPush({ rejectedAction: "rebase", remember })
+          }
+          onMerge={(remember) => runPush({ rejectedAction: "merge", remember })}
+          onForce={handleForceWithLease}
+          onCancel={() => setPushRejected(NO_REJECTION)}
         />
       )}
     </div>

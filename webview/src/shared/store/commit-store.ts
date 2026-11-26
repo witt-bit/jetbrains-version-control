@@ -23,6 +23,14 @@ export interface ShelveEntry {
   files: string[];
 }
 
+export interface StashChangesOptions {
+  message?: string;
+  keepIndex?: boolean;
+  includeUntracked?: boolean;
+}
+
+export type StashOutcome = "stashed" | "empty" | "failed";
+
 export interface IdeaShelfEntry {
   name: string;
   description: string;
@@ -101,8 +109,17 @@ interface CommitStore {
   openSourceFile: (filePath: string) => Promise<void>;
   jumpToHighlightedSource: () => void;
   shelveChanges: (message?: string, filePaths?: string[]) => Promise<void>;
-  unshelveChanges: (stashId: string, drop?: boolean) => Promise<void>;
+  unshelveChanges: (
+    stashId: string,
+    drop?: boolean,
+    reinstateIndex?: boolean,
+  ) => Promise<void>;
   deleteShelve: (stashId: string) => Promise<void>;
+  /** "empty" means git had nothing to stash; the host has already said so. */
+  stashChanges: (options: StashChangesOptions) => Promise<StashOutcome>;
+  /** Resolves true when the branch was created, so a dialog can stay open on failure. */
+  unstashAsBranch: (stashId: string, branchName: string) => Promise<boolean>;
+  clearStashes: () => Promise<void>;
   fetchIdeaShelves: () => Promise<void>;
   ideaShelveChanges: (message?: string, filePaths?: string[]) => Promise<void>;
   ideaUnshelveChanges: (shelfName: string, drop?: boolean) => Promise<void>;
@@ -343,12 +360,14 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
 
     try {
       set({ loading: true });
-      await bridge.request("commitChanges", {
+      const result = (await bridge.request("commitChanges", {
         message: commitMessage,
         amend,
         filePaths: filesToStage,
         keepStagedPaths,
-      });
+      })) as { cancelled?: boolean } | undefined;
+      // The user backed out of a pre-commit warning: keep the message.
+      if (result?.cancelled) return false;
       set({ commitMessage: "", amend: false });
       await get().fetchChanges();
       return true;
@@ -373,12 +392,13 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
 
     try {
       set({ loading: true });
-      await bridge.request("commitAndPush", {
+      const result = (await bridge.request("commitAndPush", {
         message: commitMessage,
         amend,
         filePaths: filesToStage,
         keepStagedPaths,
-      });
+      })) as { cancelled?: boolean } | undefined;
+      if (result?.cancelled) return false;
       set({ commitMessage: "", amend: false });
       await get().fetchChanges();
       return true;
@@ -505,16 +525,61 @@ export const useCommitStore = create<CommitStore>((set, get) => ({
     }
   },
 
-  async unshelveChanges(stashId: string, drop = true) {
+  async unshelveChanges(stashId: string, drop = true, reinstateIndex = false) {
     try {
       set({ loading: true });
-      await bridge.request("unshelveChanges", { stashId, drop });
+      await bridge.request("unshelveChanges", {
+        stashId,
+        drop,
+        reinstateIndex,
+      });
       await get().fetchChanges();
       await get().fetchShelves();
     } catch (err) {
       await reportActionError("unshelveChanges", err);
     } finally {
       set({ loading: false });
+    }
+  },
+
+  async stashChanges(options: StashChangesOptions): Promise<StashOutcome> {
+    try {
+      set({ loading: true });
+      const result = (await bridge.request("stashChanges", {
+        ...options,
+      })) as { stashed?: boolean } | undefined;
+      await get().fetchChanges();
+      await get().fetchShelves();
+      return result?.stashed === true ? "stashed" : "empty";
+    } catch (err) {
+      await reportActionError("stashChanges", err);
+      return "failed";
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  async unstashAsBranch(stashId: string, branchName: string) {
+    try {
+      set({ loading: true });
+      await bridge.request("unstashAsBranch", { stashId, branchName });
+      return true;
+    } catch (err) {
+      await reportActionError("unstashAsBranch", err);
+      return false;
+    } finally {
+      await get().fetchChanges();
+      await get().fetchShelves();
+      set({ loading: false });
+    }
+  },
+
+  async clearStashes() {
+    try {
+      await bridge.request("clearStashes");
+      await get().fetchShelves();
+    } catch (err) {
+      await reportActionError("clearStashes", err);
     }
   },
 

@@ -9,18 +9,33 @@ import type {
   LaneSnapshot,
   TagInfo,
 } from "../types/git";
+import {
+  buildLogParams,
+  hasLogFilter,
+  type LogParams,
+  sameLogParams,
+} from "./log-filter";
+
+/** Commits per `getGraphData` / `loadMoreLog` page. */
+const LOG_PAGE_SIZE = 200;
+/** Largest page `focusCommit` asks for while paging towards a deep commit. */
+const LOG_JUMP_PAGE_SIZE = 1000;
 
 interface PanelFilter {
+  /** Message text, matched by the host (`git log --grep`). */
   searchQuery: string;
+  matchCase: boolean;
+  regex: boolean;
   branch: string;
   author: string;
   dateRange: string;
+  /** Path filter: a file or a folder, relative to the repository root. */
   file: string;
 }
 
 interface PanelStore {
   commits: Commit[];
-  /** Commits filtered by search/author (client-side). Graph layout uses full `commits`. */
+  /** Commits filtered by author/date (client-side). Graph layout uses full `commits`. */
   visibleCommits: Commit[];
   branches: BranchInfo[];
   tags: TagInfo[];
@@ -61,12 +76,17 @@ interface PanelStore {
   /** sequenceId → intermediate hashes that are hidden */
   collapsedIntermediates: Map<string, string[]>;
 
+  /** Host-side filter params of the latest fetch; `loadMore` and Go To reuse them. */
+  logParams: LogParams;
   loading: boolean;
+  /** False until the first fetch finished, so an empty filtered list is not "Loading...". */
+  loadedOnce: boolean;
   hasMore: boolean;
   operationInProgress: boolean;
 
-  fetchInitialData: () => Promise<void>;
-  loadMore: () => Promise<void>;
+  /** `quick` skips the minimum "loading" display time (used while typing a filter). */
+  fetchInitialData: (options?: { quick?: boolean }) => Promise<void>;
+  loadMore: (count?: number) => Promise<void>;
   selectCommit: (
     hash: string,
     mode?: SelectionMode,
@@ -74,6 +94,8 @@ interface PanelStore {
   ) => Promise<void>;
   /** Load/locate a commit from an external source (e.g. blame annotation click) and scroll it into view */
   focusCommit: (hash: string) => Promise<void>;
+  /** Go To Hash/Branch/Tag: resolve what the user typed, then focus that commit. */
+  goToRef: (query: string) => Promise<boolean>;
   consumePendingScrollToHash: () => void;
   selectFile: (filePath: string) => void;
   openDiffEditor: (commitHash: string, file: DiffFile) => Promise<void>;
@@ -114,6 +136,12 @@ interface SelectionSnapshot {
  */
 let commitFilesRequestSeq = 0;
 
+/**
+ * Sequence guard for the log: a response for an older filter (or a `loadMore`
+ * started before the filter changed) must not overwrite the current list.
+ */
+let logFetchSeq = 0;
+
 function filterCommits(
   commits: Commit[],
   filter: PanelFilter,
@@ -142,17 +170,6 @@ function filterCommits(
   return commits.filter((c) => {
     if (hiddenSet.has(c.hash)) return false;
 
-    if (filter.searchQuery) {
-      const q = filter.searchQuery.toLowerCase();
-      if (
-        !c.subject.toLowerCase().includes(q) &&
-        !c.body.toLowerCase().includes(q) &&
-        !c.hash.toLowerCase().includes(q) &&
-        !c.shortHash.toLowerCase().includes(q)
-      ) {
-        return false;
-      }
-    }
     if (filter.author) {
       if (!c.authorName.toLowerCase().includes(filter.author.toLowerCase())) {
         return false;
@@ -216,6 +233,19 @@ function deriveSelectionFromVisible(
   };
 }
 
+/** Position of `hash` in the log the given filters produce, or null. */
+async function locateCommit(
+  hash: string,
+  params: LogParams,
+): Promise<number | null> {
+  const result = (await bridge.request("resolveLogRef", {
+    query: hash,
+    locate: true,
+    ...params,
+  })) as { index?: number | null } | null;
+  return typeof result?.index === "number" ? result.index : null;
+}
+
 export const usePanelStore = create<PanelStore>((set, get) => ({
   commits: [],
   visibleCommits: [],
@@ -250,26 +280,38 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     }
   })(),
 
-  filter: { searchQuery: "", branch: "", author: "", dateRange: "", file: "" },
+  filter: {
+    searchQuery: "",
+    matchCase: false,
+    regex: false,
+    branch: "",
+    author: "",
+    dateRange: "",
+    file: "",
+  },
+  logParams: {},
   pendingSelectionFromFilter: [],
   pendingScrollToHash: null,
   collapsedSequenceIds: new Set(),
   collapsedIntermediates: new Map(),
 
   loading: false,
+  loadedOnce: false,
   hasMore: true,
   operationInProgress: false,
 
-  async fetchInitialData() {
-    set({ loading: true });
+  async fetchInitialData(options) {
+    const seq = ++logFetchSeq;
+    const previousParams = get().logParams;
+    const { filter } = get();
+    const logParams = buildLogParams(filter, previousParams);
+    set({ loading: true, logParams });
     const start = Date.now();
     try {
-      const { filter } = get();
       const [graphResult, branches, tags] = await Promise.all([
         bridge.request("getGraphData", {
-          maxCount: 200,
-          branch: filter.branch || undefined,
-          file: filter.file || undefined,
+          maxCount: LOG_PAGE_SIZE,
+          ...logParams,
         }) as Promise<{
           graphData: { commits: Commit[]; lanes: Record<string, LaneInfo> };
           snapshot: LaneSnapshot;
@@ -277,6 +319,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         bridge.request("getBranches") as Promise<BranchInfo[] | null>,
         bridge.request("getTags") as Promise<TagInfo[] | null>,
       ]);
+
+      if (seq !== logFetchSeq) return;
 
       const commits = graphResult?.graphData?.commits ?? [];
       const lanes = graphResult?.graphData?.lanes ?? {};
@@ -304,7 +348,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
             tags: tagList,
             currentBranch: current,
 
-            hasMore: commits.length >= 200,
+            hasMore: commits.length >= LOG_PAGE_SIZE,
             selectedCommitHash: validHashes[0],
             selectedCommitHashes: validHashes,
             lastSelectedCommitHash: validHashes[0],
@@ -332,7 +376,7 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         tags: tagList,
         currentBranch: current,
 
-        hasMore: commits.length >= 200,
+        hasMore: commits.length >= LOG_PAGE_SIZE,
         selectedCommitHash: null,
         selectedCommitHashes: [],
         lastSelectedCommitHash: null,
@@ -343,31 +387,52 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
         pendingSelectionFromFilter: [],
       });
     } catch (err) {
-      await reportActionError("fetchInitialData", err);
-    } finally {
-      const elapsed = Date.now() - start;
-      if (elapsed < 1000) {
-        await new Promise((r) => setTimeout(r, 1000 - elapsed));
+      if (seq === logFetchSeq) {
+        // The list on screen is still the one `previousParams` produced, so
+        // the branch/path chips must not claim otherwise. The typed text stays
+        // for the user to fix.
+        set({
+          logParams: previousParams,
+          filter: {
+            ...get().filter,
+            branch: previousParams.branch ?? "",
+            file: previousParams.file ?? "",
+          },
+        });
+        await reportActionError("Load Git Log", err);
       }
-      set({ loading: false });
+    } finally {
+      if (seq === logFetchSeq) {
+        const elapsed = Date.now() - start;
+        if (!options?.quick && elapsed < 1000) {
+          await new Promise((r) => setTimeout(r, 1000 - elapsed));
+        }
+        if (seq === logFetchSeq) {
+          set({ loading: false, loadedOnce: true });
+        }
+      }
     }
   },
 
-  async loadMore() {
-    const { commits, laneSnapshot, hasMore, loading, filter } = get();
+  async loadMore(count = LOG_PAGE_SIZE) {
+    const { commits, laneSnapshot, hasMore, loading, logParams } = get();
     if (!hasMore || loading) return;
 
+    const seq = logFetchSeq;
     set({ loading: true });
     try {
       const result = (await bridge.request("loadMoreLog", {
         skip: commits.length,
-        count: 200,
+        count,
         snapshot: laneSnapshot,
-        branch: filter.branch || undefined,
+        ...logParams,
       })) as {
         graphData: { commits: Commit[]; lanes: Record<string, LaneInfo> };
         snapshot: LaneSnapshot;
       } | null;
+
+      // A newer fetch replaced the list while this page was in flight.
+      if (seq !== logFetchSeq) return;
 
       if (result?.graphData?.commits?.length) {
         const newCommits = result.graphData.commits;
@@ -381,13 +446,14 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
           ),
           graphLayout: { ...get().graphLayout, ...result.graphData.lanes },
           laneSnapshot: result.snapshot,
-          hasMore: newCommits.length >= 200,
+          hasMore: newCommits.length >= count,
           loading: false,
         });
       } else {
         set({ hasMore: false, loading: false });
       }
     } catch (err) {
+      if (seq !== logFetchSeq) return;
       await reportActionError("loadMore", err);
       set({ loading: false });
     }
@@ -479,20 +545,8 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
     const { filter, collapsedSequenceIds } = get();
 
     // Drop client-side filters / collapsed sequences that would hide the target.
-    // Note: branch="" → backend --all (already maximal); a file filter still
-    // contains the commit because blame commits touched this very file.
-    if (
-      filter.searchQuery ||
-      filter.author ||
-      filter.dateRange ||
-      collapsedSequenceIds.size > 0
-    ) {
-      const nextFilter = {
-        ...filter,
-        searchQuery: "",
-        author: "",
-        dateRange: "",
-      };
+    if (filter.author || filter.dateRange || collapsedSequenceIds.size > 0) {
+      const nextFilter = { ...filter, author: "", dateRange: "" };
       const nextVisible = filterCommits(get().commits, nextFilter, new Map());
       set({
         filter: nextFilter,
@@ -510,31 +564,75 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
       waits++;
     }
 
-    // Page in more commits until the target is loaded (blame commits may sit
-    // deep in history; lane continuity is preserved by loadMore's snapshot).
-    let pages = 0;
-    while (
-      !get().commits.some((c) => c.hash === hash) &&
-      get().hasMore &&
-      pages < 25
-    ) {
-      await get().loadMore();
-      pages++;
-    }
+    try {
+      if (!get().commits.some((c) => c.hash === hash)) {
+        // Ask the host where the commit sits in the list the current filters
+        // produce, so the right number of commits is loaded in one go.
+        let index = await locateCommit(hash, get().logParams);
+        if (index === null && hasLogFilter(get().logParams)) {
+          // The text/path/branch filter hides it: Go To means "show me that
+          // commit", so lift those filters and look again.
+          set({
+            filter: { ...get().filter, searchQuery: "", file: "", branch: "" },
+            pendingSelectionFromFilter: [],
+            collapsedSequenceIds: new Set(),
+            collapsedIntermediates: new Map(),
+          });
+          await get().fetchInitialData({ quick: true });
+          index = await locateCommit(hash, get().logParams);
+        }
+        if (index === null) {
+          throw new Error(
+            `commit ${hash.slice(0, 8)} is not in the log (not reachable from any branch or tag, or deeper than the search limit)`,
+          );
+        }
 
-    const visible = get().visibleCommits;
-    const idx = visible.findIndex((c) => c.hash === hash);
-    if (idx === -1) {
-      console.warn("focusCommit: commit not reachable in current view:", hash);
-      return;
-    }
+        const seq = logFetchSeq;
+        for (let pages = 0; pages < 30; pages++) {
+          const loaded = get().commits.length;
+          if (loaded > index || !get().hasMore || seq !== logFetchSeq) break;
+          await get().loadMore(
+            Math.min(
+              Math.max(index + 1 - loaded, LOG_PAGE_SIZE),
+              LOG_JUMP_PAGE_SIZE,
+            ),
+          );
+          if (get().commits.length === loaded) break;
+        }
+        if (seq !== logFetchSeq) return; // the filter changed under us
+      }
 
-    await get().selectCommit(
-      hash,
-      "single",
-      visible.map((c) => c.hash),
-    );
-    set({ pendingScrollToHash: hash });
+      const visible = get().visibleCommits;
+      if (!visible.some((c) => c.hash === hash)) {
+        throw new Error(
+          `commit ${hash.slice(0, 8)} could not be loaded into the log`,
+        );
+      }
+      await get().selectCommit(
+        hash,
+        "single",
+        visible.map((c) => c.hash),
+      );
+      set({ pendingScrollToHash: hash });
+    } catch (err) {
+      await reportActionError("Go to commit", err);
+    }
+  },
+
+  async goToRef(query: string) {
+    const trimmed = query.trim();
+    if (!trimmed) return false;
+    try {
+      const result = (await bridge.request("resolveLogRef", {
+        query: trimmed,
+      })) as { hash?: string } | null;
+      if (!result?.hash) return false;
+      await get().focusCommit(result.hash);
+      return get().selectedCommitHash === result.hash;
+    } catch (err) {
+      await reportActionError("Go to Hash/Branch/Tag", err);
+      return false;
+    }
   },
 
   consumePendingScrollToHash() {
@@ -573,31 +671,29 @@ export const usePanelStore = create<PanelStore>((set, get) => ({
   },
 
   setFilter(partial: Partial<PanelFilter>) {
-    const { filter: current, selectedCommitHashes, commits } = get();
+    const { filter: current, selectedCommitHashes, commits, logParams } = get();
     const next = { ...current, ...partial };
 
-    // Branch or file filter changes require a backend re-fetch
-    if (
-      (partial.branch !== undefined && partial.branch !== current.branch) ||
-      (partial.file !== undefined && partial.file !== current.file)
-    ) {
+    // Anything the host filters on (branch, path, message text and its
+    // Match Case / Regex toggles) needs a re-fetch. An unfinished regex builds
+    // the same params as before, so it only updates the filter state.
+    if (!sameLogParams(buildLogParams(next, logParams), logParams)) {
+      const textOnly =
+        next.branch === current.branch && next.file === current.file;
       set({
         filter: next,
-        pendingSelectionFromFilter: [],
+        // A text change keeps the selection when its commits are still listed.
+        pendingSelectionFromFilter: textOnly ? selectedCommitHashes : [],
         collapsedSequenceIds: new Set(),
         collapsedIntermediates: new Map(),
       });
-      get().fetchInitialData();
+      void get().fetchInitialData({ quick: textOnly });
       return;
     }
 
-    // Search/author filter: client-side only
-    const wasFiltered = !!(
-      current.searchQuery ||
-      current.author ||
-      current.dateRange
-    );
-    const isNowFiltered = !!(next.searchQuery || next.author || next.dateRange);
+    // Author/date filter: client-side only
+    const wasFiltered = !!(current.author || current.dateRange);
+    const isNowFiltered = !!(next.author || next.dateRange);
     const visible = filterCommits(commits, next, get().collapsedIntermediates);
 
     if (wasFiltered && !isNowFiltered) {

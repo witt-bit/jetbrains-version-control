@@ -1,7 +1,11 @@
 export class GitCache {
   private store = new Map<string, { data: unknown; timestamp: number }>();
 
-  constructor(private ttlMs = 5000) {}
+  private readonly ttlMs: number;
+
+  constructor(ttlMs = 5000) {
+    this.ttlMs = ttlMs;
+  }
 
   get<T>(key: string): T | undefined {
     const entry = this.store.get(key);

@@ -1,9 +1,10 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
+import { blameOptionsKey, isBlameSnapshotReusable } from "../git/blameOptions";
 import type { GitService } from "../git/gitService";
 import type { BlameLine } from "../git/types";
 import type { MessageRouter } from "../messages/messageRouter";
-import { formatBlameDate } from "./blameManager";
+import { formatBlameDate, readBlameOptions } from "./blameManager";
 import {
   CARET_BLAME_DEFAULT_FORMAT,
   CARET_BLAME_MAX_MESSAGE_CHARS,
@@ -21,6 +22,8 @@ interface GitServiceEntry {
 interface BlameSnapshot {
   lines: BlameLine[];
   docVersion: number;
+  /** The `jgc.blame` options the lines were blamed with. */
+  optionsKey: string;
 }
 
 /**
@@ -247,11 +250,22 @@ export class CaretBlameController implements vscode.Disposable {
   private async getBlame(doc: vscode.TextDocument): Promise<BlameSnapshot> {
     const key = doc.uri.toString();
     const cached = this.cache.get(key);
+    const options = readBlameOptions();
+    const optionsKey = blameOptionsKey(options);
     // `git blame` describes the SAVED file. While the document is dirty every
     // keystroke bumps `doc.version`, so re-blame-on-version-change spawned a
     // `git blame` process per typed character. Reusing the last snapshot keeps
-    // blame anchored to the saved state (it is re-read on save anyway).
-    if (cached && (cached.docVersion === doc.version || doc.isDirty)) {
+    // blame anchored to the saved state (it is re-read on save anyway). A
+    // snapshot made with other blame options is never reused: changing
+    // `jgc.blame.*` must take effect without a reload.
+    if (
+      cached &&
+      isBlameSnapshotReusable(cached, {
+        docVersion: doc.version,
+        isDirty: doc.isDirty,
+        optionsKey,
+      })
+    ) {
       return cached;
     }
     const entry = this.resolveService(doc.uri);
@@ -259,12 +273,16 @@ export class CaretBlameController implements vscode.Disposable {
     const relative = entry ? path.relative(entry.root, doc.uri.fsPath) : "";
     if (entry && relative && !relative.startsWith("..")) {
       try {
-        lines = await entry.service.blame(relative);
+        lines = await entry.service.blame(relative, options);
       } catch {
         lines = [];
       }
     }
-    const snapshot: BlameSnapshot = { lines, docVersion: doc.version };
+    const snapshot: BlameSnapshot = {
+      lines,
+      docVersion: doc.version,
+      optionsKey,
+    };
     this.cache.set(key, snapshot);
     return snapshot;
   }

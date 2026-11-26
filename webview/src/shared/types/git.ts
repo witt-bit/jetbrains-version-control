@@ -125,4 +125,6 @@ export interface WorktreeInfo {
   branch: string; // 关联分支名（detached 时为空）
   head: string; // HEAD commit SHA
   isMain: boolean; // 是否为主 worktree
+  locked: boolean; // `git worktree lock` 保护中
+  lockReason?: string; // 锁定原因（未提供则为空）
 }

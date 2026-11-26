@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import CodiconGitStash from "~icons/codicon/git-stash";
+import CodiconTrash from "~icons/codicon/trash";
+import { Tooltip } from "../../shared/components/Tooltip";
+import "../../shared/components/Tooltip.css";
 import {
   type ShelveEntry,
   useCommitStore,
@@ -6,10 +10,15 @@ import {
 import { getCommitFileIcon } from "../utils/file-icon";
 import { ShelfContextMenu } from "./ShelfContextMenu";
 import { ShelfFileContextMenu } from "./ShelfFileContextMenu";
+import { StashChangesDialog } from "./StashChangesDialog";
+import { UnstashDialog } from "./UnstashDialog";
+import "./stashDialog.css";
 
 export function ShelfTab() {
-  const { shelves, fetchShelves } = useCommitStore();
+  const { shelves, fetchShelves, clearStashes } = useCommitStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [stashDialogOpen, setStashDialogOpen] = useState(false);
+  const [unstashEntry, setUnstashEntry] = useState<ShelveEntry | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -66,47 +75,77 @@ export function ShelfTab() {
     setFileContextMenu(null);
   }, []);
 
-  if (shelves.length === 0) {
-    return (
-      <div className="shelf-list">
-        <div className="shelf-empty">
-          <p>No shelved changes</p>
-          <p style={{ fontSize: 11, marginTop: 8 }}>
-            Use the shelf icon in the Commit tab toolbar to shelve changes for
-            later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="shelf-list">
-      {shelves.map((entry) => (
-        <ShelfItem
-          key={entry.id}
-          entry={entry}
-          expanded={expandedIds.has(entry.id)}
-          onToggle={() => toggleExpand(entry.id)}
-          onContextMenu={(e) => handleContextMenu(e, entry)}
-          onFileContextMenu={handleFileContextMenu}
-        />
-      ))}
-      {contextMenu && (
-        <ShelfContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          entry={contextMenu.entry}
-          onClose={closeContextMenu}
-        />
+    <div className="stash-tab">
+      <div className="stash-toolbar">
+        <button
+          type="button"
+          className="stash-toolbar-btn"
+          onClick={() => setStashDialogOpen(true)}
+        >
+          <CodiconGitStash />
+          Stash Changes...
+        </button>
+        <span className="stash-toolbar-spacer" />
+        <Tooltip text="Clear All Stashes...">
+          <button
+            type="button"
+            className="stash-toolbar-btn"
+            aria-label="Clear All Stashes"
+            disabled={shelves.length === 0}
+            onClick={() => void clearStashes()}
+          >
+            <CodiconTrash />
+          </button>
+        </Tooltip>
+      </div>
+
+      <div className="shelf-list">
+        {shelves.length === 0 && (
+          <div className="shelf-empty">
+            <p>No stashed changes</p>
+            <p style={{ fontSize: 11, marginTop: 8 }}>
+              Use Stash Changes... to set local changes aside for later.
+            </p>
+          </div>
+        )}
+        {shelves.map((entry) => (
+          <ShelfItem
+            key={entry.id}
+            entry={entry}
+            expanded={expandedIds.has(entry.id)}
+            onToggle={() => toggleExpand(entry.id)}
+            onContextMenu={(e) => handleContextMenu(e, entry)}
+            onFileContextMenu={handleFileContextMenu}
+          />
+        ))}
+        {contextMenu && (
+          <ShelfContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            entry={contextMenu.entry}
+            onUnstashAs={setUnstashEntry}
+            onClose={closeContextMenu}
+          />
+        )}
+        {fileContextMenu && (
+          <ShelfFileContextMenu
+            x={fileContextMenu.x}
+            y={fileContextMenu.y}
+            filePath={fileContextMenu.filePath}
+            stashId={fileContextMenu.stashId}
+            onClose={closeFileContextMenu}
+          />
+        )}
+      </div>
+
+      {stashDialogOpen && (
+        <StashChangesDialog onClose={() => setStashDialogOpen(false)} />
       )}
-      {fileContextMenu && (
-        <ShelfFileContextMenu
-          x={fileContextMenu.x}
-          y={fileContextMenu.y}
-          filePath={fileContextMenu.filePath}
-          stashId={fileContextMenu.stashId}
-          onClose={closeFileContextMenu}
+      {unstashEntry && (
+        <UnstashDialog
+          entry={unstashEntry}
+          onClose={() => setUnstashEntry(null)}
         />
       )}
     </div>

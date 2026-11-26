@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { bridge } from "../../shared/bridge";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { bridge, runMenuAction } from "../../shared/bridge";
 import {
   ContextMenu,
   ContextMenuHeader,
@@ -261,7 +261,84 @@ function SettingsMenu({ onClose }: { onClose: () => void }) {
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ShowTagsItem onClose={onClose} />
+      <ContextMenuSeparator />
+      <ContextMenuItem
+        onClick={() =>
+          runMenuAction(onClose, "Clean up merged branches", () =>
+            bridge.request("cleanUpBranches"),
+          )
+        }
+      >
+        Clean Up Merged Branches...
+      </ContextMenuItem>
+      <ContextMenuHeader>Repository</ContextMenuHeader>
+      <RepositoryItems onClose={onClose} />
     </ContextMenu>
+  );
+}
+
+/** Clone, submodules, sparse checkout and (for shallow clones) Unshallow. */
+function RepositoryItems({ onClose }: { onClose: () => void }) {
+  const [shallow, setShallow] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    bridge
+      .request("isShallowRepository", {})
+      .then((result) => {
+        const flag = (result as { shallow?: unknown } | null)?.shallow;
+        if (!cancelled && flag === true) setShallow(true);
+      })
+      .catch(() => {
+        // A probe only decides whether to show one extra item; without a
+        // repository there is nothing to report.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <>
+      <ContextMenuItem
+        onClick={() =>
+          runMenuAction(onClose, "Clone repository", () =>
+            bridge.request("cloneRepository", {}),
+          )
+        }
+      >
+        Clone Repository…
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={() =>
+          runMenuAction(onClose, "Show submodules", () =>
+            bridge.request("showSubmodules", {}),
+          )
+        }
+      >
+        Submodules…
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={() =>
+          runMenuAction(onClose, "Show sparse checkout", () =>
+            bridge.request("showSparseCheckout", {}),
+          )
+        }
+      >
+        Sparse Checkout…
+      </ContextMenuItem>
+      {shallow && (
+        <ContextMenuItem
+          onClick={() =>
+            runMenuAction(onClose, "Unshallow repository", () =>
+              bridge.request("unshallowRepository", {}),
+            )
+          }
+        >
+          Unshallow Repository
+        </ContextMenuItem>
+      )}
+    </>
   );
 }
 

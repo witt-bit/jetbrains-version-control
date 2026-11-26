@@ -4,6 +4,37 @@
 
 Releases before 1.0.0 are archived in [CHANGELOG-archive.md](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG-archive.md).
 
+## [Unreleased]
+
+### Added
+
+- **Update method** — `jgc.update.method` (`merge`, `rebase` or `branchDefault`) decides how Update Project, Pull and branch updates integrate upstream changes, and `jgc.update.saveChangesPolicy` (`stash` or `shelve`) decides how local changes are carried across the update.
+- **Smart checkout** — Checking out a branch, tag or commit, or creating a branch, no longer fails on a dirty working tree: a prompt offers Smart (stash, switch, restore), Force (discard, with a second confirmation) or Cancel. Untracked files that would be overwritten are explained instead of offering a destructive option.
+- **Stash options** — Stash Changes... (keep index, include untracked), Unstash As... (as a new branch, pop, reinstate index) and Clear All Stashes... from the Stash tab toolbar.
+- **Blame options** — `jgc.blame.ignoreWhitespace` and `jgc.blame.detectMovements` (`none`, `inner`, `outer`) control how blame attributes lines.
+- **Cherry-pick options** — `jgc.cherryPick.emptyStrategy` (`ask`, `skip`, `createEmpty`) handles commits that become empty, `jgc.cherryPick.appendSourceHash` adds `-x`, and a Log toolbar toggle dims commits already cherry-picked onto HEAD. Continuing after an empty cherry-pick now commits it instead of failing.
+- **Fetch options** — `jgc.fetch.prune`, `jgc.fetch.tagsMode` and background auto-fetch (`jgc.fetch.autoFetch`, `jgc.fetch.autoFetchIntervalMinutes`).
+- **Branch extras** — Clean Up Merged Branches..., Set / Unset Upstream in the branch menu, and Lock / Unlock for worktrees (a locked worktree shows a lock and cannot be deleted).
+- **Rejected pushes recover in place** — Pushes from the branch menu, Commit and Push and Push All up to Here now offer Merge, Rebase or Force with lease when rejected, then retry once. The Push panel adds Force with lease and a "Remember my choice" option. A first push sets the upstream (`jgc.push.autoSetUpstream`, `jgc.push.rejectedAction`).
+- **Protected branches** — `jgc.protectedBranches` (default `main`, `master`; `*` globs allowed) refuses force pushes to those branches, asks for explicit confirmation before deleting them and keeps them out of Clean Up Merged Branches.
+- **Commit options and checks** — The commit panel gains a gear menu with sign-off and run-Git-hooks switches, and warns before committing large files, CRLF line endings, a detached HEAD or rebase in progress, or a missing `user.name` / `user.email`, with a "Commit anyway" prompt. Each check can be turned off in settings (`jgc.commit.*`).
+- **GPG signing** — Choose GPG Key... picks a key and turns signing on; `jgc.commit.gpgSign` (`auto`, `always`, `never`) forces or disables signing per commit.
+- **Repository commands** — Clone Repository (with progress and cancel, never prompts for credentials), Create Git Repository for a workspace that is not one yet, submodule list / update / sync / open, sparse checkout management, and Unshallow / Deepen. `jgc.clone.recurseSubmodules` controls submodule cloning.
+
+- **Git Log message and path filters** — The message filter has Match Case and Regex toggles, and a new Path filter takes a file or folder. Git applies both across the whole history, and they stay in force while scrolling and refreshing. The text box no longer matches hash substrings; use Go To instead.
+- **Go To Hash / Branch / Tag** — Cmd+Shift+L (Ctrl+Shift+L) finds a commit by hash, branch or tag, loading more history until it appears and lifting any filter that hides it. Ctrl+L focuses the filter box.
+- **Interactive rebase** — Interactively Rebase from Here... on any commit opens a dialog with per-commit pick / reword / edit / squash / fixup / drop, reordering, `--onto`, autosquash, keep-empty, update-refs and rebase-merges.
+- **Edit Commit Message, Fixup and Squash Into** — on a commit's context menu.
+
+### Improved
+
+- Continuing a rebase no longer opens an editor.
+
+### Fixed
+
+- A hook-declined push no longer offers Merge / Rebase as if it were a rejected push.
+- Amend-and-push is checked against the protected branches before the commit is rewritten.
+
 ## [1.2.0] - 2026-11-14
 
 ### Added

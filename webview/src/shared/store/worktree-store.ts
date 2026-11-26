@@ -30,6 +30,9 @@ interface WorktreeStore {
     path: string,
   ) => Promise<{ success: boolean; error?: string }>;
   pruneWorktrees: () => Promise<{ success: boolean; error?: string }>;
+  /** Rejects with git's message when the lock fails. */
+  lockWorktree: (path: string, reason?: string) => Promise<void>;
+  unlockWorktree: (path: string) => Promise<void>;
 }
 
 export const useWorktreeStore = create<WorktreeStore>((set, _get) => ({
@@ -94,5 +97,15 @@ export const useWorktreeStore = create<WorktreeStore>((set, _get) => ({
       await _get().fetchWorktrees();
     }
     return result;
+  },
+
+  lockWorktree: async (path, reason) => {
+    await bridge.request("lockWorktree", { path, reason });
+    await _get().fetchWorktrees();
+  },
+
+  unlockWorktree: async (path) => {
+    await bridge.request("unlockWorktree", { path });
+    await _get().fetchWorktrees();
   },
 }));

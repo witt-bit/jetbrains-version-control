@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { usePanelStore } from "../../shared/store/panel-store";
+import { CherryPickHighlightOption } from "./CherryPickHighlightOption";
+import { LogGoToRef, LogPathFilter, LogTextFilter } from "./LogFilterBar";
 
 export function Toolbar() {
   const setFilter = usePanelStore((s) => s.setFilter);
@@ -11,7 +13,6 @@ export function Toolbar() {
   const currentBranch = usePanelStore((s) => s.currentBranch);
   const visibleColumns = usePanelStore((s) => s.visibleColumns);
   const toggleColumnVisibility = usePanelStore((s) => s.toggleColumnVisibility);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const historyBranch = filter.branch || currentBranch;
 
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -36,17 +37,6 @@ export function Toolbar() {
       .map((b) => b.name)
       .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
   }, [branches]);
-
-  const handleSearch = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        setFilter({ searchQuery: value });
-      }, 300);
-    },
-    [setFilter],
-  );
 
   const handleSelectAuthor = (author: string) => {
     setShowUserDropdown(false);
@@ -96,11 +86,7 @@ export function Toolbar() {
         flexShrink: 0,
       }}
     >
-      <SearchInput
-        placeholder="Text or hash"
-        defaultValue={filter.searchQuery}
-        onChange={handleSearch}
-      />
+      <LogTextFilter />
 
       {/* Branch filter */}
       <div style={{ position: "relative" }}>
@@ -183,8 +169,11 @@ export function Toolbar() {
         )}
       </div>
 
-      {/* View Options (eye icon) — pushed to far right */}
+      <LogPathFilter />
+
+      {/* Go To + View Options (eye icon) — pushed to far right */}
       <div style={{ flex: 1 }} />
+      <LogGoToRef />
       <div style={{ position: "relative" }}>
         <Tooltip text="View Options">
           <button
@@ -237,52 +226,6 @@ export function Toolbar() {
           />
         )}
       </div>
-
-      {/* File history tab */}
-      {filter.file && (
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "2px 8px 2px 10px",
-            fontSize: "12px",
-            borderRadius: 3,
-            background: "var(--vscode-tab-activeBackground, #1e1e1e)",
-            border: "1px solid var(--vscode-tab-border, #444)",
-            color: "var(--vscode-tab-activeForeground, inherit)",
-            whiteSpace: "nowrap",
-            userSelect: "none",
-          }}
-        >
-          <span style={{ opacity: 0.6 }}>History:</span>
-          <span style={{ fontWeight: 500 }}>
-            {filter.file.split("/").pop()}
-          </span>
-          <div
-            onClick={() => setFilter({ file: "" })}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-              opacity: 0.5,
-              marginLeft: 2,
-              padding: 1,
-              borderRadius: 3,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.opacity = "1";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.opacity = "0.5";
-            }}
-          >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.707.708L7.293 8l-3.646 3.646.707.708L8 8.707z" />
-            </svg>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -290,125 +233,6 @@ export function Toolbar() {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function SearchInput({
-  placeholder,
-  defaultValue,
-  onChange,
-}: {
-  placeholder: string;
-  defaultValue: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState(defaultValue);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(e.target.value);
-    onChange(e);
-  };
-
-  const handleClear = () => {
-    setValue("");
-    if (inputRef.current) {
-      // Trigger onChange with empty value
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-        window.HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      nativeInputValueSetter?.call(inputRef.current, "");
-      inputRef.current.dispatchEvent(new Event("input", { bubbles: true }));
-    }
-  };
-
-  return (
-    <div
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        width: 180,
-      }}
-    >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        style={{
-          position: "absolute",
-          left: 7,
-          opacity: 0.5,
-          pointerEvents: "none",
-        }}
-      >
-        <circle cx="7" cy="7" r="4.5" />
-        <line x1="10.5" y1="10.5" x2="14" y2="14" />
-      </svg>
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder={placeholder}
-        defaultValue={defaultValue}
-        onChange={handleChange}
-        style={{
-          width: "100%",
-          padding: "4px 24px",
-          fontSize: "12px",
-          border: "1px solid var(--vscode-input-border, #c4c4c4)",
-          background: "var(--vscode-input-background, #1e1e1e)",
-          color: "var(--vscode-input-foreground, #ccc)",
-          borderRadius: 3,
-          outline: "none",
-          boxSizing: "border-box",
-        }}
-        onFocus={(e) => {
-          (e.target as HTMLElement).style.borderColor = "#3574f0";
-        }}
-        onBlur={(e) => {
-          (e.target as HTMLElement).style.borderColor =
-            "var(--vscode-input-border, #3c3c3c)";
-        }}
-        onMouseEnter={(e) => {
-          (e.target as HTMLElement).style.borderColor = "#3574f0";
-        }}
-        onMouseLeave={(e) => {
-          if (document.activeElement !== e.target) {
-            (e.target as HTMLElement).style.borderColor =
-              "var(--vscode-input-border, #3c3c3c)";
-          }
-        }}
-      />
-      {value && (
-        <div
-          onClick={handleClear}
-          style={{
-            position: "absolute",
-            right: 4,
-            cursor: "pointer",
-            opacity: 0.6,
-            display: "flex",
-            alignItems: "center",
-            padding: 2,
-            borderRadius: 3,
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.opacity = "1";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.opacity = "0.6";
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 8.707l3.646 3.647.708-.707L8.707 8l3.647-3.646-.707-.708L8 7.293 4.354 3.646l-.707.708L7.293 8l-3.646 3.646.707.708L8 8.707z" />
-          </svg>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function FilterButton({
   label,
@@ -789,6 +613,7 @@ function ViewOptionsDropdown({
           <span>{col.label}</span>
         </div>
       ))}
+      <CherryPickHighlightOption />
     </div>
   );
 }

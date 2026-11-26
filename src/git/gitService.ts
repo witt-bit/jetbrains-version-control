@@ -3,15 +3,108 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
-import { parseRemoteBranchLines } from "./branchParsing";
-import { GitCache } from "./cache";
-import { computeGraphLayout } from "./graphLayout";
+import {
+  type BlameOptions,
+  blameFlags,
+  DEFAULT_BLAME_OPTIONS,
+} from "./blameOptions.ts";
+import {
+  filterDeletable,
+  parseLocalBranchRefs,
+  selectCleanupCandidates,
+} from "./branchCleanup.ts";
+import { parseRemoteBranchLines } from "./branchParsing.ts";
+import { GitCache } from "./cache.ts";
+import { type CherryMarks, computeCherryMarks } from "./cherryMarks.ts";
+import {
+  type CherryPickOptions,
+  type CherryPickOutcome,
+  DEFAULT_CHERRY_PICK_OPTIONS,
+  gitSupportsCherryPickEmpty,
+  runCherryPick,
+} from "./cherryPick.ts";
+import { nonInteractiveGitEnv } from "./cloneRepo.ts";
+import {
+  type CommitWarning,
+  type PendingFile,
+  runCommitChecks,
+} from "./commitChecks.ts";
+import {
+  buildCommitArgs,
+  type CommitOptions,
+  type CommitSettings,
+  thresholdBytes,
+} from "./commitSettings.ts";
+import { buildFetchArgs, type FetchOptions } from "./fetchOptions.ts";
+import {
+  resolveUpdateMethod,
+  type SaveChangesPolicy,
+  type UpdateMethod,
+} from "./gitSettings.ts";
+import {
+  explainSigningFailure,
+  type GpgKey,
+  listSecretKeys,
+  resolveGpgProgram,
+} from "./gpg.ts";
+import { computeGraphLayout } from "./graphLayout.ts";
+import {
+  assertRevision,
+  buildRebaseArgs,
+  describeStop,
+  findRebaseStop,
+  gitErrorText,
+  type InteractiveRebaseOptions,
+  type InteractiveRebaseResult,
+  matchEntriesToRange,
+  type RebaseCommit,
+  RebaseStoppedError,
+  rebaseEnv,
+  removeScratch,
+  writeScratchTodo,
+} from "./interactiveRebase.ts";
+import {
+  buildLogFilterArgs,
+  danglingParents,
+  describeLogError,
+  hasHistoryFilter,
+  LOG_LOCATE_SCAN_LIMIT,
+  normalizeLogPath,
+} from "./logFilter.ts";
 import {
   parseDiffGitHeader,
   parseDiffNameStatus,
   splitStatusPaths,
   unquoteGitPath,
-} from "./pathUtils";
+} from "./pathUtils.ts";
+import { type PendingSelection, readPendingCommit } from "./pendingCommit.ts";
+import { autosquashEntries, type RebaseEntry } from "./rebaseTodo.ts";
+import {
+  deepenRepository,
+  isShallowRepository,
+  unshallowRepository,
+} from "./shallow.ts";
+import {
+  addSparseCheckout,
+  disableSparseCheckout,
+  enableSparseCheckout,
+  type SparseCheckoutStatus,
+  setSparseCheckout,
+  sparseCheckoutStatus,
+} from "./sparseCheckout.ts";
+import {
+  assertBranchName,
+  assertStashRef,
+  buildStashPushArgs,
+  buildUnstashArgs,
+  type StashPushOptions,
+} from "./stash.ts";
+import {
+  listSubmodules,
+  type SubmoduleInfo,
+  syncSubmodules,
+  updateSubmodules,
+} from "./submodules.ts";
 import type {
   BlameLine,
   BranchInfo,
@@ -29,9 +122,14 @@ import type {
   WorkingTreeFile,
   WorktreeInfo,
 } from "./types";
-import { WORKTREE_INCLUDE_FILE } from "./worktreeInclude";
+import { WORKTREE_INCLUDE_FILE } from "./worktreeInclude.ts";
 
 const execFileAsync = promisify(execFile);
+
+/** Local changes set aside by a smart operation, and where to find them. */
+export type SavedChanges =
+  | { kind: "stash"; sha: string }
+  | { kind: "shelf"; name: string };
 
 // For parsing git output (actual null byte)
 const FIELD_SEP = "\x00";
@@ -42,6 +140,7 @@ const FMT_RECORD_SEP = "%x00%x00%x01";
 // For git branch/tag --format (ref-format / for-each-ref): %00 produces null byte
 const REF_FMT_FIELD_SEP = "%00";
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+const DEFAULT_LOG_PAGE_SIZE = 200;
 
 /** Diff-status of a file -> the status the file list renders. */
 function toWorkingTreeStatus(
@@ -75,7 +174,11 @@ const LOG_FORMAT = [
 export class GitService {
   readonly cache = new GitCache();
 
-  constructor(private readonly cwd: string) {}
+  private readonly cwd: string;
+
+  constructor(cwd: string) {
+    this.cwd = cwd;
+  }
 
   /** The repository root every git command runs against. */
   get root(): string {
@@ -150,42 +253,39 @@ export class GitService {
       "log",
       `--format=${LOG_FORMAT}${FMT_RECORD_SEP}`,
       "--date-order",
+      `--max-count=${options.maxCount || DEFAULT_LOG_PAGE_SIZE}`,
     ];
-
-    if (options.maxCount) {
-      args.push(`--max-count=${options.maxCount}`);
-    } else {
-      args.push("--max-count=200");
-    }
     if (options.skip) {
       args.push(`--skip=${options.skip}`);
     }
-    if (options.author) {
-      args.push(`--author=${options.author}`);
-    }
-    if (options.search) {
-      args.push(`--grep=${options.search}`);
-    }
-    if (options.since) {
-      args.push(`--since=${options.since}`);
-    }
-    if (options.until) {
-      args.push(`--until=${options.until}`);
-    }
-    if (options.branch) {
-      args.push(options.branch);
-    } else {
-      args.push("--all");
-    }
-    if (options.file) {
-      args.push("--", options.file);
-    }
+    args.push(...this.logSelectionArgs(options));
 
-    const output = await this.execGit(args);
+    const output = await this.execGit(args).catch((err) => {
+      throw describeLogError(err);
+    });
     const remoteNames = await this.getRemoteNames();
     const commits = parseLogOutput(output, remoteNames);
     this.cache.set(cacheKey, commits);
     return commits;
+  }
+
+  /**
+   * Which commits `getLog` lists, without paging: filters, revision and path.
+   * A path filter adds `--parents` so git rewrites each commit's parents to the
+   * nearest commit that is still listed; without it `%P` keeps the real
+   * parents and the graph would point at commits the path filter removed.
+   */
+  private logSelectionArgs(options: LogOptions): string[] {
+    const args = buildLogFilterArgs(options);
+    const file = normalizeLogPath(this.cwd, options.file);
+    if (file) {
+      args.push("--parents");
+    }
+    args.push(options.branch ? options.branch : "--all");
+    if (file) {
+      args.push("--", file);
+    }
+    return args;
   }
 
   async getGraphTopology(
@@ -193,8 +293,101 @@ export class GitService {
     prevSnapshot?: LaneSnapshot,
   ): Promise<GraphLayoutResult> {
     const commits = await this.getLog(options);
-    const breakHiddenParents = !!options.search;
-    return computeGraphLayout(commits, prevSnapshot, breakHiddenParents);
+    if (!hasHistoryFilter(options)) {
+      return computeGraphLayout(commits, prevSnapshot);
+    }
+    const onLaterPages = await this.parentsOnLaterPages(options, commits);
+    return computeGraphLayout(commits, prevSnapshot, true, onLaterPages);
+  }
+
+  /**
+   * In a filtered log a parent missing from the page is either on a later page
+   * (the lane must stay open) or removed by the filter (the lane ends). Only
+   * the second case is a hidden parent, and git can tell them apart: the
+   * `--no-walk` run applies the same commit filters to just those parents.
+   */
+  private async parentsOnLaterPages(
+    options: LogOptions,
+    commits: CommitNode[],
+  ): Promise<Set<string>> {
+    const dangling = danglingParents(commits);
+    if (
+      dangling.length === 0 ||
+      commits.length < (options.maxCount || DEFAULT_LOG_PAGE_SIZE)
+    ) {
+      return new Set();
+    }
+    const commitFilters = buildLogFilterArgs(options);
+    if (commitFilters.length === 0) {
+      // Path filter only: `--parents` already rewrote them to listed commits.
+      return new Set(dangling);
+    }
+    try {
+      const output = await this.execGit([
+        "log",
+        "--no-walk=unsorted",
+        "--format=%H",
+        ...commitFilters,
+        ...dangling,
+      ]);
+      return new Set(output.split("\n").filter(Boolean));
+    } catch {
+      return new Set();
+    }
+  }
+
+  /**
+   * Resolves what the user typed into Go To (hash prefix, branch, tag, any
+   * revision) to the full hash of the commit it names.
+   */
+  async resolveLogRef(query: string): Promise<string> {
+    const ref = query.trim();
+    const unusable =
+      ref === "" ||
+      ref.startsWith("-") ||
+      [...ref].some((char) => char.charCodeAt(0) < 32);
+    if (!unusable) {
+      try {
+        const output = await this.execGit([
+          "rev-parse",
+          "--verify",
+          "--quiet",
+          `${ref}^{commit}`,
+        ]);
+        const hash = output.trim();
+        if (hash) {
+          return hash;
+        }
+      } catch (err) {
+        const stderr = (err as { stderr?: unknown }).stderr;
+        if (/ambiguous/i.test(String(stderr ?? ""))) {
+          throw new Error(`"${ref}" is ambiguous, type more of the hash`);
+        }
+      }
+    }
+    throw new Error(`"${ref}" is not a known commit hash, branch or tag`);
+  }
+
+  /**
+   * Position of `hash` in the list `getLog` pages through for `options`, or
+   * null when the commit is not in it (filtered out, or deeper than
+   * `LOG_LOCATE_SCAN_LIMIT`).
+   */
+  async findCommitIndex(
+    options: LogOptions,
+    hash: string,
+  ): Promise<number | null> {
+    const output = await this.execGit([
+      "log",
+      "--format=%H",
+      "--date-order",
+      `--max-count=${LOG_LOCATE_SCAN_LIMIT}`,
+      ...this.logSelectionArgs(options),
+    ]).catch((err) => {
+      throw describeLogError(err);
+    });
+    const index = output.split("\n").indexOf(hash);
+    return index === -1 ? null : index;
   }
 
   async getBranches(): Promise<BranchInfo[]> {
@@ -505,13 +698,15 @@ export class GitService {
    * Blame the working tree copy of a file (line numbers match editor lines).
    * Not cached: output changes on every save/edit.
    */
-  async blame(filePath: string): Promise<BlameLine[]> {
+  async blame(
+    filePath: string,
+    options: BlameOptions = DEFAULT_BLAME_OPTIONS,
+  ): Promise<BlameLine[]> {
     const output = await this.execGit([
       "blame",
       "--porcelain",
       "-l", // full hash; we derive shortHash locally
-      "-w", // ignore whitespace (IDEA-like default)
-      "-M",
+      ...blameFlags(options),
       "--",
       filePath,
     ]);
@@ -524,13 +719,16 @@ export class GitService {
    * that revision, not the working tree. Only real revisions work here: the
    * index (`:0`) and the empty placeholder have none, callers gate on that.
    */
-  async blameAt(ref: string, filePath: string): Promise<BlameLine[]> {
+  async blameAt(
+    ref: string,
+    filePath: string,
+    options: BlameOptions = DEFAULT_BLAME_OPTIONS,
+  ): Promise<BlameLine[]> {
     const output = await this.execGit([
       "blame",
       "--porcelain",
       "-l",
-      "-w",
-      "-M",
+      ...blameFlags(options),
       ref,
       "--",
       filePath,
@@ -653,7 +851,7 @@ export class GitService {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes("allow-empty")) {
-          await this.execGit(["commit", "--allow-empty"]);
+          await this.execGit(["commit", "--allow-empty", "--no-edit"]);
         } else {
           throw err;
         }
@@ -780,6 +978,28 @@ export class GitService {
     this.invalidateCache();
   }
 
+  /** `git checkout -f`: switch anyway, discarding tracked local changes. */
+  async checkoutForced(ref: string): Promise<void> {
+    await this.execGit(["checkout", "-f", ref]);
+    this.invalidateCache();
+  }
+
+  /**
+   * Create a branch and switch to it in one step, so a refused switch leaves
+   * no half-created branch behind. `reset` overwrites an existing branch.
+   */
+  async checkoutNewBranch(
+    name: string,
+    startPoint: string,
+    options: { reset?: boolean; discardChanges?: boolean } = {},
+  ): Promise<void> {
+    const args = ["checkout"];
+    if (options.discardChanges) args.push("-f");
+    args.push(options.reset ? "-B" : "-b", name, startPoint);
+    await this.execGit(args);
+    this.invalidateCache();
+  }
+
   async createBranch(
     newBranchName: string,
     startPoint: string,
@@ -796,6 +1016,76 @@ export class GitService {
     const flag = force ? "-D" : "-d";
     await this.execGit(["branch", flag, branchName]);
     this.invalidateCache();
+  }
+
+  /**
+   * Local branches fully merged into `base` (default: the current branch),
+   * minus the ones that cannot or should not go: the base itself, the current
+   * branch and anything checked out in a worktree.
+   */
+  async findMergedBranches(base = "HEAD"): Promise<string[]> {
+    const [output, currentBranch, worktrees] = await Promise.all([
+      this.execGit(["branch", `--merged=${base}`, "--format=%(refname)"]),
+      this.getCurrentBranch(),
+      this.listWorktrees(),
+    ]);
+    return selectCleanupCandidates(parseLocalBranchRefs(output), {
+      base,
+      currentBranch,
+      worktreeBranches: worktrees.map((w) => w.branch).filter(Boolean),
+    });
+  }
+
+  /**
+   * Delete branches found by `findMergedBranches`. Every branch is checked
+   * against `base` again right before its removal, because the list may be
+   * minutes old and `-D` would otherwise drop commits that landed since. One
+   * failing branch does not stop the rest.
+   */
+  async deleteMergedBranches(
+    branches: string[],
+    base = "HEAD",
+    protectedPatterns: readonly string[] = [],
+  ): Promise<{
+    deleted: string[];
+    skipped: string[];
+    failed: { branch: string; error: string }[];
+  }> {
+    const allowed = filterDeletable(branches, protectedPatterns);
+    const skipped = branches.filter((b) => !allowed.includes(b));
+    const deleted: string[] = [];
+    const failed: { branch: string; error: string }[] = [];
+    for (const branch of allowed) {
+      try {
+        if (!(await this.isAncestor(`refs/heads/${branch}`, base))) {
+          failed.push({
+            branch,
+            error: `No longer fully merged into ${base}.`,
+          });
+          continue;
+        }
+        await this.execGit(["branch", "-D", branch]);
+        deleted.push(branch);
+      } catch (err) {
+        failed.push({
+          branch,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    this.invalidateCache();
+    return { deleted, skipped, failed };
+  }
+
+  /** `merge-base --is-ancestor`: exit 1 means "no", anything else is an error. */
+  private async isAncestor(ancestor: string, ref: string): Promise<boolean> {
+    try {
+      await this.execGit(["merge-base", "--is-ancestor", ancestor, ref]);
+      return true;
+    } catch (err: unknown) {
+      if ((err as { code?: number }).code === 1) return false;
+      throw err;
+    }
   }
 
   async deleteRemoteBranch(remoteBranch: string): Promise<void> {
@@ -847,6 +1137,17 @@ export class GitService {
     this.invalidateCache();
   }
 
+  /** Track `upstream` (a remote-tracking branch such as `origin/main`) from `branch`. */
+  async setUpstream(branch: string, upstream: string): Promise<void> {
+    await this.execGit(["branch", `--set-upstream-to=${upstream}`, branch]);
+    this.invalidateCache();
+  }
+
+  async unsetUpstream(branch: string): Promise<void> {
+    await this.execGit(["branch", "--unset-upstream", branch]);
+    this.invalidateCache();
+  }
+
   async merge(branchName: string): Promise<void> {
     await this.execGit(["merge", branchName]);
     this.invalidateCache();
@@ -862,8 +1163,375 @@ export class GitService {
       // Stage the resolved files before continuing
       await this.stageUnmerged();
     }
-    await this.execGit(["rebase", `--${action}`]);
+    try {
+      // A squash conflict makes `--continue` open the message editor, which
+      // would hang with no terminal attached; `:` keeps git's message.
+      await this.execGit(["rebase", `--${action}`], MAX_BUFFER, {
+        GIT_EDITOR: ":",
+      });
+    } finally {
+      this.invalidateCache();
+      await this.removeRebaseScratchIfDone();
+    }
+  }
+
+  /** Whether a rebase is waiting on the user. Safe in linked worktrees. */
+  async isRebaseInProgress(): Promise<boolean> {
+    for (const name of ["rebase-merge", "rebase-apply"]) {
+      try {
+        const p = (
+          await this.execGit(["rev-parse", "--git-path", name])
+        ).trim();
+        await fs.access(path.resolve(this.cwd, p));
+        return true;
+      } catch {}
+    }
+    return false;
+  }
+
+  /** The message files of an interactive rebase are only needed while it runs. */
+  private async removeRebaseScratchIfDone(): Promise<void> {
+    try {
+      if (await this.isRebaseInProgress()) return;
+      const gitDir = (
+        await this.execGit(["rev-parse", "--absolute-git-dir"])
+      ).trim();
+      await removeScratch(gitDir);
+    } catch {}
+  }
+
+  async hasStagedChanges(): Promise<boolean> {
+    try {
+      await this.execGit(["diff", "--cached", "--quiet"]);
+      return false;
+    } catch (err: unknown) {
+      if ((err as { code?: number }).code === 1) return true;
+      throw err;
+    }
+  }
+
+  private async resolveCommit(rev: string, what: string): Promise<string> {
+    const safe = assertRevision(rev, what);
+    try {
+      return (
+        await this.execGit(["rev-parse", "--verify", `${safe}^{commit}`])
+      ).trim();
+    } catch {
+      throw new Error(`"${rev}" is not a commit.`);
+    }
+  }
+
+  /**
+   * Local branches (other than any checked out in a worktree) that point at
+   * one of `hashes`, keyed by full commit id. Used to write `update-ref`
+   * lines into a replaced todo.
+   */
+  private async branchesPointingAt(
+    hashes: string[],
+  ): Promise<Map<string, string[]>> {
+    const wanted = new Set(hashes.map((h) => h.toLowerCase()));
+    const output = await this.execGit([
+      "for-each-ref",
+      "--format=%(refname) %(objectname) %(worktreepath)",
+      "refs/heads",
+    ]);
+    const result = new Map<string, string[]>();
+    for (const line of output.split("\n")) {
+      const [ref, hash, ...checkedOut] = line.split(" ");
+      if (!ref || !hash || checkedOut.join(" ").trim()) continue;
+      if (!wanted.has(hash)) continue;
+      result.set(hash, [...(result.get(hash) ?? []), ref]);
+    }
+    return result;
+  }
+
+  /**
+   * The commits `git rebase -i` would put in the todo, oldest first: those
+   * after `base` (or all of them with `root`), merges excluded as git does
+   * unless it is told to recreate them.
+   */
+  private async rebaseRange(options: {
+    base?: string;
+    root?: boolean;
+  }): Promise<{ commits: CommitNode[]; hasMerges: boolean }> {
+    const range = options.root
+      ? ["HEAD"]
+      : ["--cherry-pick", "--right-only", `${options.base ?? ""}...HEAD`];
+    if (!options.root && !options.base) {
+      throw new Error("Choose the commit to rebase from.");
+    }
+    const output = await this.execGit([
+      "log",
+      "--reverse",
+      "--topo-order",
+      "--max-parents=1",
+      `--format=${LOG_FORMAT}${FMT_RECORD_SEP}`,
+      ...range,
+    ]);
+    const merges = await this.execGit([
+      "rev-list",
+      "--merges",
+      "--max-count=1",
+      ...range,
+    ]);
+    return {
+      commits: parseLogOutput(output),
+      hasMerges: merges.trim().length > 0,
+    };
+  }
+
+  /**
+   * The rows of the interactive-rebase dialog. With `autosquash` the list is
+   * already rearranged the way `--autosquash` would, fixups marked.
+   */
+  async getRebaseCommits(options: {
+    base?: string;
+    root?: boolean;
+    autosquash?: boolean;
+  }): Promise<{ commits: RebaseCommit[]; hasMerges: boolean }> {
+    const base = options.root
+      ? undefined
+      : await this.resolveCommit(options.base ?? "", "base");
+    const { commits, hasMerges } = await this.rebaseRange({
+      base,
+      root: options.root,
+    });
+    const byHash = new Map(commits.map((c) => [c.hash, c]));
+    let entries: RebaseEntry[] = commits.map((c) => ({
+      action: "pick",
+      hash: c.hash,
+      subject: c.subject,
+    }));
+    if (options.autosquash) entries = autosquashEntries(entries);
+    return {
+      hasMerges,
+      commits: entries.flatMap((entry) => {
+        const commit = byHash.get(entry.hash);
+        if (!commit) return [];
+        const row: RebaseCommit = {
+          hash: commit.hash,
+          shortHash: commit.shortHash,
+          subject: commit.subject,
+          body: commit.body.trim(),
+          authorName: commit.authorName,
+          authorDate: commit.authorDate,
+          action: entry.action,
+        };
+        if (entry.flag) row.flag = entry.flag;
+        return [row];
+      }),
+    };
+  }
+
+  /**
+   * `git rebase -i` without a terminal or an editor window. A supplied todo
+   * is installed through `GIT_SEQUENCE_EDITOR`, and every message editor is
+   * the no-op `:`, so the call returns instead of waiting. When the rebase
+   * stops (conflict, `edit`, failing `exec`) it is left in progress for the
+   * existing continue / skip / abort flow and the result says so.
+   */
+  async interactiveRebase(
+    options: InteractiveRebaseOptions,
+  ): Promise<InteractiveRebaseResult> {
+    if (await this.isOperationInProgress()) {
+      throw new Error(
+        "Finish or abort the merge, rebase, cherry-pick or revert in progress first.",
+      );
+    }
+    if (!options.root && !options.base) {
+      throw new Error("Choose the commit to rebase from.");
+    }
+    const base = options.root
+      ? undefined
+      : await this.resolveCommit(options.base ?? "", "base");
+    const onto = options.onto
+      ? await this.resolveCommit(options.onto, "--onto target")
+      : undefined;
+    const gitDir = (
+      await this.execGit(["rev-parse", "--absolute-git-dir"])
+    ).trim();
+    await removeScratch(gitDir);
+
+    let entries: RebaseEntry[] | undefined;
+    if (options.entries) {
+      if (options.rebaseMerges) {
+        throw new Error(
+          "An edited commit list cannot be combined with recreating merges.",
+        );
+      }
+      const range = await this.rebaseRange({ base, root: options.root });
+      if (range.hasMerges) {
+        throw new Error(
+          'These commits include a merge commit, which an edited list would flatten. Turn on "Rebase merges" and rebase without editing the list.',
+        );
+      }
+      entries = matchEntriesToRange(
+        options.entries,
+        range.commits.map((c) => c.hash),
+      );
+    }
+
+    const todoPath = entries
+      ? await writeScratchTodo(gitDir, entries, {
+          refsByHash: options.updateRefs
+            ? await this.branchesPointingAt(entries.map((e) => e.hash))
+            : undefined,
+        })
+      : undefined;
+    const args = buildRebaseArgs({ ...options, base, onto }, !!entries);
+    const env = rebaseEnv(todoPath);
+
+    const run = async (): Promise<void> => {
+      let failure: unknown;
+      try {
+        await this.execGit(args, MAX_BUFFER, env);
+      } catch (err) {
+        failure = err;
+      }
+      this.invalidateCache();
+      if (await this.isRebaseInProgress()) {
+        const conflicts = await this.getConflictFiles().catch(() => []);
+        throw new RebaseStoppedError(
+          describeStop(conflicts, failure ? gitErrorText(failure) : ""),
+          conflicts,
+        );
+      }
+      if (failure) throw failure;
+    };
+
+    try {
+      if (options.policy === "shelve") {
+        await this.withSavedChanges("shelve", "Rebase", run);
+      } else {
+        await run();
+      }
+      await removeScratch(gitDir);
+      return { status: "completed" };
+    } catch (err) {
+      const stopped = findRebaseStop(err);
+      if (stopped) {
+        // The wrapper's message also says where the saved changes are.
+        const message = err instanceof Error ? err.message : stopped.message;
+        return { status: "stopped", message, conflicts: stopped.conflicts };
+      }
+      await removeScratch(gitDir);
+      throw err;
+    }
+  }
+
+  /**
+   * Replace the message of any commit in the current branch. HEAD is amended
+   * in place; an older commit is reworded by rebasing the commits after it.
+   */
+  async rewordCommit(
+    hash: string,
+    message: string,
+    policy: SaveChangesPolicy = "stash",
+  ): Promise<InteractiveRebaseResult> {
+    if (!message.trim()) throw new Error("The commit message cannot be empty.");
+    if (await this.isOperationInProgress()) {
+      throw new Error(
+        "Finish or abort the merge, rebase, cherry-pick or revert in progress first.",
+      );
+    }
+    const full = await this.resolveCommit(hash, "commit");
+    if (!(await this.isAncestorOfHead(full))) {
+      throw new Error("That commit is not part of the current branch.");
+    }
+    const parents = await this.getCommitParents(full);
+    const head = (await this.execGit(["rev-parse", "HEAD"])).trim();
+    if (full === head) {
+      // --only: change the message without committing the index.
+      await this.execGit(
+        [
+          "commit",
+          "--amend",
+          "--only",
+          "--allow-empty",
+          "--no-verify",
+          "--cleanup=whitespace",
+          "-m",
+          message,
+        ],
+        MAX_BUFFER,
+        { GIT_EDITOR: ":" },
+      );
+      this.invalidateCache();
+      return { status: "completed" };
+    }
+    if (parents.length > 1) {
+      throw new Error("A merge commit's message cannot be edited this way.");
+    }
+    const { commits } = await this.getRebaseCommits(
+      parents[0] ? { base: parents[0] } : { root: true },
+    );
+    return this.interactiveRebase({
+      ...(parents[0] ? { base: parents[0] } : { root: true }),
+      policy,
+      entries: commits.map((c, i) => ({
+        action: i === 0 ? "reword" : "pick",
+        hash: c.hash,
+        subject: c.subject,
+        ...(i === 0 ? { message } : {}),
+      })),
+    });
+  }
+
+  /**
+   * Fold the staged changes into an earlier commit: record a `fixup!` /
+   * `squash!` commit for it, then autosquash the history above it.
+   */
+  async fixupCommit(
+    hash: string,
+    kind: "fixup" | "squash",
+    policy: SaveChangesPolicy = "stash",
+  ): Promise<InteractiveRebaseResult> {
+    if (await this.isOperationInProgress()) {
+      throw new Error(
+        "Finish or abort the merge, rebase, cherry-pick or revert in progress first.",
+      );
+    }
+    const full = await this.resolveCommit(hash, "commit");
+    if (!(await this.isAncestorOfHead(full))) {
+      throw new Error("That commit is not part of the current branch.");
+    }
+    const parents = await this.getCommitParents(full);
+    if (parents.length > 1) {
+      throw new Error("Changes cannot be folded into a merge commit.");
+    }
+    if (!(await this.hasStagedChanges())) {
+      throw new Error(
+        `Stage the changes you want to ${kind} into this commit first.`,
+      );
+    }
+
+    await this.execGit(
+      [
+        "commit",
+        kind === "fixup" ? `--fixup=${full}` : `--squash=${full}`,
+        "--no-edit",
+      ],
+      MAX_BUFFER,
+      { GIT_EDITOR: ":" },
+    );
     this.invalidateCache();
+
+    const from = parents[0] ? { base: parents[0] } : { root: true };
+    try {
+      const { hasMerges } = await this.rebaseRange(from);
+      return await this.interactiveRebase({
+        ...from,
+        autosquash: true,
+        rebaseMerges: hasMerges,
+        policy,
+      });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `The ${kind} commit was created, but the rebase that folds it in failed: ${detail}\n\nThe ${kind} commit is still on top of the branch.`,
+        { cause: err },
+      );
+    }
   }
 
   async mergeAbort(): Promise<void> {
@@ -892,13 +1560,41 @@ export class GitService {
     force = false,
     remote = "origin",
     targetBranch?: string,
+    options: { setUpstream?: boolean } = {},
   ): Promise<string> {
     const args = ["push"];
     if (force) args.push("--force-with-lease");
+    if (options.setUpstream) args.push("--set-upstream");
     args.push(remote, `${branchName}:${targetBranch || branchName}`);
     const output = await this.execGit(args);
     this.invalidateCache();
     return output;
+  }
+
+  /** Whether the branch tracks something (`branch.<name>.remote` and `.merge` are both set). */
+  async hasUpstream(branchName: string): Promise<boolean> {
+    const [remote, merge] = await Promise.all([
+      this.getConfig(`branch.${branchName}.remote`),
+      this.getConfig(`branch.${branchName}.merge`),
+    ]);
+    return Boolean(remote && merge);
+  }
+
+  /**
+   * Track `<remote>/<remoteBranch>`. `push --set-upstream` does this itself
+   * only for a branch source; pushing a bare commit leaves it to the caller.
+   */
+  async trackRemoteBranch(
+    branchName: string,
+    remote: string,
+    remoteBranch: string,
+  ): Promise<void> {
+    await this.execGit([
+      "branch",
+      `--set-upstream-to=${remote}/${remoteBranch}`,
+      branchName,
+    ]);
+    this.invalidateCache();
   }
 
   /**
@@ -935,32 +1631,324 @@ export class GitService {
     return parseLogOutput(output, remoteNames);
   }
 
-  async pull(branchName?: string): Promise<void> {
-    const args = ["pull", "--autostash"];
-    if (branchName) {
-      args.push("origin", branchName);
+  /**
+   * Fetch and integrate. The method is always explicit: a bare `git pull`
+   * aborts on divergent branches when `pull.rebase` is unset.
+   *
+   * The `stash` policy uses git's own `--autostash`, which restores the
+   * changes atomically; `shelve` wraps the pull in the IDEA-style shelf.
+   */
+  async update(options: {
+    method: "merge" | "rebase";
+    policy: SaveChangesPolicy;
+    branchName?: string;
+    remote?: string;
+  }): Promise<void> {
+    const args = [
+      "pull",
+      options.method === "rebase" ? "--rebase" : "--no-rebase",
+    ];
+    if (options.policy === "stash") args.push("--autostash");
+    if (options.branchName) {
+      args.push(options.remote ?? "origin", options.branchName);
     }
-    await this.execGit(args);
-    this.invalidateCache();
-  }
 
-  async pullRebase(branchName?: string): Promise<void> {
-    const args = ["pull", "--rebase", "--autostash"];
-    if (branchName) {
-      args.push("origin", branchName);
+    const run = () => this.execGit(args);
+    if (options.policy === "shelve") {
+      await this.withSavedChanges("shelve", "Update", run);
+    } else {
+      await run();
     }
-    await this.execGit(args);
     this.invalidateCache();
   }
 
-  async fetch(remote = "origin"): Promise<void> {
-    await this.execGit(["fetch", remote]);
+  async pull(
+    branchName?: string,
+    policy: SaveChangesPolicy = "stash",
+  ): Promise<void> {
+    await this.update({ method: "merge", policy, branchName });
+  }
+
+  async pullRebase(
+    branchName?: string,
+    policy: SaveChangesPolicy = "stash",
+  ): Promise<void> {
+    await this.update({ method: "rebase", policy, branchName });
+  }
+
+  /** Update using the configured method (`branchDefault` reads git config). */
+  async updateWithMethod(
+    method: UpdateMethod,
+    policy: SaveChangesPolicy,
+    branchName?: string,
+  ): Promise<void> {
+    let resolved: "merge" | "rebase";
+    if (method === "branchDefault") {
+      const branch = branchName ?? (await this.getCurrentBranch());
+      const branchConfig = branch
+        ? await this.getConfig(`branch.${branch}.rebase`)
+        : undefined;
+      resolved = resolveUpdateMethod(
+        method,
+        branchConfig,
+        await this.getConfig("pull.rebase"),
+      );
+    } else {
+      resolved = method;
+    }
+    await this.update({ method: resolved, policy, branchName });
+  }
+
+  /** One config value, or undefined when it is unset. */
+  async getConfig(key: string): Promise<string | undefined> {
+    try {
+      const out = await this.execGit(["config", "--get", key]);
+      return out.trim() || undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  // ─── Smart operations (save local changes around another operation) ───
+
+  private async hasTrackedChanges(): Promise<boolean> {
+    const out = await this.execGit([
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=no",
+    ]);
+    return out.trim().length > 0;
+  }
+
+  private async stashTopSha(): Promise<string | null> {
+    try {
+      const out = await this.execGit([
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "refs/stash",
+      ]);
+      return out.trim() || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** True while a merge, rebase, cherry-pick or revert is waiting on the user. */
+  async isOperationInProgress(): Promise<boolean> {
+    for (const name of [
+      "MERGE_HEAD",
+      "rebase-merge",
+      "rebase-apply",
+      "CHERRY_PICK_HEAD",
+      "REVERT_HEAD",
+    ]) {
+      try {
+        const p = (
+          await this.execGit(["rev-parse", "--git-path", name])
+        ).trim();
+        await fs.access(path.resolve(this.cwd, p));
+        return true;
+      } catch {}
+    }
+    return false;
+  }
+
+  /**
+   * Set tracked local changes aside. Returns null when there is nothing to
+   * save. Untracked files are left alone on purpose: the shelf path deletes
+   * what it shelves, and an untracked binary file cannot be written to a
+   * text patch.
+   */
+  async saveLocalChanges(
+    policy: SaveChangesPolicy,
+    label: string,
+  ): Promise<SavedChanges | null> {
+    if (!(await this.hasTrackedChanges())) return null;
+
+    if (policy === "shelve") {
+      const out = await this.execGit(["diff", "HEAD", "--name-only", "-z"]);
+      const files = out.split("\0").filter(Boolean);
+      if (files.length === 0) return null;
+      const name = await this.ideaShelveChanges(
+        `${label} (changes saved by JGC)`,
+        files,
+      );
+      return { kind: "shelf", name };
+    }
+
+    const before = await this.stashTopSha();
+    await this.execGit([
+      "stash",
+      "push",
+      "-m",
+      `${label} (changes saved by JGC)`,
+    ]);
+    const after = await this.stashTopSha();
+    // `stash push` exits 0 with "No local changes to save" and a stale top.
+    if (!after || after === before) return null;
+    this.invalidateCache();
+    return { kind: "stash", sha: after };
+  }
+
+  async restoreLocalChanges(saved: SavedChanges): Promise<void> {
+    if (saved.kind === "shelf") {
+      await this.ideaUnshelveChanges(saved.name, true);
+      return;
+    }
+    const list = (await this.execGit(["stash", "list", "--format=%H"]))
+      .trim()
+      .split("\n");
+    const index = list.indexOf(saved.sha);
+    if (index < 0) {
+      throw new Error("The stash holding your local changes no longer exists.");
+    }
+    await this.execGit(["stash", "pop", `stash@{${index}}`]);
     this.invalidateCache();
   }
 
-  async cherryPick(hash: string): Promise<void> {
-    await this.execGit(["cherry-pick", hash]);
+  /**
+   * Run `operation` with local changes set aside, then put them back.
+   *
+   * If the operation stops mid-way (a conflict leaves a merge or rebase to
+   * finish) the saved changes are NOT restored: applying them over a
+   * half-finished operation would tangle both. The error says where they are.
+   */
+  async withSavedChanges<T>(
+    policy: SaveChangesPolicy,
+    label: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const saved = await this.saveLocalChanges(policy, label);
+    const where = saved
+      ? saved.kind === "shelf"
+        ? `shelf "${saved.name}"`
+        : "the stash (git stash list)"
+      : "";
+
+    let result: T;
+    try {
+      result = await operation();
+    } catch (err) {
+      if (!saved) throw err;
+      const message = err instanceof Error ? err.message : String(err);
+      if (await this.isOperationInProgress()) {
+        throw new Error(
+          `${message}\n\nYour local changes are saved in ${where} and were not restored because the operation is unfinished.`,
+          { cause: err },
+        );
+      }
+      try {
+        await this.restoreLocalChanges(saved);
+      } catch (restoreErr) {
+        const detail =
+          restoreErr instanceof Error ? restoreErr.message : String(restoreErr);
+        throw new Error(
+          `${message}\n\nYour local changes are still saved in ${where}: ${detail}`,
+          { cause: err },
+        );
+      }
+      throw err;
+    }
+
+    if (saved) {
+      try {
+        await this.restoreLocalChanges(saved);
+      } catch (restoreErr) {
+        const detail =
+          restoreErr instanceof Error ? restoreErr.message : String(restoreErr);
+        throw new Error(
+          `The operation succeeded, but restoring your local changes failed. They are still saved in ${where}.\n\n${detail}`,
+          { cause: restoreErr },
+        );
+      }
+    }
     this.invalidateCache();
+    return result;
+  }
+
+  async fetch(
+    remote = "origin",
+    options?: Partial<FetchOptions>,
+  ): Promise<void> {
+    await this.execGit(buildFetchArgs(remote, options));
+    this.invalidateCache();
+  }
+
+  // Shallow repositories
+
+  async isShallow(): Promise<boolean> {
+    return isShallowRepository(this.runGit);
+  }
+
+  async unshallow(remote?: string): Promise<void> {
+    await unshallowRepository(this.runGit, remote, await this.networkEnv());
+    this.invalidateCache();
+  }
+
+  async deepen(commits: number): Promise<void> {
+    await deepenRepository(this.runGit, commits, await this.networkEnv());
+    this.invalidateCache();
+  }
+
+  /**
+   * Fetch every remote (the auto-fetch path). Resolves to whether any
+   * remote-tracking branch or tag moved, so callers can stay quiet when a
+   * background fetch found nothing new.
+   */
+  async fetchAllRemotes(options?: Partial<FetchOptions>): Promise<boolean> {
+    const before = await this.remoteRefSnapshot();
+    await this.execGit(buildFetchArgs(null, options));
+    if ((await this.remoteRefSnapshot()) === before) return false;
+    this.invalidateCache();
+    return true;
+  }
+
+  private remoteRefSnapshot(): Promise<string> {
+    return this.execGit([
+      "for-each-ref",
+      "--format=%(objectname) %(refname)",
+      "refs/remotes",
+      "refs/tags",
+    ]);
+  }
+
+  private cherryPickEmptyFlag?: Promise<boolean>;
+
+  /** Whether this git understands `cherry-pick --empty=`; probed once. */
+  private supportsCherryPickEmpty(): Promise<boolean> {
+    this.cherryPickEmptyFlag ??= this.execGit(["--version"]).then(
+      gitSupportsCherryPickEmpty,
+      () => false,
+    );
+    return this.cherryPickEmptyFlag;
+  }
+
+  async cherryPick(
+    hash: string,
+    options: CherryPickOptions = DEFAULT_CHERRY_PICK_OPTIONS,
+  ): Promise<CherryPickOutcome> {
+    try {
+      return await runCherryPick(
+        (args) => this.execGit(args),
+        hash,
+        options,
+        await this.supportsCherryPickEmpty(),
+      );
+    } finally {
+      this.invalidateCache();
+    }
+  }
+
+  /** Commits of `ref` split by whether HEAD already holds a patch-equivalent. */
+  async getCherryMarks(ref: string): Promise<CherryMarks> {
+    try {
+      return await computeCherryMarks((args) => this.execGit(args), ref);
+    } catch (err) {
+      if (ref.startsWith("-")) throw err;
+      // No HEAD yet, or an unknown ref: nothing to compare.
+      return { notCherryPicked: [], cherryPicked: [] };
+    }
   }
 
   async checkoutCommit(hash: string): Promise<void> {
@@ -1084,22 +2072,6 @@ export class GitService {
       throw new Error("Cannot undo the initial commit");
     }
     await this.execGit(["reset", "--soft", "HEAD~1"]);
-    this.invalidateCache();
-  }
-
-  /**
-   * Point the remote branch at `hash`. The refspec is `<sha>:refs/heads/<branch>`
-   * — source is the commit, destination is the branch. (The reversed form
-   * `<branch>:<sha>` created a remote branch literally named after the hash.)
-   */
-  async pushAllUpToHere(hash: string, remote: string): Promise<void> {
-    const branch = (
-      await this.execGit(["rev-parse", "--abbrev-ref", "HEAD"])
-    ).trim();
-    if (!branch || branch === "HEAD") {
-      throw new Error("Cannot push from a detached HEAD");
-    }
-    await this.execGit(["push", remote, `${hash}:refs/heads/${branch}`]);
     this.invalidateCache();
   }
 
@@ -1312,20 +2284,154 @@ export class GitService {
     await this.execGit(["add", "-A"]);
   }
 
-  async commit(message: string, amend = false): Promise<void> {
-    const args = ["commit", "-m", message];
-    if (amend) args.push("--amend");
-    await this.execGit(args);
+  async commit(
+    message: string,
+    amend = false,
+    options: CommitOptions = {},
+  ): Promise<void> {
+    try {
+      await this.execGit(buildCommitArgs(message, amend, options));
+    } catch (err) {
+      const hint =
+        options.gpgSign !== "never" && err instanceof Error
+          ? explainSigningFailure(err.message)
+          : undefined;
+      throw hint ? new Error(`${(err as Error).message}\n${hint}`) : err;
+    }
     this.invalidateCache();
   }
 
-  async commitAndPush(message: string, amend = false): Promise<void> {
-    await this.commit(message, amend);
+  async commitAndPush(
+    message: string,
+    amend = false,
+    options: CommitOptions = {},
+    pushBranch?: (branch: string, force: boolean) => Promise<void>,
+  ): Promise<void> {
+    await this.commit(message, amend, options);
     // Push current branch
     const branch = await this.getCurrentBranch();
     if (branch) {
       const force = amend;
-      await this.push(branch, force);
+      if (pushBranch) await pushBranch(branch, force);
+      else await this.push(branch, force);
+    }
+  }
+
+  /**
+   * Run the enabled pre-commit checks against what a commit made now would
+   * contain. `selection` is the commit panel's check-box state, applied on a
+   * scratch index. An empty result means nothing to warn about.
+   */
+  async checkCommit(
+    settings: CommitSettings,
+    selection: PendingSelection = {},
+  ): Promise<CommitWarning[]> {
+    let files: PendingFile[] = [];
+    if (settings.warnLargeFiles || settings.warnCrlf) {
+      try {
+        files = await readPendingCommit(this.cwd, selection, {
+          sizes: settings.warnLargeFiles,
+          eol: settings.warnCrlf,
+        });
+      } catch {
+        // The checks are advisory: if git cannot answer, the commit itself
+        // will report the real problem.
+      }
+    }
+    return runCommitChecks({
+      files,
+      largeFileBytes: settings.warnLargeFiles
+        ? thresholdBytes(settings.largeFileThresholdMB)
+        : undefined,
+      checkCrlf: settings.warnCrlf,
+      head: settings.warnDetachedHead
+        ? {
+            detached: await this.isHeadDetached(),
+            rebaseInProgress: await this.isRebaseInProgress(),
+          }
+        : undefined,
+      identity: settings.warnMissingIdentity
+        ? await this.getCommitIdentity()
+        : undefined,
+    });
+  }
+
+  /** True when HEAD points at a commit instead of a branch. */
+  async isHeadDetached(): Promise<boolean> {
+    try {
+      await this.execGit(["symbolic-ref", "-q", "HEAD"]);
+      return false;
+    } catch (err) {
+      // `symbolic-ref -q` exits 1 for a detached HEAD; other failures (no
+      // repository, git missing) say nothing about HEAD.
+      return (err as { code?: unknown }).code === 1;
+    }
+  }
+
+  /** The author name and email git would use: environment first, then config. */
+  async getCommitIdentity(): Promise<{ name?: string; email?: string }> {
+    const env = process.env;
+    const name =
+      env.GIT_AUTHOR_NAME ||
+      env.GIT_COMMITTER_NAME ||
+      (await this.getConfig("user.name")) ||
+      (await this.getConfig("author.name"));
+    const email =
+      env.GIT_AUTHOR_EMAIL ||
+      env.GIT_COMMITTER_EMAIL ||
+      env.EMAIL ||
+      (await this.getConfig("user.email")) ||
+      (await this.getConfig("author.email"));
+    return { name: name || undefined, email: email || undefined };
+  }
+
+  // ─── GPG signing ──────────────────────────────────────────────────
+
+  /** The program git signs with: `gpg.openpgp.program`, `gpg.program`, else `gpg`. */
+  async getGpgProgram(): Promise<string> {
+    return resolveGpgProgram(
+      (await this.getConfig("gpg.openpgp.program")) ??
+        (await this.getConfig("gpg.program")),
+    );
+  }
+
+  async listGpgKeys(): Promise<GpgKey[]> {
+    return listSecretKeys(await this.getGpgProgram(), this.cwd);
+  }
+
+  /** The repository's signing setup, as git config states it. */
+  async getSigningConfig(): Promise<{
+    keyId?: string;
+    enabled: boolean;
+    format?: string;
+  }> {
+    let enabled = false;
+    try {
+      const out = await this.execGit([
+        "config",
+        "--type=bool",
+        "--get",
+        "commit.gpgsign",
+      ]);
+      enabled = out.trim() === "true";
+    } catch {}
+    return {
+      keyId: await this.getConfig("user.signingkey"),
+      enabled,
+      format: await this.getConfig("gpg.format"),
+    };
+  }
+
+  /**
+   * Turn signing on for this repository with `keyId`, or off with `null`
+   * (the key stays configured so turning it on again is one click).
+   */
+  async setSigningKey(keyId: string | null): Promise<void> {
+    if (keyId) {
+      await this.execGit(["config", "--local", "user.signingkey", keyId]);
+      await this.execGit(["config", "--local", "commit.gpgsign", "true"]);
+    } else {
+      await this.execGit(["config", "--local", "commit.gpgsign", "false"]);
     }
   }
 
@@ -1731,17 +2837,50 @@ export class GitService {
     this.invalidateCache();
   }
 
-  async unshelveChanges(stashId: string, drop = true): Promise<void> {
-    if (drop) {
-      await this.execGit(["stash", "pop", stashId]);
-    } else {
-      await this.execGit(["stash", "apply", stashId]);
-    }
+  /** `git stash push` with the Stash Changes dialog's options. False when there was nothing to stash. */
+  async stashChanges(options: StashPushOptions): Promise<boolean> {
+    const before = await this.stashTopSha();
+    await this.execGit(buildStashPushArgs(options));
+    const after = await this.stashTopSha();
+    this.invalidateCache();
+    // `stash push` exits 0 with "No local changes to save" and a stale top.
+    return after !== null && after !== before;
+  }
+
+  async unshelveChanges(
+    stashId: string,
+    drop = true,
+    reinstateIndex = false,
+  ): Promise<void> {
+    await this.execGit(
+      buildUnstashArgs(stashId, { pop: drop, reinstateIndex }),
+    );
+    this.invalidateCache();
+  }
+
+  /** `git stash branch`: new branch at the stash's base commit, stash applied and (when clean) dropped. */
+  async unstashAsBranch(stashId: string, branchName: string): Promise<void> {
+    assertStashRef(stashId);
+    assertBranchName(branchName);
+    await this.execGit(["stash", "branch", branchName.trim(), stashId]);
     this.invalidateCache();
   }
 
   async deleteShelve(stashId: string): Promise<void> {
     await this.execGit(["stash", "drop", stashId]);
+  }
+
+  async stashCount(): Promise<number> {
+    const out = await this.execGit(["stash", "list", "--format=%gd"]);
+    return out.split("\n").filter((line) => line.trim()).length;
+  }
+
+  /** Drop every stash entry. Returns how many there were. */
+  async clearStashes(): Promise<number> {
+    const count = await this.stashCount();
+    if (count > 0) await this.execGit(["stash", "clear"]);
+    this.invalidateCache();
+    return count;
   }
 
   // ─── IDEA Shelf (patch-file based) Operations ─────────────────────
@@ -1837,10 +2976,11 @@ export class GitService {
     return [...new Set(files)];
   }
 
+  /** Returns the (de-duplicated) name of the shelf that was created. */
   async ideaShelveChanges(
     message: string,
     filePaths?: string[],
-  ): Promise<void> {
+  ): Promise<string> {
     const shelfDir = path.join(this.cwd, ".idea", "shelf");
     await fs.mkdir(shelfDir, { recursive: true });
 
@@ -1883,6 +3023,7 @@ export class GitService {
     }
 
     this.invalidateCache();
+    return uniqueName;
   }
 
   async ideaUnshelveChanges(shelfName: string, drop?: boolean): Promise<void> {
@@ -2122,6 +3263,59 @@ export class GitService {
   }
 
   // ────────────────────────────────────────────
+  // Submodules and sparse checkout
+  // ────────────────────────────────────────────
+
+  /** `execGit` bound for the vscode-free cores (submodules, sparse, shallow). */
+  private readonly runGit = (
+    args: string[],
+    env?: Record<string, string | undefined>,
+  ): Promise<string> => this.execGit(args, undefined, env);
+
+  /** No prompts for passwords or ssh questions: operations that talk to a remote. */
+  private networkEnv(): Promise<Record<string, string | undefined>> {
+    return nonInteractiveGitEnv(this.cwd);
+  }
+
+  async listSubmodules(): Promise<SubmoduleInfo[]> {
+    return listSubmodules(this.runGit);
+  }
+
+  async updateSubmodules(paths: string[] = []): Promise<void> {
+    await updateSubmodules(this.runGit, paths, await this.networkEnv());
+    this.invalidateCache();
+  }
+
+  async syncSubmodules(paths: string[] = []): Promise<void> {
+    await syncSubmodules(this.runGit, paths);
+    this.invalidateCache();
+  }
+
+  async getSparseCheckout(): Promise<SparseCheckoutStatus> {
+    return sparseCheckoutStatus(this.runGit);
+  }
+
+  async enableSparseCheckout(directories: string[] = []): Promise<void> {
+    await enableSparseCheckout(this.runGit, directories);
+    this.invalidateCache();
+  }
+
+  async setSparseCheckout(directories: string[]): Promise<void> {
+    await setSparseCheckout(this.runGit, directories);
+    this.invalidateCache();
+  }
+
+  async addSparseCheckout(directories: string[]): Promise<void> {
+    await addSparseCheckout(this.runGit, directories);
+    this.invalidateCache();
+  }
+
+  async disableSparseCheckout(): Promise<void> {
+    await disableSparseCheckout(this.runGit);
+    this.invalidateCache();
+  }
+
+  // ────────────────────────────────────────────
   // Worktree operations
   // ────────────────────────────────────────────
 
@@ -2195,6 +3389,23 @@ export class GitService {
 
   async removeWorktree(worktreePath: string): Promise<void> {
     await this.execGit(["worktree", "remove", worktreePath]);
+    this.invalidateCache();
+  }
+
+  /** Protect a worktree from `prune` and `remove`; the reason is shown by `worktree list`. */
+  async lockWorktree(worktreePath: string, reason?: string): Promise<void> {
+    const trimmed = reason?.trim();
+    await this.execGit([
+      "worktree",
+      "lock",
+      ...(trimmed ? ["--reason", trimmed] : []),
+      worktreePath,
+    ]);
+    this.invalidateCache();
+  }
+
+  async unlockWorktree(worktreePath: string): Promise<void> {
+    await this.execGit(["worktree", "unlock", worktreePath]);
     this.invalidateCache();
   }
 
@@ -2444,7 +3655,9 @@ function parseTrack(track: string): { ahead: number; behind: number } {
 /**
  * Parse `git worktree list --porcelain` output.
  * Each worktree block is separated by an empty line.
- * Fields: worktree <path>, HEAD <sha>, branch <ref> (or detached)
+ * Fields: worktree <path>, HEAD <sha>, branch <ref> (or detached), and
+ * `locked [<reason>]` for a locked worktree. A reason with unusual characters
+ * is C-quoted by git.
  */
 function parseWorktreeList(output: string, mainCwd: string): WorktreeInfo[] {
   const worktrees: WorktreeInfo[] = [];
@@ -2457,6 +3670,8 @@ function parseWorktreeList(output: string, mainCwd: string): WorktreeInfo[] {
     let wtPath = "";
     let head = "";
     let branch = "";
+    let locked = false;
+    let lockReason: string | undefined;
 
     for (const line of lines) {
       if (line.startsWith("worktree ")) {
@@ -2467,6 +3682,10 @@ function parseWorktreeList(output: string, mainCwd: string): WorktreeInfo[] {
         // branch refs/heads/feature-x → feature-x
         const ref = line.substring("branch ".length).trim();
         branch = ref.replace(/^refs\/heads\//, "");
+      } else if (line === "locked" || line.startsWith("locked ")) {
+        locked = true;
+        const reason = unquoteGitPath(line.substring("locked".length).trim());
+        if (reason) lockReason = reason;
       }
     }
 
@@ -2476,6 +3695,8 @@ function parseWorktreeList(output: string, mainCwd: string): WorktreeInfo[] {
         branch,
         head,
         isMain: wtPath === mainCwd,
+        locked,
+        lockReason,
       });
     }
   }

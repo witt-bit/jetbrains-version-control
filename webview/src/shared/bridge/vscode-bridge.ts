@@ -1,5 +1,6 @@
 import type {
   Bridge,
+  CommandType,
   EventMessage,
   EventType,
   RequestMessage,
@@ -11,6 +12,29 @@ declare function acquireVsCodeApi(): {
   getState(): unknown;
   setState(state: unknown): void;
 };
+
+/**
+ * Commands that legitimately outlast the default deadline: a commit waits on
+ * the user's answer to a pre-commit warning, on Git hooks and on GPG
+ * passphrase prompts. A timeout would report failure for a commit that then
+ * goes through.
+ */
+const UNBOUNDED_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
+  "amendCommit",
+  "commitAndPush",
+  "commitChanges",
+]);
+
+const REQUEST_TIMEOUT_MS = 10_000;
+// Pushes can wait on a quick pick or a pull-then-push round trip.
+const LONG_RUNNING_TIMEOUT_MS = 10 * 60_000;
+const LONG_RUNNING_COMMANDS: ReadonlySet<CommandType> = new Set<CommandType>([
+  "deleteBranch",
+  "deleteBranchPrompt",
+  "executePush",
+  "pushAllUpToHere",
+  "pushBranch",
+]);
 
 export function createVSCodeBridge(): Bridge {
   const vscode = acquireVsCodeApi();
@@ -45,10 +69,17 @@ export function createVSCodeBridge(): Bridge {
     request(command, params = {}) {
       return new Promise((resolve, reject) => {
         const id = crypto.randomUUID();
-        const timeout = setTimeout(() => {
-          pendingRequests.delete(id);
-          reject(new Error(`Request '${command}' timed out`));
-        }, 10_000);
+        const timeout = UNBOUNDED_COMMANDS.has(command)
+          ? undefined
+          : setTimeout(
+              () => {
+                pendingRequests.delete(id);
+                reject(new Error(`Request '${command}' timed out`));
+              },
+              LONG_RUNNING_COMMANDS.has(command)
+                ? LONG_RUNNING_TIMEOUT_MS
+                : REQUEST_TIMEOUT_MS,
+            );
 
         pendingRequests.set(id, {
           resolve: (v) => {

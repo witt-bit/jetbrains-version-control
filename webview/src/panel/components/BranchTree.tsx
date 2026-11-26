@@ -1526,8 +1526,24 @@ function BranchContextMenu({
 
   const handleDelete = async () => {
     onClose();
+    // `origin/main` is protected as `main`.
+    const shortName = branch.isRemote
+      ? branch.name.slice(branch.name.indexOf("/") + 1)
+      : branch.name;
+    let isProtected = false;
+    try {
+      const protectedResult = (await bridge.request("getProtectedBranches", {
+        names: [shortName],
+      })) as { protectedNames?: string[] } | null;
+      isProtected = (protectedResult?.protectedNames ?? []).length > 0;
+    } catch (err) {
+      await reportActionError("Read protected branches", err);
+      return;
+    }
     const result = (await bridge.request("showConfirmMessage", {
-      message: `Delete branch '${branch.name}'?`,
+      message: isProtected
+        ? `'${branch.name}' is a protected branch. Delete it anyway?`
+        : `Delete branch '${branch.name}'?`,
       confirmLabel: "Delete",
     })) as { confirmed: boolean };
     if (!result.confirmed) return;
@@ -1536,6 +1552,7 @@ function BranchContextMenu({
         branchName: branch.name,
         isRemote: branch.isRemote,
         force: false,
+        protectedConfirmed: true,
       });
     } catch (_err) {
       // If normal delete fails (unmerged), ask for force delete
@@ -1549,6 +1566,7 @@ function BranchContextMenu({
             branchName: branch.name,
             isRemote: branch.isRemote,
             force: true,
+            protectedConfirmed: true,
           });
         } catch (err2) {
           await reportActionError("Force delete", err2);
@@ -1637,6 +1655,16 @@ function BranchContextMenu({
       bridge.request("showChangesView", { baseRef: branch.name }),
     );
 
+  const handleSetUpstream = () =>
+    runMenuAction(onClose, "Set upstream", () =>
+      bridge.request("setUpstreamPrompt", { branchName: branch.name }),
+    );
+
+  const handleUnsetUpstream = () =>
+    runMenuAction(onClose, "Unset upstream", () =>
+      bridge.request("unsetUpstream", { branchName: branch.name }),
+    );
+
   const items: {
     label: string;
     action: () => void;
@@ -1688,6 +1716,17 @@ function BranchContextMenu({
     items.push({ label: "", action: () => {}, separator: true });
     items.push({ label: "Update", action: handleUpdate });
     items.push({ label: "Push...", action: handlePush });
+  }
+
+  if (!branch.isRemote) {
+    items.push({ label: "", action: () => {}, separator: true });
+    items.push({ label: "Set Upstream Branch...", action: handleSetUpstream });
+    if (branch.upstream) {
+      items.push({
+        label: "Unset Upstream Branch",
+        action: handleUnsetUpstream,
+      });
+    }
   }
 
   if (items.length === 0) return null;

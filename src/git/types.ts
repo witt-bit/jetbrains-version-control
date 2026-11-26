@@ -86,6 +86,8 @@ export interface LogOptions {
   branch?: string; // specific branch, default --all
   author?: string;
   search?: string; // --grep
+  matchCase?: boolean; // search is case-sensitive (default: case-insensitive)
+  regex?: boolean; // search is a POSIX extended regex (default: literal text)
   file?: string;
   since?: string;
   until?: string;
@@ -181,4 +183,6 @@ export interface WorktreeInfo {
   branch: string; // 关联分支名（detached 时为空）
   head: string; // HEAD commit SHA
   isMain: boolean; // 是否为主 worktree（.git 所在位置）
+  locked: boolean; // `git worktree lock` 保护中
+  lockReason?: string; // 锁定原因（未提供则为空）
 }

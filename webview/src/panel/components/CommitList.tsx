@@ -20,6 +20,8 @@ import {
 } from "./CommitRow";
 import { CreateBranchDialog } from "./CreateBranchDialog";
 import { GitResetDialog } from "./GitResetDialog";
+import { InteractiveRebaseDialog } from "./InteractiveRebaseDialog";
+import { RewordDialog } from "./RewordDialog";
 
 const COLUMN_WIDTH = 16;
 const GRAPH_PADDING = 8;
@@ -71,6 +73,8 @@ export function CommitList({
     commit: Commit;
     branchName: string;
   } | null>(null);
+  const [rewordDialog, setRewordDialog] = useState<Commit | null>(null);
+  const [rebaseDialog, setRebaseDialog] = useState<Commit | null>(null);
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent, commit: Commit) => {
@@ -493,6 +497,8 @@ export function CommitList({
             onReset={(commit, branchName) => {
               setResetDialog({ commit, branchName });
             }}
+            onReword={setRewordDialog}
+            onInteractiveRebase={setRebaseDialog}
           />
         )}
         {createBranchDialog &&
@@ -531,6 +537,22 @@ export function CommitList({
             onClose={() => setResetDialog(null)}
           />
         )}
+        {rewordDialog &&
+          createPortal(
+            <RewordDialog
+              commit={rewordDialog}
+              onClose={() => setRewordDialog(null)}
+            />,
+            document.body,
+          )}
+        {rebaseDialog &&
+          createPortal(
+            <InteractiveRebaseDialog
+              commit={rebaseDialog}
+              onClose={() => setRebaseDialog(null)}
+            />,
+            document.body,
+          )}
       </div>
     </div>
   );

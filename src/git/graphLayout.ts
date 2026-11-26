@@ -10,11 +10,17 @@ import type {
  * Compute graph layout for a list of commits.
  * Uses a greedy lane allocation algorithm with activeLanes tracking.
  * Supports cross-page stability via LaneSnapshot.
+ *
+ * With `breakHiddenParents` (a filtered log) a parent that is not in `commits`
+ * ends its lane instead of leaving it open to the bottom of the list. A parent
+ * that is missing only because it sits on a later page is listed in
+ * `parentsOnLaterPages` and keeps its lane, so paging does not cut edges.
  */
 export function computeGraphLayout(
   commits: CommitNode[],
   prevSnapshot?: LaneSnapshot,
   breakHiddenParents = false,
+  parentsOnLaterPages?: ReadonlySet<string>,
 ): GraphLayoutResult {
   const activeLanes: (string | null)[] = prevSnapshot
     ? [...prevSnapshot.activeLanes]
@@ -29,7 +35,7 @@ export function computeGraphLayout(
     prevSnapshot?.nextColorIndex ?? prevSnapshot?.colorIndex ?? 0;
 
   const visibleSet = breakHiddenParents
-    ? new Set(commits.map((c) => c.hash))
+    ? new Set([...commits.map((c) => c.hash), ...(parentsOnLaterPages ?? [])])
     : null;
 
   const lanes = new Map<string, LaneInfo>();

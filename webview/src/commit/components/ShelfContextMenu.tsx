@@ -6,6 +6,7 @@ import {
 } from "../../shared/components/ContextMenu";
 import {
   IconApply,
+  IconBranch,
   IconDelete,
   IconUnshelve,
 } from "../../shared/components/icons";
@@ -21,6 +22,8 @@ interface ShelfContextMenuProps {
   x: number;
   y: number;
   entry: ShelveEntry;
+  /** Opens the Unstash dialog (pop/apply, reinstate index, new branch). */
+  onUnstashAs: (entry: ShelveEntry) => void;
   onClose: () => void;
 }
 
@@ -28,6 +31,7 @@ export function ShelfContextMenu({
   x,
   y,
   entry,
+  onUnstashAs,
   onClose,
 }: ShelfContextMenuProps) {
   const unshelveLabel = useUnshelveShortcutLabel();
@@ -43,6 +47,11 @@ export function ShelfContextMenu({
     unshelveChanges(entry.id, false);
     onClose();
   }, [entry, unshelveChanges, onClose]);
+
+  const handleUnstashAs = useCallback(() => {
+    onUnstashAs(entry);
+    onClose();
+  }, [entry, onUnstashAs, onClose]);
 
   const handleDelete = useCallback(() => {
     deleteShelve(entry.id);
@@ -61,6 +70,10 @@ export function ShelfContextMenu({
 
       <ContextMenuItem onClick={handleApply} icon={<IconApply />}>
         Restore
+      </ContextMenuItem>
+
+      <ContextMenuItem onClick={handleUnstashAs} icon={<IconBranch />}>
+        Unstash As...
       </ContextMenuItem>
 
       <ContextMenuSeparator />

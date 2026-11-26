@@ -182,6 +182,14 @@
   pointer-events: none;
 }
 
+.worktree-lock {
+  display: inline-block;
+  margin-left: 6px;
+  vertical-align: middle;
+  opacity: 0.75;
+  font-size: 12px;
+}
+
 .worktree-col-branch {
   flex: 1;
   overflow: hidden;

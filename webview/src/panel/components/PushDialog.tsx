@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { bridge, reportActionError } from "../../shared/bridge";
 
 export interface PushDialogProps {
   branchName: string;
@@ -8,6 +9,22 @@ export interface PushDialogProps {
 
 export function PushDialog({ branchName, onClose, onPush }: PushDialogProps) {
   const backdropRef = useRef<HTMLDivElement>(null);
+  const [isProtected, setIsProtected] = useState(false);
+
+  useEffect(() => {
+    let stale = false;
+    bridge
+      .request("getProtectedBranches", { names: [branchName] })
+      .then((result) => {
+        const names = (result as { protectedNames?: string[] } | null)
+          ?.protectedNames;
+        if (!stale) setIsProtected((names ?? []).length > 0);
+      })
+      .catch((err) => reportActionError("Read protected branches", err));
+    return () => {
+      stale = true;
+    };
+  }, [branchName]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -74,7 +91,8 @@ export function PushDialog({ branchName, onClose, onPush }: PushDialogProps) {
             lineHeight: 1.5,
           }}
         >
-          Push branch '{branchName}' to remote 'origin'.
+          Push branch '{branchName}' to its remote.
+          {isProtected && " This is a protected branch: force push is refused."}
         </div>
 
         {/* Buttons */}
@@ -89,6 +107,10 @@ export function PushDialog({ branchName, onClose, onPush }: PushDialogProps) {
           <button
             type="button"
             onClick={() => onPush(true)}
+            disabled={isProtected}
+            title={
+              isProtected ? `"${branchName}" is a protected branch` : undefined
+            }
             style={{
               background: "transparent",
               color: "var(--vscode-errorForeground, #f48771)",
@@ -97,7 +119,8 @@ export function PushDialog({ branchName, onClose, onPush }: PushDialogProps) {
               padding: "4px 14px",
               fontSize: 12,
               height: 28,
-              cursor: "pointer",
+              cursor: isProtected ? "not-allowed" : "pointer",
+              opacity: isProtected ? 0.5 : 1,
               fontWeight: 500,
             }}
           >

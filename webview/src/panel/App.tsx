@@ -49,6 +49,7 @@ export function PanelApp() {
   useSuppressContextMenu();
   const loading = usePanelStore((s) => s.loading);
   const commits = usePanelStore((s) => s.commits);
+  const loadedOnce = usePanelStore((s) => s.loadedOnce);
   const operationInProgress = usePanelStore((s) => s.operationInProgress);
   const fetchInitialData = usePanelStore((s) => s.fetchInitialData);
 
@@ -88,7 +89,8 @@ export function PanelApp() {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  if (loading && commits.length === 0) {
+  // A filter that matches nothing must not replace the header holding it.
+  if (loading && commits.length === 0 && !loadedOnce) {
     return (
       <div
         style={{

@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { blameBoxStyle, blankBlameBox } from "../decorations/box";
+import { type BlameOptions, parseBlameOptions } from "../git/blameOptions";
 import type { GitService } from "../git/gitService";
 import type { BlameLine } from "../git/types";
 import type { MessageRouter } from "../messages/messageRouter";
@@ -217,6 +218,12 @@ function renderAuthorName(line: BlameLine, style: NameStyle): string {
   }
 }
 
+/** The `git blame` options from `jgc.blame.*`, read fresh on every call. */
+export function readBlameOptions(): BlameOptions {
+  const cfg = vscode.workspace.getConfiguration("jgc.blame");
+  return parseBlameOptions((key) => cfg.get(key));
+}
+
 function readConfig(): BlameConfig {
   const cfg = vscode.workspace.getConfiguration("jgc.blame");
   const rawColumns = cfg.get<ColumnId[]>("columns", ["date", "author"]);
@@ -344,11 +351,12 @@ export class BlameManager implements vscode.Disposable {
         : target.document.uri.path.replace(/^\//, "");
 
     let blameLines: BlameLine[];
+    const blameOptions = readBlameOptions();
     try {
       blameLines =
         revision === undefined
-          ? await entry.service.blame(relativePath)
-          : await entry.service.blameAt(revision, relativePath);
+          ? await entry.service.blame(relativePath, blameOptions)
+          : await entry.service.blameAt(revision, relativePath, blameOptions);
     } catch {
       void vscode.window.showInformationMessage(
         "JGC: File has no Git blame history (untracked, ignored, or not in this revision).",

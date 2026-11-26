@@ -6,6 +6,7 @@ import { FileTree } from "../../shared/components/FileTree";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useFocusContextKey } from "../../shared/hooks/useFocusContextKey";
+import { pathMatchesFilter } from "../../shared/store/log-filter";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { DiffFile } from "../../shared/types/git";
 import { FileContextMenu } from "./FileContextMenu";
@@ -79,9 +80,11 @@ export function FileChangeTree() {
 
   const filter = usePanelStore((s) => s.filter);
 
-  // When file filter is active, only show that file
+  // When the path filter is active, only show files under it (file or folder)
   const displayFiles = filter.file
-    ? commitFiles.filter((f) => (f.newPath || f.oldPath) === filter.file)
+    ? commitFiles.filter((f) =>
+        pathMatchesFilter(f.newPath || f.oldPath, filter.file),
+      )
     : commitFiles;
 
   if (displayFiles.length === 0 && commitFiles.length === 0) {

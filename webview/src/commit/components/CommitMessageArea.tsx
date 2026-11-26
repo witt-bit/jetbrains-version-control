@@ -6,6 +6,7 @@ import { IconSparkle } from "../../shared/components/icons";
 import { Tooltip } from "../../shared/components/Tooltip";
 import "../../shared/components/Tooltip.css";
 import { useCommitStore } from "../../shared/store/commit-store";
+import { CommitOptionsButton } from "./CommitOptionsButton";
 
 export function CommitMessageArea() {
   const {
@@ -54,8 +55,8 @@ export function CommitMessageArea() {
   const handleCommitAndPush = useCallback(async () => {
     if (!canCommit) return;
     setShowDropdown(false);
-    await commit();
-    await bridge.request("openPushPanel");
+    // A cancelled or failed commit must not open the Push panel.
+    if (await commit()) await bridge.request("openPushPanel");
   }, [canCommit, commit]);
 
   const handleKeyDown = useCallback(
@@ -189,6 +190,7 @@ export function CommitMessageArea() {
             </svg>
           </button>
         </Tooltip>
+        <CommitOptionsButton />
         {showHistory &&
           createPortal(
             <HistoryDropdown

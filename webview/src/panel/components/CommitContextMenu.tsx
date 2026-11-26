@@ -14,12 +14,16 @@ import {
   IconBranch,
   IconCherryPick,
   IconDelete,
+  IconEdit,
   IconLeft,
   IconPatch,
   IconRight,
   IconTag,
 } from "../../shared/components/icons";
 import "../../shared/components/ContextMenu.css";
+import CodiconCombine from "~icons/codicon/combine";
+import CodiconFoldUp from "~icons/codicon/fold-up";
+import CodiconListOrdered from "~icons/codicon/list-ordered";
 import { usePanelStore } from "../../shared/store/panel-store";
 import type { Commit } from "../../shared/types/git";
 
@@ -30,6 +34,8 @@ interface CommitContextMenuProps {
   onClose: () => void;
   onCreateBranch?: (hash: string, defaultName: string) => void;
   onReset?: (commit: Commit, branchName: string) => void;
+  onReword?: (commit: Commit) => void;
+  onInteractiveRebase?: (commit: Commit) => void;
 }
 
 export function CommitContextMenu({
@@ -39,6 +45,8 @@ export function CommitContextMenu({
   onClose,
   onCreateBranch,
   onReset,
+  onReword,
+  onInteractiveRebase,
 }: CommitContextMenuProps) {
   const currentBranch = usePanelStore((s) => s.currentBranch);
   const [isRebasing, setIsRebasing] = useState(false);
@@ -134,6 +142,39 @@ export function CommitContextMenu({
       bridgeWithProgress("pushAllUpToHere", { hash: commit.hash }),
     );
 
+  const handleReword = () => {
+    onClose();
+    onReword?.(commit);
+  };
+
+  const handleInteractiveRebase = () => {
+    onClose();
+    onInteractiveRebase?.(commit);
+  };
+
+  // Fixup and Squash both turn the staged changes into a new commit and fold
+  // it into this one, so the user confirms what is about to be rewritten.
+  const foldStagedInto = async (
+    command: "fixupCommit" | "squashCommit",
+    what: "Fixup" | "Squash",
+  ) => {
+    onClose();
+    try {
+      const result = (await bridge.request("showConfirmMessage", {
+        message: `Create a ${what.toLowerCase()} commit from the staged changes and squash it into ${shortHash} "${commit.subject}"?\n\nThis rewrites that commit and every commit after it on the current branch.`,
+        confirmLabel: what,
+      })) as { confirmed: boolean };
+      if (!result.confirmed) return;
+      await bridgeWithProgress(command, { hash: commit.hash });
+    } catch (err) {
+      await reportActionError(what, err);
+    }
+  };
+
+  const handleFixup = () => foldStagedInto("fixupCommit", "Fixup");
+
+  const handleSquash = () => foldStagedInto("squashCommit", "Squash");
+
   const handleNewBranch = async () => {
     onClose();
     if (onCreateBranch) {
@@ -216,6 +257,12 @@ export function CommitContextMenu({
     isCherryPicking ||
     /^(main|master)$/i.test(currentBranch);
 
+  // Rewriting history needs a branch to move and no other operation under
+  // way. A merge commit cannot be edited, folded into or squashed.
+  const isRewriteDisabled =
+    !currentBranch || isRebasing || isMerging || isCherryPicking;
+  const isMergeCommit = commit.parents.length > 1;
+
   return (
     <ContextMenu x={x} y={y} minWidth={200} onClose={onClose}>
       <ContextMenuItem onClick={handleCopyHash} icon={<IconCopy />}>
@@ -253,11 +300,39 @@ export function CommitContextMenu({
       </ContextMenuItem>
       <ContextMenuSeparator />
       <ContextMenuItem
+        onClick={handleReword}
+        icon={<IconEdit />}
+        disabled={isRewriteDisabled || isMergeCommit}
+      >
+        Edit Commit Message...
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleFixup}
+        icon={<CodiconFoldUp />}
+        disabled={isRewriteDisabled || isMergeCommit}
+      >
+        Fixup...
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleSquash}
+        icon={<CodiconCombine />}
+        disabled={isRewriteDisabled || isMergeCommit}
+      >
+        Squash Into...
+      </ContextMenuItem>
+      <ContextMenuItem
         onClick={handleDropCommit}
         icon={<IconDelete />}
         disabled={isDropCommitDisabled}
       >
         Drop Commit
+      </ContextMenuItem>
+      <ContextMenuItem
+        onClick={handleInteractiveRebase}
+        icon={<CodiconListOrdered />}
+        disabled={isRewriteDisabled}
+      >
+        Interactively Rebase from Here...
       </ContextMenuItem>
       <ContextMenuItem onClick={handlePushAllUpToHere} icon={<IconBranch />}>
         Push All up to Here...
