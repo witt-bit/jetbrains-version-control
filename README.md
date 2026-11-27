@@ -372,8 +372,6 @@ See [AGENTS.md](./AGENTS.md) for the architecture and the conventions this codeb
 ## Credits
 
 - Forked from: [witt-bit/jetbrains-version-control](https://github.com/witt-bit/jetbrains-version-control)
-- Original: [aotemj/jetbrains-git-graph](https://github.com/aotemj/jetbrains-git-graph)
-- Fork from: [zhyc9de/jet-git](https://github.com/zhyc9de/jet-git)
 - Icons: [IntelliJ IDEA Icons](https://intellij-icons.jetbrains.design/) (Apache 2.0)
 
 ## License
