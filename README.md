@@ -29,6 +29,20 @@
 - **3-way merge editor** and a conflict list, instead of VS Code's block-by-block conflict UI
 - **Git Worktree panel**, Explorer status colours and gutter change markers — so the built-in Git extension can be switched off entirely
 
+### Added in this fork
+
+Everything below was added after forking from [witt-bit/jetbrains-version-control](https://github.com/witt-bit/jetbrains-version-control):
+
+- **Changelists** — group unstaged changes into named lists, like IDEA's Changes view
+- **Interactive rebase** dialog, plus Edit Commit Message, Fixup and Squash Into
+- **Smart checkout** — no more failures on a dirty working tree
+- **Rejected pushes recover in place**, with protected branches and force-with-lease
+- **Update method** (merge / rebase), stash options, fetch options and background auto-fetch
+- **Commit checks**, sign-off, Git hooks switch and GPG signing
+- **Git Log message / path filters** and Go To Hash / Branch / Tag
+- **Repository commands** — clone, init, submodules, sparse checkout, unshallow / deepen
+- **Shelf toolbar**, cherry-pick options and blame options
+
 ## Features
 
 ### Git Log
@@ -40,6 +54,11 @@
 - **Detail panel** — commit message plus a changed-file tree
 - **Filters** — by branch, author and date range
 - **Multi-selection** — Shift+click ranges, Cmd/Ctrl+click to toggle, Shift+Arrow from the keyboard
+- **Message filter** — Match Case and Regex toggles; Git applies it across the whole history, and it stays in force while scrolling and refreshing
+- **Path filter** — show only commits touching a file or folder
+- **Go To Hash / Branch / Tag** — `Cmd+Shift+L` (`Ctrl+Shift+L`) finds a commit, loading more history until it appears and lifting any filter that hides it; `Ctrl+L` focuses the filter box
+- **Dim cherry-picked commits** — a toolbar toggle dims commits already cherry-picked onto HEAD
+- **Interactive rebase** — see [below](#interactive-rebase)
 
 ### Commit Panel
 
@@ -49,7 +68,53 @@ Working-tree changes with a JetBrains layout.
 - **Shelf and stash** — shelve, unshelve, view a shelf diff and import patches, alongside IDEA-format shelves
 - **Jump to Source** — `F4`, or `Cmd+↓` / `Ctrl+↓`, from the file list, the Git Log changed files and inside a diff editor
 - **AI commit message** — see below
+- **Changelists** — see [below](#changelists)
+- **Commit options and checks** — see [below](#commit-options-and-checks)
 - **Group by directory**, show or hide unversioned files, and a pending-changes badge on the activity bar icon
+
+### Changelists
+
+Group unstaged changes into named lists in the Commit panel, like IDEA's Changes view. It is an overlay on the index, not a replacement: the Staged group, Unversioned Files and Merge Conflicts behave exactly as before.
+
+- **Create, rename, delete and Set Active** from a list's right-click menu or the New Changelist toolbar button; new changes land in the active list
+- **Drag and drop** files, or a whole selection, onto a list — or use **Move to Another Changelist...** from a file or folder menu
+- **Shelve Changelist...** shelves just that list's files
+- **Partial commits** — after committing only some of a list, an offer moves the files you left behind into a new list
+- **Changes view** — gets a Changelist grouping too
+- **Stored per worktree** inside the git directory, never in the repository
+- **Switch off** with `jgc.changelists.enabled`
+
+### Commit Options and Checks
+
+- **Gear menu** in the Commit panel with **Sign-off** and **Run Git hooks** switches
+- **Pre-commit warnings** — large files, CRLF line endings, a detached HEAD or rebase in progress, and a missing `user.name` / `user.email`, each with a "Commit anyway" prompt; every check can be turned off (`jgc.commit.*`)
+- **GPG signing** — **Choose GPG Key...** picks a key and turns signing on; `jgc.commit.gpgSign` (`auto`, `always`, `never`) forces or disables it per commit
+
+### Shelf and Stash
+
+- **Shelf toolbar** like the JetBrains Shelf window — Unshelve, Restore (keeps the shelf), Create Patch, Copy as Patch to Clipboard, Delete, Import Patches and Import Patches from Clipboard; the actions are disabled until a shelf is selected
+- **Stash options** from the Stash tab toolbar — Stash Changes... (keep index, include untracked), Unstash As... (as a new branch, pop, reinstate index) and Clear All Stashes...
+
+### Update, Checkout, Push and Fetch
+
+- **Update method** — `jgc.update.method` (`merge`, `rebase` or `branchDefault`) decides how Update Project, Pull and branch updates integrate upstream changes; `jgc.update.saveChangesPolicy` (`stash` or `shelve`) decides how local changes are carried across
+- **Smart checkout** — checking out a branch, tag or commit, or creating a branch, on a dirty working tree prompts for **Smart** (stash, switch, restore), **Force** (discard, after a second confirmation) or **Cancel**; untracked files that would be overwritten are explained instead of offering a destructive option
+- **Rejected pushes recover in place** — from the branch menu, Commit and Push and Push All up to Here, a rejected push offers Merge, Rebase or Force with lease, then retries once; the Push panel adds Force with lease and "Remember my choice", and a first push sets the upstream
+- **Protected branches** — `jgc.protectedBranches` (default `main`, `master`; `*` globs allowed) refuses force pushes, asks for explicit confirmation before deleting, and keeps them out of Clean Up Merged Branches
+- **Fetch options** — prune, tags mode and background auto-fetch (`jgc.fetch.*`)
+- **Cherry-pick options** — empty commits can be asked about, skipped or created (`jgc.cherryPick.emptyStrategy`), and `-x` can be appended (`jgc.cherryPick.appendSourceHash`)
+
+### Interactive Rebase
+
+**Interactively Rebase from Here...** on any commit opens a dialog with per-commit pick / reword / edit / squash / fixup / drop, reordering, `--onto`, autosquash, keep-empty, update-refs and rebase-merges. Continuing a rebase no longer opens an editor.
+
+### Repository Commands
+
+- **Clone Repository** — with progress and cancel; never prompts for credentials (`jgc.clone.recurseSubmodules` controls submodule cloning)
+- **Create Git Repository** for a workspace that is not one yet
+- **Submodules** — list, update, sync and open
+- **Sparse checkout** — status, enable, set, add and disable
+- **Unshallow / Deepen** a shallow clone
 
 ### AI Commit Message
 
@@ -70,6 +135,7 @@ WebStorm-style inline blame on every line, with click-to-jump into the Git Log c
 - **Age-based colouring** — new → blue, mid → green, old → grey, or colour by author, or no colour at all
 - **Each diff column is independent** — toggling blame on one side leaves the other side alone
 - **Configurable** — `jgc.blame.columns`, `jgc.blame.colorMode`, `jgc.blame.nameStyle`, `jgc.blame.dateFormat`
+- **Attribution options** — `jgc.blame.ignoreWhitespace` and `jgc.blame.detectMovements` (`none`, `inner`, `outer`) control how lines are attributed
 
 ### Caret Line-End Blame
 
@@ -108,6 +174,7 @@ WebStorm-style inline blame on every line, with click-to-jump into the Git Log c
 JetBrains-style worktree management in the activity bar sidebar.
 
 - **Worktree list** — every worktree with its branch and path, the main worktree protected from deletion
+- **Lock / Unlock** — a locked worktree shows a lock and cannot be deleted
 - **New Worktree** — searchable dropdown for local branches, `origin/*` and tags, with input validation, auto-filled project name and a live duplicate-name check
 - **Open project** — native VS Code dialog: this window or a new one
 - **Prune** — clean up stale worktree metadata
@@ -138,7 +205,9 @@ JetBrains-style worktree management in the activity bar sidebar.
 - Rebase 'current' onto 'branch'
 - Merge 'branch' into 'current'
 - Rename...
-- Delete (with force-delete fallback)
+- Delete (with force-delete fallback; protected branches ask for confirmation)
+- Set Upstream / Unset Upstream
+- Clean Up Merged Branches...
 - Update
 - Push...
 
@@ -175,6 +244,9 @@ JetBrains-style worktree management in the activity bar sidebar.
 - Cherry-Pick
 - Create Patch...
 - Checkout Revision
+- Interactively Rebase from Here...
+- Edit Commit Message
+- Fixup / Squash Into
 - Show Repository at Revision
 - Compare with Local
 - Reset Current Branch to Here... (Soft / Mixed / Hard / Keep)
@@ -231,6 +303,30 @@ Search for `JGC` in VS Code Settings.
 | `jgc.caretBlame.enabled` | Caret line-end blame | `true` |
 | `jgc.caretBlame.format` | Caret blame template | `${who}, ${date} * ${message}` |
 | `jgc.caretBlame.messageMaxLength` | Maximum characters of the summary | `50` |
+| `jgc.blame.ignoreWhitespace` | Ignore whitespace changes when attributing lines | `true` |
+| `jgc.blame.detectMovements` | How blame follows moved lines (`none`, `inner`, `outer`) | `inner` |
+| `jgc.update.method` | How Update integrates upstream (`merge`, `rebase`, `branchDefault`) | `branchDefault` |
+| `jgc.update.saveChangesPolicy` | Park local changes during update / checkout (`stash`, `shelve`) | `stash` |
+| `jgc.push.autoSetUpstream` | Set the upstream on a branch's first push | `true` |
+| `jgc.push.rejectedAction` | What to do when a push is rejected | `ask` |
+| `jgc.protectedBranches` | Branches that refuse force pushes and confirm deletion (`*` globs) | `["main", "master"]` |
+| `jgc.commit.signOff` | Add `Signed-off-by` to every commit | `false` |
+| `jgc.commit.runHooks` | Run Git hooks when committing | `true` |
+| `jgc.commit.gpgSign` | GPG-sign commits (`auto`, `always`, `never`) | `auto` |
+| `jgc.commit.warnLargeFiles` | Confirm before committing large files | `true` |
+| `jgc.commit.largeFileThresholdMB` | Size above which a file counts as large | `10` |
+| `jgc.commit.warnCrlf` | Confirm before committing CRLF line endings | `true` |
+| `jgc.commit.warnDetachedHead` | Confirm when HEAD is detached or a rebase is in progress | `true` |
+| `jgc.commit.warnMissingIdentity` | Confirm when `user.name` / `user.email` is not set | `true` |
+| `jgc.changelists.enabled` | Group changes into changelists | `true` |
+| `jgc.changelists.offerMoveOnPartialCommit` | Offer to move leftover files after a partial commit | `true` |
+| `jgc.fetch.prune` | Prune stale remote-tracking branches on fetch | `false` |
+| `jgc.fetch.tagsMode` | Which tags a fetch brings along | `default` |
+| `jgc.fetch.autoFetch` | Fetch all remotes in the background | `false` |
+| `jgc.fetch.autoFetchIntervalMinutes` | Minutes between background fetches | `15` |
+| `jgc.cherryPick.emptyStrategy` | Handling of commits that become empty (`ask`, `skip`, `createEmpty`) | `ask` |
+| `jgc.cherryPick.appendSourceHash` | Append the source hash (`-x`) to cherry-picked commits | `false` |
+| `jgc.clone.recurseSubmodules` | Clone submodules with Clone Repository | `false` |
 | `jgc.worktree.openBehavior` | How projects open from a worktree | `ask` |
 | `jgc.onboarding.builtinGitPrompt` | Offer to disable the built-in Git extension | `ask` |
 
@@ -244,7 +340,7 @@ The six status colours are also exposed as `jgc.decoration.*` colour IDs, so the
 
 **From a .vsix**
 
-1. Download the latest `.vsix` from [releases](https://github.com/witt-bit/jetbrains-version-control/releases)
+1. Download the latest `.vsix` from [releases](https://github.com/cscolley/jetbrains-git/releases)
 2. `Cmd+Shift+P` → "Extensions: Install from VSIX..."
 
 ## Requirements
@@ -255,8 +351,8 @@ The six status colours are also exposed as `jgc.decoration.*` colour IDs, so the
 ## Local Development
 
 ```bash
-git clone https://github.com/witt-bit/jetbrains-version-control.git
-cd jetbrains-version-control
+git clone https://github.com/cscolley/jetbrains-git.git
+cd jetbrains-git
 pnpm install
 cd webview && pnpm install && cd ..
 ```
@@ -275,6 +371,7 @@ See [AGENTS.md](./AGENTS.md) for the architecture and the conventions this codeb
 
 ## Credits
 
+- Forked from: [witt-bit/jetbrains-version-control](https://github.com/witt-bit/jetbrains-version-control)
 - Original: [aotemj/jetbrains-git-graph](https://github.com/aotemj/jetbrains-git-graph)
 - Fork from: [zhyc9de/jet-git](https://github.com/zhyc9de/jet-git)
 - Icons: [IntelliJ IDEA Icons](https://intellij-icons.jetbrains.design/) (Apache 2.0)
