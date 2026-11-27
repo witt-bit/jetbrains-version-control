@@ -6,15 +6,15 @@
 
 <h1>JetBrains Git</h1>
 
-<strong>The IntelliJ IDEA / JetBrains Git experience for VS Code and Cursor</strong>
+<strong>Git tools inspired by JetBrains IDE's</strong>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-1.91.0%2B-blue)](https://code.visualstudio.com/)
-[![Version](https://img.shields.io/github/v/tag/witt-bit/jetbrains-version-control?label=version&color=green)](https://github.com/witt-bit/jetbrains-version-control/releases)
+[![Version](https://img.shields.io/github/v/tag/cscolley/jetbrains-git?label=version&color=green)](https://github.com/cscolley/jetbrains-git/releases)
 
-**English** · [简体中文](https://github.com/witt-bit/jetbrains-version-control/blob/main/README.zh_CN.md) · [Changelog](https://github.com/witt-bit/jetbrains-version-control/blob/main/CHANGELOG.md)
+[Changelog](https://github.com/cscolley/jetbrains-git/blob/main/CHANGELOG.md)
 
-> A fork of [aotemj/jetbrains-git-graph](https://github.com/aotemj/jetbrains-git-graph) — itself forked from [zhyc9de/jet-git](https://github.com/zhyc9de/jet-git) — extended with inline Git blame annotations, commit-graph navigation, a shelf/stash commit panel and full IDEA-style context menus.
+> A fork of [witt-bit/jetbrains-version-control](https://github.com/witt-bit/jetbrains-version-control) — providing JetBrains inspired git tools for VS Code
 
 </div>
 
